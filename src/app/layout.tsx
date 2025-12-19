@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
 import { QueryProvider } from "@/providers";
 import "./globals.css";
 
@@ -19,6 +20,7 @@ export default function RootLayout({
         <QueryProvider>
           <TooltipProvider>
             {children}
+            <Toaster />
           </TooltipProvider>
         </QueryProvider>
       </body>
