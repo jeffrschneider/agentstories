@@ -57,7 +57,7 @@ export default function EditStoryPage() {
   };
 
   const handleDelete = async () => {
-    await deleteStory.mutateAsync(id);
+    await deleteStory.mutateAsync({ id, name: story?.name || 'Untitled' });
     router.push("/");
   };
 
