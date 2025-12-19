@@ -1,12 +1,15 @@
 import { proxy, useSnapshot } from 'valtio';
 import type { AgentStory, StoryFormat } from '@/lib/schemas';
 
+// Draft data type - flexible to handle both formats during editing
+type StoryDraftData = Record<string, unknown>;
+
 // Draft state for story being edited
 interface StoryDraft {
   id: string | null;
   format: StoryFormat;
-  data: Partial<AgentStory>;
-  originalData: Partial<AgentStory> | null;
+  data: StoryDraftData;
+  originalData: StoryDraftData | null;
   validationErrors: Array<{ path: string; message: string }>;
   lastSavedAt: string | null;
 }
