@@ -1,3 +1,6 @@
+## Development Approach
+This project uses spec-driven development. Always check /specs before implementing a feature. Implementation must match the spec exactly.
+
 # UI Stack for the App 
 
 ## Stack
