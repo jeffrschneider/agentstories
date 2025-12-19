@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AgentStorySchema, AgentStoryFull, isFullFormat } from './story';
+import { AgentStorySchema, AgentStoryFull, AgentStoryLightSchema, AgentStoryFullSchema, isFullFormat } from './story';
 
 export type ValidationResult = {
   valid: boolean;
@@ -109,17 +109,29 @@ function checkConsistency(story: z.infer<typeof AgentStorySchema>): ValidationRe
 
 // Partial validation for drafts
 export function validatePartialStory(data: unknown): ValidationResult {
-  // Use partial schema for drafts
-  const PartialStorySchema = AgentStorySchema.partial();
-  const result = PartialStorySchema.safeParse(data);
+  // Create partial schemas for both formats
+  const PartialLightSchema = AgentStoryLightSchema.partial().extend({
+    format: z.literal('light').optional()
+  });
+  const PartialFullSchema = AgentStoryFullSchema.partial().extend({
+    format: z.literal('full').optional()
+  });
 
-  if (result.success) {
+  // Try to validate as either format
+  const lightResult = PartialLightSchema.safeParse(data);
+  if (lightResult.success) {
     return { valid: true, errors: [], warnings: [] };
   }
 
+  const fullResult = PartialFullSchema.safeParse(data);
+  if (fullResult.success) {
+    return { valid: true, errors: [], warnings: [] };
+  }
+
+  // Return errors from the full schema (more comprehensive)
   return {
     valid: false,
-    errors: result.error.issues.map(issue => ({
+    errors: fullResult.error.issues.map((issue: z.ZodIssue) => ({
       path: issue.path.join('.'),
       message: issue.message,
       code: issue.code

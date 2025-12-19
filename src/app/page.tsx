@@ -1,65 +1,157 @@
-import Image from "next/image";
+"use client";
+
+import Link from "next/link";
+import { Plus, FileText, LayoutTemplate } from "lucide-react";
+import { AppShell } from "@/components/layout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <AppShell className="p-6">
+      <div className="mx-auto max-w-6xl space-y-8">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+            <p className="text-muted-foreground">
+              Create and manage your agent stories
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/stories/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New Story
+            </Link>
+          </Button>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+
+        {/* Quick Stats */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Total Stories</CardDescription>
+              <CardTitle className="text-4xl">0</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Create your first story to get started
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Templates</CardDescription>
+              <CardTitle className="text-4xl">9</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Built-in templates available
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardDescription>Projects</CardDescription>
+              <CardTitle className="text-4xl">0</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground">
+                Organize stories into projects
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </main>
-    </div>
+
+        {/* Getting Started */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Getting Started</CardTitle>
+            <CardDescription>
+              Start building specifications for your AI agents
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Link
+                href="/stories/new"
+                className="group rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-primary/10 p-2">
+                    <FileText className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold group-hover:text-primary">
+                      Create from Scratch
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Build a custom agent story
+                    </p>
+                  </div>
+                </div>
+              </Link>
+              <Link
+                href="/templates"
+                className="group rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-primary/10 p-2">
+                    <LayoutTemplate className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold group-hover:text-primary">
+                      Use a Template
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Start with a pre-built template
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Autonomy Levels Info */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Autonomy Levels</CardTitle>
+            <CardDescription>
+              Agent stories support four levels of autonomy
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Badge variant="full">Full</Badge>
+                <p className="text-sm text-muted-foreground">
+                  Agent operates independently with minimal oversight
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Badge variant="supervised">Supervised</Badge>
+                <p className="text-sm text-muted-foreground">
+                  Agent works autonomously with human monitoring
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Badge variant="collaborative">Collaborative</Badge>
+                <p className="text-sm text-muted-foreground">
+                  Agent and human work together on tasks
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Badge variant="directed">Directed</Badge>
+                <p className="text-sm text-muted-foreground">
+                  Human leads, agent assists with specific tasks
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </AppShell>
   );
 }
