@@ -8,7 +8,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@radix-ui/react-dropdown-menu";
+} from "@/components/ui/dropdown-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { cn } from "@/lib/utils";
 
 interface HeaderProps {
@@ -39,6 +40,8 @@ export function Header({ className }: HeaderProps) {
             </Link>
           </Button>
 
+          <ThemeToggle />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon">
@@ -46,16 +49,13 @@ export function Header({ className }: HeaderProps) {
                 <span className="sr-only">User menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-48 rounded-md border bg-popover p-1 shadow-md"
-            >
-              <DropdownMenuItem className="flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent">
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>
                 <Settings className="mr-2 h-4 w-4" />
                 Settings
               </DropdownMenuItem>
-              <DropdownMenuSeparator className="my-1 h-px bg-border" />
-              <DropdownMenuItem className="flex cursor-pointer items-center rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent">
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
                 Sign out
               </DropdownMenuItem>
             </DropdownMenuContent>
