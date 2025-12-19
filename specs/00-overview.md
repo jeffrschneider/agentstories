@@ -87,6 +87,21 @@ All data flows through Zod schemas for runtime validation. Invalid states are ca
 | `adaptive` | Runtime decisions based on context |
 | `hybrid` | Structured workflows with adaptive decision points |
 
+### Planning Strategies
+| Strategy | Description |
+|----------|-------------|
+| `none` | No planning - direct execution |
+| `local` | Agent plans its own work |
+| `delegated` | Planning delegated to another agent |
+| `emergent` | Planning emerges from agent collaboration |
+
+### Reasoning Strategies
+| Strategy | Description |
+|----------|-------------|
+| `rule_based` | Deterministic rules and logic |
+| `llm_guided` | LLM-driven decision making |
+| `hybrid` | Combination of rules and LLM |
+
 ### Autonomy Levels
 | Level | Human Involvement | Agent Authority |
 |-------|-------------------|-----------------|
@@ -95,9 +110,9 @@ All data flows through Zod schemas for runtime validation. Invalid states are ca
 | `collaborative` | Active partnership | Shared decision-making |
 | `directed` | Step-by-step approval | Executes specific instructions |
 
-### Human Collaboration Patterns
-| Pattern | Description |
-|---------|-------------|
+### Human Interaction Modes
+| Mode | Description |
+|------|-------------|
 | `in_the_loop` | Human approval for every decision |
 | `on_the_loop` | Human monitors, intervenes on exceptions |
 | `out_of_loop` | Fully autonomous within boundaries |
@@ -108,6 +123,29 @@ All data flows through Zod schemas for runtime validation. Invalid states are ca
 | `supervisor` | Coordinates and orchestrates other agents |
 | `worker` | Executes specific tasks as directed |
 | `peer` | Collaborates as equals with defined patterns |
+
+### Memory Store Types
+| Type | Description |
+|------|-------------|
+| `kb` | Knowledge base for structured information |
+| `vector` | Vector database for embeddings and semantic search |
+| `relational` | Relational database for structured queries |
+| `kv` | Key-value store for fast lookups |
+
+### Tool Permissions
+| Permission | Description |
+|------------|-------------|
+| `read` | Read-only access |
+| `write` | Can create and update data |
+| `execute` | Can execute actions |
+| `admin` | Full administrative access |
+
+### Skill Acquisition Types
+| Type | Description |
+|------|-------------|
+| `built_in` | Core competency the agent is designed with |
+| `learned` | Acquired through training, feedback, or experience |
+| `delegated` | Performed by calling another agent or service |
 
 ## Phase 1 Scope (MVP)
 

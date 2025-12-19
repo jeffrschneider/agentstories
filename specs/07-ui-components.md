@@ -183,9 +183,25 @@ export function StoryCanvas({ storyId, mode = 'edit', onSave }: StoryCanvasProps
         />
       </section>
 
-      {/* Extended Sections (Full format only) */}
+      {/* Structured Annotations (Full format only) */}
       {story.format === 'full' && (
         <div className="mt-6 space-y-4">
+          <div className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-4">
+            Structured Annotations
+          </div>
+
+          <CollapsibleSection
+            id="triggerSpec"
+            title="Trigger Specification"
+            optional
+          >
+            <TriggerSpecEditor
+              value={story.triggerSpec}
+              onChange={(v) => updateField('triggerSpec', v)}
+              disabled={mode === 'view'}
+            />
+          </CollapsibleSection>
+
           <CollapsibleSection
             id="behavior"
             title="Behavior Model"
@@ -193,72 +209,94 @@ export function StoryCanvas({ storyId, mode = 'edit', onSave }: StoryCanvasProps
             completionStatus={getBehaviorCompletionStatus(story)}
           >
             <BehaviorModelEditor
-              value={story.behaviorConfig}
-              onChange={(v) => updateField('behaviorConfig', v)}
+              value={story.behavior}
+              onChange={(v) => updateField('behavior', v)}
               disabled={mode === 'view'}
             />
           </CollapsibleSection>
 
           <CollapsibleSection
-            id="skills"
-            title="Skills & Reasoning"
-            optional
-            completionStatus={getSkillsCompletionStatus(story)}
-          >
-            <SkillsEditor
-              value={story.skillsInventory}
-              onChange={(v) => updateField('skillsInventory', v)}
-              disabled={mode === 'view'}
-            />
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            id="humanCollab"
-            title="Human Collaboration"
+            id="reasoning"
+            title="Reasoning & Decisions"
             optional
           >
-            <HumanCollabEditor
-              value={story.humanCollaboration}
-              onChange={(v) => updateField('humanCollaboration', v)}
-              disabled={mode === 'view'}
-            />
-          </CollapsibleSection>
-
-          <CollapsibleSection
-            id="agentCollab"
-            title="Agent Collaboration"
-            optional
-          >
-            <AgentCollabEditor
-              value={story.agentCollaboration}
-              onChange={(v) => updateField('agentCollaboration', v)}
+            <ReasoningEditor
+              value={story.reasoning}
+              onChange={(v) => updateField('reasoning', v)}
               disabled={mode === 'view'}
             />
           </CollapsibleSection>
 
           <CollapsibleSection
             id="memory"
-            title="Memory Architecture"
+            title="Memory & State"
             optional
           >
             <MemoryEditor
-              value={story.memoryArchitecture}
-              onChange={(v) => updateField('memoryArchitecture', v)}
+              value={story.memory}
+              onChange={(v) => updateField('memory', v)}
               disabled={mode === 'view'}
             />
           </CollapsibleSection>
 
           <CollapsibleSection
-            id="quality"
-            title="Quality & Constraints"
+            id="tools"
+            title="Tools & Integrations"
+            optional
+            completionStatus={getToolsCompletionStatus(story)}
+          >
+            <ToolsEditor
+              value={story.tools}
+              onChange={(v) => updateField('tools', v)}
+              disabled={mode === 'view'}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            id="skills"
+            title="Skills"
+            completionStatus={getSkillsCompletionStatus(story)}
+          >
+            <SkillsEditor
+              value={story.skills}
+              onChange={(v) => updateField('skills', v)}
+              availableTools={story.tools || []}
+              disabled={mode === 'view'}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            id="humanInteraction"
+            title="Human Collaboration"
             optional
           >
-            <QualityEditor
-              value={{ qualityRequirements: story.qualityRequirements, constraints: story.constraints }}
-              onChange={(v) => {
-                updateField('qualityRequirements', v.qualityRequirements);
-                updateField('constraints', v.constraints);
-              }}
+            <HumanInteractionEditor
+              value={story.humanInteraction}
+              onChange={(v) => updateField('humanInteraction', v)}
+              disabled={mode === 'view'}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            id="collaboration"
+            title="Agent Collaboration"
+            optional
+          >
+            <AgentCollabEditor
+              value={story.collaboration}
+              onChange={(v) => updateField('collaboration', v)}
+              disabled={mode === 'view'}
+            />
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            id="acceptance"
+            title="Acceptance Criteria"
+            completionStatus={getAcceptanceCompletionStatus(story)}
+          >
+            <AcceptanceCriteriaEditor
+              value={story.acceptance}
+              onChange={(v) => updateField('acceptance', v)}
               disabled={mode === 'view'}
             />
           </CollapsibleSection>

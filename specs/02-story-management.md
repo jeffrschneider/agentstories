@@ -154,11 +154,25 @@ This specification covers the creation, editing, and validation of Agent Stories
 │  │                                                          │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
+│  ── STRUCTURED ANNOTATIONS (Full format only) ──────────────    │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ▶ Trigger Specification                     [Optional]   │   │
+│  └─────────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ ▶ Behavior Model                            [Optional]   │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ ▶ Skills & Reasoning                        [Optional]   │   │
+│  │ ▶ Reasoning & Decisions                     [Optional]   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ▶ Memory & State                            [Optional]   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ▶ Tools & Integrations                      [Optional]   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ▶ Skills                                    [Required]   │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ ▶ Human Collaboration                       [Optional]   │   │
@@ -167,19 +181,19 @@ This specification covers the creation, editing, and validation of Agent Stories
 │  │ ▶ Agent Collaboration                       [Optional]   │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ ▶ Memory Architecture                       [Optional]   │   │
-│  └─────────────────────────────────────────────────────────┘   │
-│  ┌─────────────────────────────────────────────────────────┐   │
-│  │ ▶ Quality & Constraints                     [Optional]   │   │
+│  │ ▶ Acceptance Criteria                       [Required]   │   │
 │  └─────────────────────────────────────────────────────────┘   │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
 **Notes:**
-- Extended sections (Behavior Model through Quality & Constraints) only visible in Full format
-- Collapsed sections show completion indicator (e.g., "3 of 5 fields")
+- Structured annotations only visible in Full format
+- Two sections are required for Full format: Skills and Acceptance Criteria
+- All other annotation sections are optional - add only what's relevant
+- Collapsed sections show completion indicator (e.g., "2 skills defined")
 - Sections expand inline, not as modals
+- Tools must be defined before Skills can reference them
 
 ---
 
@@ -267,10 +281,20 @@ These produce warnings, not blocking errors:
 
 | Condition | Warning Message |
 |-----------|-----------------|
-| autonomyLevel='full' AND humanCollaboration.pattern='in_the_loop' | "Full autonomy with in-the-loop collaboration may be contradictory" |
-| autonomyLevel='directed' AND humanCollaboration.pattern='out_of_loop' | "Directed autonomy with out-of-loop collaboration may be contradictory" |
-| behaviorModel.type='workflow' AND stages.length < 2 | "Workflow agents typically have multiple stages" |
+| autonomyLevel='full' AND humanInteraction.mode='in_the_loop' | "Full autonomy with in-the-loop collaboration may be contradictory" |
+| autonomyLevel='directed' AND humanInteraction.mode='out_of_loop' | "Directed autonomy with out-of-loop collaboration may be contradictory" |
+| behavior.type='workflow' AND behavior.stages.length < 2 | "Workflow agents typically have multiple stages" |
 | trigger.type='schedule' AND autonomyLevel='directed' | "Scheduled triggers with directed autonomy require human availability" |
+| skill.toolsUsed references non-existent tool | "Skill references unknown tool: {toolName}" |
+
+### Full Format Required Sections
+
+When upgrading to Full format, the following sections must be completed before saving:
+
+| Section | Requirement |
+|---------|-------------|
+| Skills | At least one skill with name, domain, proficiencies, and qualityBar |
+| Acceptance Criteria | At least one functional criterion |
 
 ### Validation Error Display
 

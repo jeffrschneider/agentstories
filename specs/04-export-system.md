@@ -51,64 +51,166 @@ The export system generates shareable artifacts from Agent Stories in multiple f
 
 ---
 
-## Behavior Model
+## Trigger Specification
 
-{#if behaviorConfig}
-**Type:** {behaviorConfig.type}
+{#if triggerSpec}
+**Type:** {triggerSpec.type}
+**Source:** {triggerSpec.source}
+{#if triggerSpec.conditions}
+**Conditions:** {triggerSpec.conditions}
+{/if}
 
-{#if behaviorConfig.type === 'workflow'}
-### Workflow Stages
-
-| Stage | Description |
-|-------|-------------|
-{#each stages}
-| {stage.name} | {stage.description} |
+{#if triggerSpec.examples?.length}
+### Examples
+{#each triggerSpec.examples}
+- {example}
 {/each}
-
-**Initial Stage:** {initialStageId}
-**Terminal Stages:** {terminalStageIds.join(', ')}
 {/if}
 {/if}
 
 ---
 
-## Skills & Reasoning
+## Behavior Model
 
-{#if skillsInventory}
-### Primary Skills
+{#if behavior}
+**Type:** {behavior.type}
+**Planning:** {behavior.planning}
 
-{#each primarySkills}
-- **{skill.name}** ({skill.proficiencyLevel})
-  - Acquisition: {skill.acquisitionType}
-  {#if skill.qualityThreshold}
-  - Quality Bar: {skill.qualityThreshold.metric} ≥ {skill.qualityThreshold.minimumValue}
-  {/if}
+{#if behavior.type === 'workflow' || behavior.type === 'hybrid'}
+{#if behavior.stages?.length}
+### Workflow Stages
+
+| Stage | Purpose |
+|-------|---------|
+{#each behavior.stages}
+| {stage.name} | {stage.purpose} |
 {/each}
 {/if}
+{/if}
+
+{#if behavior.type === 'adaptive' || behavior.type === 'hybrid'}
+{#if behavior.capabilities?.length}
+### Capabilities
+{#each behavior.capabilities}
+- {capability}
+{/each}
+{/if}
+{/if}
+{/if}
+
+---
+
+## Reasoning & Decisions
+
+{#if reasoning}
+**Strategy:** {reasoning.strategy}
+
+{#if reasoning.decisionPoints?.length}
+### Decision Points
+
+| Decision | Inputs | Approach |
+|----------|--------|----------|
+{#each reasoning.decisionPoints}
+| {point.name} | {point.inputs} | {point.approach} |
+{/each}
+{/if}
+
+{#if reasoning.iteration?.enabled}
+### Iteration
+- **Max Attempts:** {reasoning.iteration.maxAttempts}
+- **Retry Conditions:** {reasoning.iteration.retryConditions}
+{/if}
+{/if}
+
+---
+
+## Memory & State
+
+{#if memory}
+{#if memory.working?.length}
+### Working Memory
+{#each memory.working}
+- {item}
+{/each}
+{/if}
+
+{#if memory.persistent?.length}
+### Persistent Stores
+
+| Store | Type | Purpose | Updates |
+|-------|------|---------|---------|
+{#each memory.persistent}
+| {store.name} | {store.type} | {store.purpose} | {store.updates} |
+{/each}
+{/if}
+
+{#if memory.learning?.length}
+### Learning
+
+| Type | Signal |
+|------|--------|
+{#each memory.learning}
+| {learning.type} | {learning.signal} |
+{/each}
+{/if}
+{/if}
+
+---
+
+## Tools & Integrations
+
+{#if tools?.length}
+| Tool | Purpose | Permissions |
+|------|---------|-------------|
+{#each tools}
+| {tool.name} | {tool.purpose} | {tool.permissions.join(', ')} |
+{/each}
+{/if}
+
+---
+
+## Skills
+
+{#each skills}
+### {skill.name}
+
+**Domain:** {skill.domain}
+**Acquired:** {skill.acquired}
+
+**Proficiencies:**
+{#each skill.proficiencies}
+- {proficiency}
+{/each}
+
+{#if skill.toolsUsed?.length}
+**Tools Used:** {skill.toolsUsed.join(', ')}
+{/if}
+
+**Quality Bar:** {skill.qualityBar}
+
+{/each}
 
 ---
 
 ## Human Collaboration
 
-{#if humanCollaboration}
-**Pattern:** {humanCollaboration.pattern}
+{#if humanInteraction}
+**Mode:** {humanInteraction.mode}
 
-{#if escalationTriggers.length}
-### Escalation Triggers
+{#if humanInteraction.checkpoints?.length}
+### Checkpoints
 
-| Trigger | Condition | Priority |
-|---------|-----------|----------|
-{#each escalationTriggers}
-| {trigger.name} | `{trigger.condition}` | {trigger.priority} |
+| Checkpoint | Trigger | Type | Timeout |
+|------------|---------|------|---------|
+{#each humanInteraction.checkpoints}
+| {checkpoint.name} | {checkpoint.trigger} | {checkpoint.type} | {checkpoint.timeout || 'N/A'} |
 {/each}
 {/if}
 
-{#if approvalWorkflows.length}
-### Approval Workflows
-
-{#each approvalWorkflows}
-- **{workflow.name}**: Requires {workflow.requiredApprovers} approver(s) from {workflow.approverRoles.join(', ')}
-{/each}
+{#if humanInteraction.escalation}
+### Escalation
+**Conditions:** {humanInteraction.escalation.conditions}
+**Channel:** {humanInteraction.escalation.channel}
 {/if}
 {/if}
 
@@ -116,75 +218,56 @@ The export system generates shareable artifacts from Agent Stories in multiple f
 
 ## Agent Collaboration
 
-{#if agentCollaboration}
-**Role:** {agentCollaboration.role}
+{#if collaboration}
+**Role:** {collaboration.role}
 
-{#if role === 'supervisor'}
-**Managed Agents:** {managedAgentIds.join(', ')}
+{#if collaboration.role === 'supervisor' && collaboration.coordinates?.length}
+### Coordinates
+
+| Agent | Via | For |
+|-------|-----|-----|
+{#each collaboration.coordinates}
+| {entry.agent} | {entry.via} | {entry.for} |
+{/each}
 {/if}
 
-{#if communicationPatterns.length}
-### Communication Patterns
+{#if collaboration.role === 'worker' && collaboration.reportsTo}
+**Reports To:** {collaboration.reportsTo}
+{/if}
 
-| Target Agent | Message Types | Protocol |
-|--------------|---------------|----------|
-{#each communicationPatterns}
-| {pattern.targetAgentId} | {pattern.messageTypes.join(', ')} | {pattern.protocol} |
+{#if collaboration.peers?.length}
+### Peers
+
+| Agent | Interaction |
+|-------|-------------|
+{#each collaboration.peers}
+| {peer.agent} | {peer.interaction} |
 {/each}
 {/if}
 {/if}
 
 ---
 
-## Memory Architecture
+## Acceptance Criteria
 
-{#if memoryArchitecture}
-{#if workingMemory}
-### Working Memory
-- **Type:** {workingMemory.memoryType}
-- **Storage:** {workingMemory.storageType}
-- **Sensitivity:** {workingMemory.dataSensitivity}
-{/if}
-
-{#if persistentStores.length}
-### Persistent Stores
-
-| Store | Type | Storage | Retention |
-|-------|------|---------|-----------|
-{#each persistentStores}
-| {store.name} | {store.memoryType} | {store.storageType} | {store.retentionPolicy?.maxAgeDays || 'Indefinite'} days |
+{#if acceptance}
+### Functional Requirements
+{#each acceptance.functional}
+- {criterion}
 {/each}
-{/if}
-{/if}
 
----
-
-## Quality & Constraints
-
-{#if qualityRequirements}
+{#if acceptance.quality?.length}
 ### Quality Requirements
-
-| Metric | Target |
-|--------|--------|
-{#if qualityRequirements.responseTimeMs}
-| Response Time | ≤ {qualityRequirements.responseTimeMs}ms |
-{/if}
-{#if qualityRequirements.accuracyThreshold}
-| Accuracy | ≥ {(qualityRequirements.accuracyThreshold * 100).toFixed(1)}% |
-{/if}
-{#if qualityRequirements.availabilityTarget}
-| Availability | ≥ {(qualityRequirements.availabilityTarget * 100).toFixed(2)}% |
-{/if}
+{#each acceptance.quality}
+- {criterion}
+{/each}
 {/if}
 
-{#if constraints}
-### Constraints
-
-{#if constraints.maxConcurrentTasks}
-- **Max Concurrent Tasks:** {constraints.maxConcurrentTasks}
-{/if}
-{#if constraints.complianceFrameworks?.length}
-- **Compliance:** {constraints.complianceFrameworks.join(', ')}
+{#if acceptance.guardrails?.length}
+### Guardrails
+{#each acceptance.guardrails}
+- {guardrail}
+{/each}
 {/if}
 {/if}
 
@@ -209,13 +292,16 @@ The export system generates shareable artifacts from Agent Stories in multiple f
 
 ```typescript
 interface MarkdownExportOptions {
-  // Include extended sections (Full format only)
-  includeBehavior?: boolean;      // default: true
-  includeSkills?: boolean;        // default: true
-  includeHumanCollab?: boolean;   // default: true
-  includeAgentCollab?: boolean;   // default: true
-  includeMemory?: boolean;        // default: true
-  includeQuality?: boolean;       // default: true
+  // Include structured annotation sections (Full format only)
+  includeTriggerSpec?: boolean;     // default: true
+  includeBehavior?: boolean;        // default: true
+  includeReasoning?: boolean;       // default: true
+  includeMemory?: boolean;          // default: true
+  includeTools?: boolean;           // default: true
+  includeSkills?: boolean;          // default: true
+  includeHumanInteraction?: boolean;// default: true
+  includeAgentCollab?: boolean;     // default: true
+  includeAcceptance?: boolean;      // default: true
 
   // Formatting
   includeTableOfContents?: boolean; // default: false
@@ -639,13 +725,16 @@ function removeFields(obj: any, paths: string[]): any {
 │ ☑ Include Metadata                                                  │
 │ ☐ Add YAML Frontmatter                                              │
 │                                                                     │
-│ SECTIONS TO INCLUDE                                                 │
+│ SECTIONS TO INCLUDE (Full format only)                              │
+│ ☑ Trigger Specification                                             │
 │ ☑ Behavior Model                                                    │
-│ ☑ Skills & Reasoning                                                │
+│ ☑ Reasoning & Decisions                                             │
+│ ☑ Memory & State                                                    │
+│ ☑ Tools & Integrations                                              │
+│ ☑ Skills                                                            │
 │ ☑ Human Collaboration                                               │
 │ ☑ Agent Collaboration                                               │
-│ ☑ Memory Architecture                                               │
-│ ☑ Quality & Constraints                                             │
+│ ☑ Acceptance Criteria                                               │
 │                                                                     │
 │ ─────────────────────────────────────────────────────────────────── │
 │                                                                     │
