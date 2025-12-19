@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { Plus, FileText, LayoutTemplate } from "lucide-react";
+import { Plus, FileText, LayoutTemplate, Clock, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useStats, useStories } from "@/hooks";
 
 export default function Home() {
+  const { data: stats, isLoading: statsLoading } = useStats();
+  const { data: recentStories, isLoading: storiesLoading } = useStories();
+
   return (
     <AppShell className="p-6">
       <div className="mx-auto max-w-6xl space-y-8">
@@ -32,18 +36,32 @@ export default function Home() {
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Total Stories</CardDescription>
-              <CardTitle className="text-4xl">0</CardTitle>
+              <CardTitle className="text-4xl">
+                {statsLoading ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                ) : (
+                  stats?.totalStories ?? 0
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">
-                Create your first story to get started
+                {stats?.totalStories === 0
+                  ? "Create your first story to get started"
+                  : `${stats?.storiesByFormat.light ?? 0} light, ${stats?.storiesByFormat.full ?? 0} full format`}
               </p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
               <CardDescription>Templates</CardDescription>
-              <CardTitle className="text-4xl">9</CardTitle>
+              <CardTitle className="text-4xl">
+                {statsLoading ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                ) : (
+                  stats?.totalTemplates ?? 0
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">
@@ -53,16 +71,78 @@ export default function Home() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardDescription>Projects</CardDescription>
-              <CardTitle className="text-4xl">0</CardTitle>
+              <CardDescription>By Autonomy</CardDescription>
+              <CardTitle className="text-4xl">
+                {statsLoading ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                ) : (
+                  <div className="flex gap-2 text-sm font-normal">
+                    <Badge variant="full">{stats?.storiesByAutonomy.full ?? 0}</Badge>
+                    <Badge variant="supervised">{stats?.storiesByAutonomy.supervised ?? 0}</Badge>
+                    <Badge variant="collaborative">{stats?.storiesByAutonomy.collaborative ?? 0}</Badge>
+                    <Badge variant="directed">{stats?.storiesByAutonomy.directed ?? 0}</Badge>
+                  </div>
+                )}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">
-                Organize stories into projects
+                Stories by autonomy level
               </p>
             </CardContent>
           </Card>
         </div>
+
+        {/* Recent Stories */}
+        {recentStories && recentStories.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Stories</CardTitle>
+              <CardDescription>Your latest agent story specifications</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {storiesLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  recentStories.slice(0, 5).map((story) => (
+                    <Link
+                      key={story.id}
+                      href={`/stories/${story.id}`}
+                      className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-accent"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{story.name || "Untitled"}</span>
+                          <Badge variant={story.format === "full" ? "full-format" : "light"}>
+                            {story.format}
+                          </Badge>
+                          <Badge variant={story.autonomyLevel}>{story.autonomyLevel}</Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground line-clamp-1">
+                          {story.role}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {new Date(story.updatedAt).toLocaleDateString()}
+                      </div>
+                    </Link>
+                  ))
+                )}
+              </div>
+              {recentStories.length > 5 && (
+                <div className="mt-4 text-center">
+                  <Button variant="outline" asChild>
+                    <Link href="/stories">View all stories</Link>
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Getting Started */}
         <Card>

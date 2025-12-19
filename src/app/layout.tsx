@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { QueryProvider } from "@/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -15,9 +16,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <TooltipProvider>
-          {children}
-        </TooltipProvider>
+        <QueryProvider>
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
+        </QueryProvider>
       </body>
     </html>
   );
