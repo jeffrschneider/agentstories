@@ -6,11 +6,14 @@ import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useStats, useStories } from "@/hooks";
+import { useStats, useStories, useKeyboardShortcuts } from "@/hooks";
 
 export default function Home() {
   const { data: stats, isLoading: statsLoading } = useStats();
   const { data: recentStories, isLoading: storiesLoading } = useStories();
+
+  // Enable global keyboard shortcuts
+  useKeyboardShortcuts();
 
   return (
     <AppShell className="p-6">

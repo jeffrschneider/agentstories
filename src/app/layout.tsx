@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "@/components/ui/toaster";
+import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/providers";
 import "./globals.css";
 
@@ -14,13 +16,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        <QueryProvider>
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
-        </QueryProvider>
+        <ThemeProvider>
+          <QueryProvider>
+            <TooltipProvider>
+              {children}
+              <Toaster />
+            </TooltipProvider>
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

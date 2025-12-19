@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, Loader2, Trash2, Copy } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Trash2, Copy, Eye, Download, Pencil } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StoryForm } from "@/components/story-editor";
+import { StoryPreview, ExportPanel } from "@/components/story-preview";
 import { storyEditorActions, useStoryEditor } from "@/stores";
 import { useStory, useUpdateStory, useDeleteStory, useDuplicateStory } from "@/hooks";
 import {
@@ -24,6 +26,7 @@ export default function EditStoryPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
+  const [activeTab, setActiveTab] = useState("edit");
 
   const editor = useStoryEditor();
   const { data: story, isLoading } = useStory(id);
@@ -65,6 +68,9 @@ export default function EditStoryPage() {
     }
   };
 
+  // Get current story data for preview/export
+  const currentStoryData = editor.draft.data as AgentStory;
+
   if (isLoading) {
     return (
       <AppShell className="p-6">
@@ -98,7 +104,7 @@ export default function EditStoryPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/">
+              <Link href="/stories">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
@@ -157,8 +163,47 @@ export default function EditStoryPage() {
           </div>
         </div>
 
-        {/* Form */}
-        <StoryForm onSave={handleSave} />
+        {/* Tabs for Edit/Preview/Export */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="edit" className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Edit
+            </TabsTrigger>
+            <TabsTrigger value="preview" className="flex items-center gap-2">
+              <Eye className="h-4 w-4" />
+              Preview
+            </TabsTrigger>
+            <TabsTrigger value="export" className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Export
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="edit" className="mt-6">
+            <StoryForm onSave={handleSave} />
+          </TabsContent>
+
+          <TabsContent value="preview" className="mt-6">
+            {currentStoryData.id ? (
+              <StoryPreview story={currentStoryData} />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                Loading preview...
+              </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="export" className="mt-6">
+            {currentStoryData.id ? (
+              <ExportPanel story={currentStoryData} />
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                Loading export...
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );

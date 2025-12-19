@@ -22,3 +22,9 @@ export {
   statsKeys,
   useStats,
 } from './use-stats';
+
+// Keyboard shortcuts
+export {
+  useKeyboardShortcuts,
+  useSaveShortcut,
+} from './use-keyboard-shortcuts';

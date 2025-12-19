@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Upload, Pencil } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StoryForm } from "@/components/story-editor";
+import { ImportPanel } from "@/components/story-preview";
 import { storyEditorActions, useStoryEditor } from "@/stores";
 import { useCreateStory } from "@/hooks";
 import type { AgentStory } from "@/lib/schemas";
@@ -15,6 +17,7 @@ export default function NewStoryPage() {
   const router = useRouter();
   const editor = useStoryEditor();
   const createStory = useCreateStory();
+  const [activeTab, setActiveTab] = useState("create");
 
   // Initialize new story on mount
   useEffect(() => {
@@ -41,6 +44,27 @@ export default function NewStoryPage() {
     }
   };
 
+  const handleImport = async (importedData: Partial<AgentStory>) => {
+    // Load the imported data into the editor
+    const now = new Date().toISOString();
+    const storyData = {
+      ...importedData,
+      version: importedData.version || "1.0",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Update the draft with imported data
+    Object.entries(storyData).forEach(([key, value]) => {
+      if (value !== undefined) {
+        storyEditorActions.updateDraft(key as keyof AgentStory, value as AgentStory[keyof AgentStory]);
+      }
+    });
+
+    // Switch to create tab to show the imported data
+    setActiveTab("create");
+  };
+
   return (
     <AppShell className="p-6">
       <div className="mx-auto max-w-4xl space-y-6">
@@ -48,7 +72,7 @@ export default function NewStoryPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" asChild>
-              <Link href="/">
+              <Link href="/stories">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
@@ -77,8 +101,27 @@ export default function NewStoryPage() {
           </Button>
         </div>
 
-        {/* Form */}
-        <StoryForm onSave={handleSave} />
+        {/* Tabs for Create/Import */}
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList>
+            <TabsTrigger value="create" className="flex items-center gap-2">
+              <Pencil className="h-4 w-4" />
+              Create
+            </TabsTrigger>
+            <TabsTrigger value="import" className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              Import
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="create" className="mt-6">
+            <StoryForm onSave={handleSave} />
+          </TabsContent>
+
+          <TabsContent value="import" className="mt-6">
+            <ImportPanel onImport={handleImport} />
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );
