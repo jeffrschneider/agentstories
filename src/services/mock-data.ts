@@ -1,4 +1,5 @@
 import type { AgentStory, AgentStoryLight, AgentStoryFull, Template, TemplateCategory } from '@/lib/schemas';
+import { loadFromStorage, saveToStorage } from './storage';
 
 // Simulated delay for realistic async behavior
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -325,9 +326,29 @@ const mockTemplates: Template[] = [
   },
 ];
 
-// In-memory storage (simulating a database)
-let stories = [...mockStories];
+// In-memory storage with localStorage persistence
+let stories: AgentStory[] = [];
 let templates = [...mockTemplates];
+let isInitialized = false;
+
+// Initialize stories from localStorage or use defaults
+function initializeStories(): void {
+  if (isInitialized) return;
+
+  const stored = loadFromStorage();
+  if (stored && Array.isArray(stored) && stored.length > 0) {
+    stories = stored as AgentStory[];
+  } else {
+    stories = [...mockStories];
+    saveToStorage(stories);
+  }
+  isInitialized = true;
+}
+
+// Persist stories to localStorage
+function persistStories(): void {
+  saveToStorage(stories);
+}
 
 export const mockDataService = {
   // Stories
@@ -338,6 +359,7 @@ export const mockDataService = {
       autonomyLevel?: string;
       format?: string;
     }): Promise<AgentStory[]> => {
+      initializeStories();
       await delay(300);
       let result = [...stories];
 
@@ -368,11 +390,13 @@ export const mockDataService = {
     },
 
     get: async (id: string): Promise<AgentStory | null> => {
+      initializeStories();
       await delay(200);
       return stories.find((s) => s.id === id) || null;
     },
 
     create: async (data: Omit<AgentStory, 'id' | 'createdAt' | 'updatedAt'>): Promise<AgentStory> => {
+      initializeStories();
       await delay(400);
       const now = new Date().toISOString();
       const newStory = {
@@ -382,10 +406,12 @@ export const mockDataService = {
         updatedAt: now,
       } as AgentStory;
       stories.push(newStory);
+      persistStories();
       return newStory;
     },
 
     update: async (id: string, data: Partial<AgentStory>): Promise<AgentStory | null> => {
+      initializeStories();
       await delay(400);
       const index = stories.findIndex((s) => s.id === id);
       if (index === -1) return null;
@@ -395,18 +421,22 @@ export const mockDataService = {
         ...data,
         updatedAt: new Date().toISOString(),
       } as AgentStory;
+      persistStories();
       return stories[index];
     },
 
     delete: async (id: string): Promise<boolean> => {
+      initializeStories();
       await delay(300);
       const index = stories.findIndex((s) => s.id === id);
       if (index === -1) return false;
       stories.splice(index, 1);
+      persistStories();
       return true;
     },
 
     duplicate: async (id: string): Promise<AgentStory | null> => {
+      initializeStories();
       await delay(400);
       const story = stories.find((s) => s.id === id);
       if (!story) return null;
@@ -421,6 +451,7 @@ export const mockDataService = {
         updatedAt: now,
       } as AgentStory;
       stories.push(duplicate);
+      persistStories();
       return duplicate;
     },
   },
@@ -456,6 +487,7 @@ export const mockDataService = {
     },
 
     useTemplate: async (templateId: string): Promise<AgentStory> => {
+      initializeStories();
       await delay(400);
       const template = templates.find((t) => t.id === templateId);
       if (!template) throw new Error('Template not found');
@@ -500,6 +532,7 @@ export const mockDataService = {
       }
 
       stories.push(newStory);
+      persistStories();
       return newStory;
     },
   },
@@ -507,6 +540,7 @@ export const mockDataService = {
   // Stats
   stats: {
     get: async () => {
+      initializeStories();
       await delay(200);
       return {
         totalStories: stories.length,
