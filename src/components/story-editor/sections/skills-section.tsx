@@ -519,8 +519,8 @@ function SkillToolsEditor({ skill, onUpdate }: { skill: Skill; onUpdate: (update
 function SkillBehaviorEditor({ skill, onUpdate }: { skill: Skill; onUpdate: (updates: Partial<Skill>) => void }) {
   const behavior = skill.behavior;
 
-  const setBehaviorModel = (model: BehaviorModel | "") => {
-    if (!model) {
+  const setBehaviorModel = (model: BehaviorModel | "none") => {
+    if (model === "none") {
       onUpdate({ behavior: undefined });
       return;
     }
@@ -549,14 +549,14 @@ function SkillBehaviorEditor({ skill, onUpdate }: { skill: Skill; onUpdate: (upd
           Define how this skill executes - its internal workflow or approach.
         </p>
         <Select
-          value={behavior?.model || ""}
-          onValueChange={(value) => setBehaviorModel(value as BehaviorModel | "")}
+          value={behavior?.model || "none"}
+          onValueChange={(value) => setBehaviorModel(value as BehaviorModel | "none")}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select behavior model (optional)" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No behavior model</SelectItem>
+            <SelectItem value="none">No behavior model</SelectItem>
             {Object.entries(BEHAVIOR_MODEL_METADATA).map(([key, meta]) => (
               <SelectItem key={key} value={key}>
                 <div className="flex flex-col">
@@ -647,9 +647,9 @@ function SkillBehaviorEditor({ skill, onUpdate }: { skill: Skill; onUpdate: (upd
           <div className="space-y-2">
             <Label>Strategy</Label>
             <Select
-              value={skill.reasoning?.strategy || ""}
+              value={skill.reasoning?.strategy || "none"}
               onValueChange={(value) => {
-                if (!value) {
+                if (value === "none") {
                   onUpdate({ reasoning: undefined });
                 } else {
                   onUpdate({
@@ -665,7 +665,7 @@ function SkillBehaviorEditor({ skill, onUpdate }: { skill: Skill; onUpdate: (upd
                 <SelectValue placeholder="Select reasoning strategy" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No reasoning config</SelectItem>
+                <SelectItem value="none">No reasoning config</SelectItem>
                 {Object.entries(REASONING_STRATEGY_METADATA).map(([key, meta]) => (
                   <SelectItem key={key} value={key}>
                     {meta.label} - {meta.description}
