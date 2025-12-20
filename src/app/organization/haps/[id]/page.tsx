@@ -285,11 +285,14 @@ export default function HAPDetailPage({
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3">
+              <Link
+                href={`/stories/${hap?.agentStoryId}`}
+                className="flex items-center gap-3 p-2 -m-2 rounded-lg hover:bg-muted transition-colors"
+              >
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
                   <Bot className="h-5 w-5" />
                 </div>
-                <div>
+                <div className="flex-1">
                   <p className="font-medium">
                     {agentStory?.name || "Unknown Agent"}
                   </p>
@@ -297,7 +300,8 @@ export default function HAPDetailPage({
                     {agentStory?.skills?.length || 0} skills
                   </p>
                 </div>
-              </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+              </Link>
             </CardContent>
           </Card>
 

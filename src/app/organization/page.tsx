@@ -11,6 +11,8 @@ import {
   Plus,
   Loader2,
   Bot,
+  LayoutGrid,
+  GitBranch,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -33,21 +35,27 @@ import {
 } from "@/hooks";
 import { TRANSITION_STATUS_METADATA } from "@/lib/schemas";
 import type { TransitionStatus } from "@/lib/schemas";
+import { OrgChart, OrgSummary } from "@/components/organization";
 
 export default function OrganizationPage() {
+  const [viewMode, setViewMode] = useState<"overview" | "browse">("overview");
   const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
 
   const { data: domains, isLoading: domainsLoading } = useDomains();
+  const { data: allDepartments } = useDepartments();
   const { data: departments, isLoading: deptsLoading } = useDepartments(
     selectedDomainId || undefined
   );
+  const { data: allRoles } = useRoles();
   const { data: roles, isLoading: rolesLoading } = useRoles(
     selectedDeptId || undefined
   );
+  const { data: allPeople } = usePeople();
   const { data: people, isLoading: peopleLoading } = usePeople(
     selectedDeptId || undefined
   );
+  const { data: allHAPs } = useHAPs();
   const { data: haps } = useHAPs(
     selectedDeptId ? { departmentId: selectedDeptId } : undefined
   );
@@ -84,6 +92,26 @@ export default function OrganizationPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            <div className="flex border rounded-lg overflow-hidden">
+              <Button
+                variant={viewMode === "overview" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("overview")}
+                className="rounded-none"
+              >
+                <LayoutGrid className="mr-2 h-4 w-4" />
+                Overview
+              </Button>
+              <Button
+                variant={viewMode === "browse" ? "secondary" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode("browse")}
+                className="rounded-none"
+              >
+                <GitBranch className="mr-2 h-4 w-4" />
+                Browse
+              </Button>
+            </div>
             <Button variant="outline" asChild>
               <Link href="/organization/haps">
                 <Bot className="mr-2 h-4 w-4" />
@@ -93,58 +121,106 @@ export default function OrganizationPage() {
           </div>
         </div>
 
-        {/* Stats Overview */}
-        {stats && (
-          <div className="grid gap-4 md:grid-cols-5">
+        {/* Overview Mode */}
+        {viewMode === "overview" && (
+          <div className="space-y-6">
+            {/* Summary Cards */}
+            {domains && allDepartments && allRoles && allPeople && allHAPs && (
+              <OrgSummary
+                domains={domains}
+                departments={allDepartments}
+                roles={allRoles}
+                people={allPeople}
+                haps={allHAPs}
+              />
+            )}
+
+            {/* Org Chart */}
             <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.domainCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Domains</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.departmentCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Departments</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.roleCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Roles</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <UserCircle className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.peopleCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">People</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.hapCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Human-Agent Pairs</p>
+              <CardHeader>
+                <CardTitle>Organization Hierarchy</CardTitle>
+                <CardDescription>
+                  Explore domains, departments, roles, and Human-Agent Pairs
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {domainsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : domains && allDepartments && allRoles && allPeople && allHAPs ? (
+                  <OrgChart
+                    domains={domains}
+                    departments={allDepartments}
+                    roles={allRoles}
+                    people={allPeople}
+                    haps={allHAPs}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    No organization data yet
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
         )}
 
-        {/* Breadcrumb */}
+        {/* Browse Mode */}
+        {viewMode === "browse" && (
+          <>
+            {/* Stats Overview */}
+            {stats && (
+              <div className="grid gap-4 md:grid-cols-5">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-2xl font-bold">{stats.domainCount}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Domains</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-2xl font-bold">{stats.departmentCount}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Departments</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-2xl font-bold">{stats.roleCount}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Roles</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-2">
+                      <UserCircle className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-2xl font-bold">{stats.peopleCount}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">People</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-2xl font-bold">{stats.hapCount}</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Human-Agent Pairs</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
           <button
             onClick={() => {
@@ -572,6 +648,8 @@ export default function OrganizationPage() {
               )}
             </TabsContent>
           </Tabs>
+        )}
+          </>
         )}
       </div>
     </AppShell>

@@ -12,6 +12,7 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
+  Download,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -32,14 +33,23 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
   useHAPs,
   useHAPStats,
   usePeople,
   useRoles,
   useDepartments,
+  useDomains,
 } from "@/hooks";
 import { TRANSITION_STATUS_METADATA } from "@/lib/schemas";
 import type { TransitionStatus } from "@/lib/schemas";
+import { HAPExportPanel } from "@/components/hap";
 
 export default function HAPsPage() {
   const [statusFilter, setStatusFilter] = useState<TransitionStatus | "all">("all");
@@ -48,10 +58,12 @@ export default function HAPsPage() {
   const { data: haps, isLoading } = useHAPs(
     deptFilter !== "all" ? { departmentId: deptFilter } : undefined
   );
+  const { data: allHAPs } = useHAPs();
   const { data: stats } = useHAPStats();
   const { data: people } = usePeople();
   const { data: roles } = useRoles();
   const { data: departments } = useDepartments();
+  const { data: domains } = useDomains();
 
   const filteredHAPs =
     haps?.filter((h) => {
@@ -112,12 +124,38 @@ export default function HAPsPage() {
               </p>
             </div>
           </div>
-          <Button asChild>
-            <Link href="/organization/haps/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Create HAP
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline">
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[500px] sm:max-w-[500px] overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Export HAP Data</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4">
+                  {allHAPs && (
+                    <HAPExportPanel
+                      haps={allHAPs}
+                      domains={domains || []}
+                      departments={departments || []}
+                      roles={roles || []}
+                      people={people || []}
+                    />
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+            <Button asChild>
+              <Link href="/organization/haps/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Create HAP
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {/* Stats Overview */}

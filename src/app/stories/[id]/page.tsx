@@ -2,12 +2,12 @@
 
 import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Save, Loader2, Trash2, Copy, Eye, Download, User, Zap } from "lucide-react";
+import { Save, Loader2, Trash2, Copy, Eye, Download, User, Zap, Users } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AgentSection, SkillsSection } from "@/components/story-editor";
+import { AgentSection, SkillsSection, LinkedHAPsSection } from "@/components/story-editor";
 import { ValidationPanel } from "@/components/story-editor/validation-panel";
 import { StoryPreview, ExportPanel } from "@/components/story-preview";
 import { storyEditorActions, useStoryEditor } from "@/stores";
@@ -115,7 +115,7 @@ export default function EditStoryPage() {
         {/* Agent/Skills Tabs - Main content */}
         <Tabs defaultValue="agent" className="space-y-4">
           <div className="flex items-center justify-between">
-            <TabsList className="grid w-auto grid-cols-2">
+            <TabsList className="grid w-auto grid-cols-3">
               <TabsTrigger value="agent" className="flex items-center gap-2">
                 <User className="h-4 w-4" />
                 Agent
@@ -123,6 +123,10 @@ export default function EditStoryPage() {
               <TabsTrigger value="skills" className="flex items-center gap-2">
                 <Zap className="h-4 w-4" />
                 Skills
+              </TabsTrigger>
+              <TabsTrigger value="haps" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                HAPs
               </TabsTrigger>
             </TabsList>
 
@@ -208,6 +212,10 @@ export default function EditStoryPage() {
 
           <TabsContent value="skills" className="space-y-4">
             <SkillsSection />
+          </TabsContent>
+
+          <TabsContent value="haps" className="space-y-4">
+            <LinkedHAPsSection storyId={id} />
           </TabsContent>
         </Tabs>
 

@@ -7,3 +7,4 @@ export {
   generateHAPTimeline,
   type TimelineEvent,
 } from "./transition-timeline";
+export { HAPExportPanel } from "./export-panel";
