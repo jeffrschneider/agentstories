@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, Loader2, Trash2, Copy, Eye, Download, User, Zap } from "lucide-react";
+import { Save, Loader2, Trash2, Copy, Eye, Download, User, Zap } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -107,112 +107,6 @@ export default function EditStoryPage() {
   return (
     <AppShell className="p-6">
       <div className="mx-auto max-w-4xl space-y-4">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/stories">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <h1 className="text-lg font-semibold truncate max-w-[300px]">
-              {story.name || "Untitled Story"}
-            </h1>
-          </div>
-          <div className="flex items-center gap-1">
-            {/* Preview Sheet */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" title="Preview">
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[600px] sm:max-w-[600px] overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Preview</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4">
-                  {currentStoryData.id ? (
-                    <StoryPreview story={currentStoryData} />
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      Loading preview...
-                    </div>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            {/* Export Sheet */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" title="Export">
-                  <Download className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[600px] sm:max-w-[600px] overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Export</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4">
-                  {currentStoryData.id ? (
-                    <ExportPanel story={currentStoryData} />
-                  ) : (
-                    <div className="text-center py-12 text-muted-foreground">
-                      Loading export...
-                    </div>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-
-            <Button variant="ghost" size="icon" onClick={handleDuplicate} title="Duplicate">
-              <Copy className="h-4 w-4" />
-            </Button>
-
-            {/* Delete Dialog */}
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon" title="Delete">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Delete Story</DialogTitle>
-                  <DialogDescription>
-                    Are you sure you want to delete &quot;{story.name}&quot;? This action cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <DialogFooter>
-                  <Button variant="outline">Cancel</Button>
-                  <Button variant="destructive" onClick={handleDelete}>
-                    Delete
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Button
-              onClick={handleSave}
-              size="sm"
-              disabled={editor.isSaving || editor.draft.validationErrors.length > 0}
-            >
-              {editor.isSaving ? (
-                <>
-                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                  Saving
-                </>
-              ) : (
-                <>
-                  <Save className="mr-1 h-4 w-4" />
-                  Save
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-
         {/* Validation errors */}
         {editor.draft.validationErrors.length > 0 && (
           <ValidationPanel errors={editor.draft.validationErrors} />
@@ -220,16 +114,93 @@ export default function EditStoryPage() {
 
         {/* Agent/Skills Tabs - Main content */}
         <Tabs defaultValue="agent" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="agent" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Agent
-            </TabsTrigger>
-            <TabsTrigger value="skills" className="flex items-center gap-2">
-              <Zap className="h-4 w-4" />
-              Skills
-            </TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between">
+            <TabsList className="grid w-auto grid-cols-2">
+              <TabsTrigger value="agent" className="flex items-center gap-2">
+                <User className="h-4 w-4" />
+                Agent
+              </TabsTrigger>
+              <TabsTrigger value="skills" className="flex items-center gap-2">
+                <Zap className="h-4 w-4" />
+                Skills
+              </TabsTrigger>
+            </TabsList>
+
+            <div className="flex items-center gap-1">
+              {/* Preview Sheet */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Preview">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[600px] sm:max-w-[600px] overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Preview</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4">
+                    {currentStoryData.id ? (
+                      <StoryPreview story={currentStoryData} />
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        Loading preview...
+                      </div>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              {/* Export Sheet */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Export">
+                    <Download className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-[600px] sm:max-w-[600px] overflow-y-auto">
+                  <SheetHeader>
+                    <SheetTitle>Export</SheetTitle>
+                  </SheetHeader>
+                  <div className="mt-4">
+                    {currentStoryData.id ? (
+                      <ExportPanel story={currentStoryData} />
+                    ) : (
+                      <div className="text-center py-12 text-muted-foreground">
+                        Loading export...
+                      </div>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+
+              <Button variant="ghost" size="icon" onClick={handleDuplicate} title="Duplicate">
+                <Copy className="h-4 w-4" />
+              </Button>
+
+              {/* Delete Dialog */}
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="icon" title="Delete">
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Delete Story</DialogTitle>
+                    <DialogDescription>
+                      Are you sure you want to delete &quot;{story.name}&quot;? This action cannot be undone.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button variant="outline">Cancel</Button>
+                    <Button variant="destructive" onClick={handleDelete}>
+                      Delete
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
 
           <TabsContent value="agent" className="space-y-4">
             <AgentSection />
@@ -239,6 +210,26 @@ export default function EditStoryPage() {
             <SkillsSection />
           </TabsContent>
         </Tabs>
+
+        {/* Save button at bottom */}
+        <div className="flex justify-end pt-4 border-t">
+          <Button
+            onClick={handleSave}
+            disabled={editor.isSaving || editor.draft.validationErrors.length > 0}
+          >
+            {editor.isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </AppShell>
   );

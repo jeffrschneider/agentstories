@@ -2,8 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Loader2, User, Zap } from "lucide-react";
-import Link from "next/link";
+import { Save, Loader2, User, Zap } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -54,35 +53,6 @@ export default function NewStoryPage() {
   return (
     <AppShell className="p-6">
       <div className="mx-auto max-w-4xl space-y-4">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/stories">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <h1 className="text-lg font-semibold">New Agent Story</h1>
-          </div>
-          <Button
-            onClick={handleSave}
-            size="sm"
-            disabled={editor.isSaving}
-          >
-            {editor.isSaving ? (
-              <>
-                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                Saving
-              </>
-            ) : (
-              <>
-                <Save className="mr-1 h-4 w-4" />
-                Save
-              </>
-            )}
-          </Button>
-        </div>
-
         {/* Validation errors */}
         {editor.draft.validationErrors.length > 0 && (
           <ValidationPanel errors={editor.draft.validationErrors} />
@@ -109,6 +79,26 @@ export default function NewStoryPage() {
             <SkillsSection />
           </TabsContent>
         </Tabs>
+
+        {/* Save button at bottom */}
+        <div className="flex justify-end pt-4 border-t">
+          <Button
+            onClick={handleSave}
+            disabled={editor.isSaving}
+          >
+            {editor.isSaving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Story
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </AppShell>
   );
