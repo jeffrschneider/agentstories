@@ -15,16 +15,14 @@ import { Collapsible } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Skill,
-  SkillTrigger,
-  SkillTool,
   createEmptySkill,
   SKILL_ACQUISITION_METADATA,
   SKILL_DOMAINS
 } from "@/lib/schemas/skill";
-import { TRIGGER_TYPE_METADATA, TriggerType } from "@/lib/schemas/trigger";
+import { TRIGGER_TYPE_METADATA, TriggerType, SkillTrigger } from "@/lib/schemas/trigger";
 import { BEHAVIOR_MODEL_METADATA, BehaviorModel } from "@/lib/schemas/behavior";
 import { REASONING_STRATEGY_METADATA, ReasoningStrategy } from "@/lib/schemas/reasoning";
-import { TOOL_PERMISSION_METADATA, ToolPermission } from "@/lib/schemas/tools";
+import { TOOL_PERMISSION_METADATA, ToolPermission, SkillTool } from "@/lib/schemas/tools";
 
 export function SkillsSection() {
   const editor = useSnapshot(storyEditorStore);
@@ -783,6 +781,7 @@ function SkillAcceptanceEditor({ skill, onUpdate }: { skill: Skill; onUpdate: (u
               onChange={(e) => {
                 onUpdate({
                   failureHandling: {
+                    notifyOnFailure: skill.failureHandling?.notifyOnFailure ?? true,
                     ...skill.failureHandling,
                     defaultFallback: e.target.value || undefined
                   }

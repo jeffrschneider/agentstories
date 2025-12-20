@@ -1,5 +1,6 @@
 import { proxy, useSnapshot } from 'valtio';
-import type { AgentStory, StoryFormat } from '@/lib/schemas';
+import type { AgentStory, StoryFormat, TriggerType } from '@/lib/schemas';
+import { createEmptySkill } from '@/lib/schemas';
 
 // Draft data type - flexible to handle both formats during editing
 type StoryDraftData = Record<string, unknown>;
@@ -41,15 +42,25 @@ export const storyEditorStore = proxy<StoryEditorState>({
 export const storyEditorActions = {
   // Initialize new story
   initNewStory: (format: StoryFormat = 'light') => {
+    const now = new Date().toISOString();
+    const baseData = {
+      format,
+      version: '1.0',
+      createdAt: now,
+      updatedAt: now,
+      autonomyLevel: 'supervised',
+    };
+
+    // For full format, initialize with an empty skill
+    // For light format, initialize with simple trigger
+    const data = format === 'full'
+      ? { ...baseData, skills: [createEmptySkill()] }
+      : { ...baseData, trigger: { type: 'message' as const, description: '' } };
+
     storyEditorStore.draft = {
       id: null,
       format,
-      data: {
-        format,
-        version: '1.0',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      },
+      data,
       originalData: null,
       validationErrors: [],
       lastSavedAt: null,
@@ -103,8 +114,35 @@ export const storyEditorActions = {
 
   // Change story format
   changeFormat: (format: StoryFormat) => {
+    const currentData = storyEditorStore.draft.data as Record<string, unknown>;
     storyEditorStore.draft.format = format;
     storyEditorStore.draft.data.format = format;
+
+    // When switching to full format, ensure skills exist
+    if (format === 'full' && !currentData.skills) {
+      // Convert light format to full by creating a skill from the simple statements
+      const skill = createEmptySkill();
+      if (currentData.action) {
+        skill.description = currentData.action as string;
+      }
+      if (currentData.trigger) {
+        const trigger = currentData.trigger as { type?: TriggerType; description?: string };
+        skill.triggers = [{
+          type: trigger.type || 'message',
+          description: trigger.description || ''
+        }];
+      }
+      if (currentData.outcome) {
+        skill.acceptance = {
+          successConditions: [currentData.outcome as string]
+        };
+      }
+      storyEditorStore.draft.data.skills = [skill];
+      // Set purpose from outcome if not already set
+      if (!currentData.purpose && currentData.outcome) {
+        storyEditorStore.draft.data.purpose = currentData.outcome;
+      }
+    }
   },
 
   // Reset to original

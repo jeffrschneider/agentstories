@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AUTONOMY_LEVEL_METADATA } from "@/lib/schemas/story";
+import { AUTONOMY_LEVEL_METADATA, TRIGGER_TYPE_METADATA } from "@/lib/schemas";
 
 export function CoreStorySection() {
   const editor = useSnapshot(storyEditorStore);
   const data = editor.draft.data;
+  const isFullFormat = editor.draft.format === "full";
 
   const updateField = (field: string, value: string) => {
     storyEditorActions.updateNestedField(field, value);
@@ -20,9 +21,11 @@ export function CoreStorySection() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Core Story</CardTitle>
+        <CardTitle>Agent Identity</CardTitle>
         <CardDescription>
-          Define the fundamental elements of your agent story
+          {isFullFormat
+            ? "Define who this agent is and its core purpose"
+            : "Define the fundamental elements of your agent story"}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -66,46 +69,91 @@ export function CoreStorySection() {
           </p>
         </div>
 
-        {/* Trigger (simplified for core) */}
-        <div className="space-y-2">
-          <Label htmlFor="trigger-source">Trigger Source</Label>
-          <Input
-            id="trigger-source"
-            placeholder="e.g., User message, Scheduled event, API webhook"
-            value={(data.trigger as { specification?: { source?: string } })?.specification?.source || ""}
-            onChange={(e) => updateField("trigger.specification.source", e.target.value)}
-          />
-        </div>
+        {/* Purpose - Full format only */}
+        {isFullFormat && (
+          <div className="space-y-2">
+            <Label htmlFor="purpose">Purpose</Label>
+            <Textarea
+              id="purpose"
+              placeholder="Why does this agent exist? What value does it provide?"
+              value={(data.purpose as string) || ""}
+              onChange={(e) => updateField("purpose", e.target.value)}
+              rows={2}
+            />
+            <p className="text-xs text-muted-foreground">
+              The core reason this agent exists
+            </p>
+          </div>
+        )}
 
-        {/* Action */}
-        <div className="space-y-2">
-          <Label htmlFor="action">Action</Label>
-          <Textarea
-            id="action"
-            placeholder="I will [action/goal]..."
-            value={(data.action as string) || ""}
-            onChange={(e) => updateField("action", e.target.value)}
-            rows={2}
-          />
-          <p className="text-xs text-muted-foreground">
-            What action does this agent take?
-          </p>
-        </div>
+        {/* Light format: Trigger, Action, Outcome */}
+        {!isFullFormat && (
+          <>
+            {/* Trigger */}
+            <div className="space-y-3">
+              <Label>Trigger</Label>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="trigger-type" className="text-xs text-muted-foreground">Type</Label>
+                  <Select
+                    value={(data.trigger as { type?: string })?.type || ""}
+                    onValueChange={(value) => updateField("trigger.type", value)}
+                  >
+                    <SelectTrigger id="trigger-type">
+                      <SelectValue placeholder="Select trigger type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(TRIGGER_TYPE_METADATA).map(([key, meta]) => (
+                        <SelectItem key={key} value={key}>
+                          {meta.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="trigger-description" className="text-xs text-muted-foreground">Description</Label>
+                  <Input
+                    id="trigger-description"
+                    placeholder="When this happens..."
+                    value={(data.trigger as { description?: string })?.description || ""}
+                    onChange={(e) => updateField("trigger.description", e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
 
-        {/* Outcome */}
-        <div className="space-y-2">
-          <Label htmlFor="outcome">Outcome</Label>
-          <Textarea
-            id="outcome"
-            placeholder="So that [outcome]..."
-            value={(data.outcome as string) || ""}
-            onChange={(e) => updateField("outcome", e.target.value)}
-            rows={2}
-          />
-          <p className="text-xs text-muted-foreground">
-            What is the expected result?
-          </p>
-        </div>
+            {/* Action */}
+            <div className="space-y-2">
+              <Label htmlFor="action">Action</Label>
+              <Textarea
+                id="action"
+                placeholder="I will [action/goal]..."
+                value={(data.action as string) || ""}
+                onChange={(e) => updateField("action", e.target.value)}
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">
+                What action does this agent take?
+              </p>
+            </div>
+
+            {/* Outcome */}
+            <div className="space-y-2">
+              <Label htmlFor="outcome">Outcome</Label>
+              <Textarea
+                id="outcome"
+                placeholder="So that [outcome]..."
+                value={(data.outcome as string) || ""}
+                onChange={(e) => updateField("outcome", e.target.value)}
+                rows={2}
+              />
+              <p className="text-xs text-muted-foreground">
+                What is the expected result?
+              </p>
+            </div>
+          </>
+        )}
 
         {/* Autonomy Level */}
         <div className="space-y-2">
