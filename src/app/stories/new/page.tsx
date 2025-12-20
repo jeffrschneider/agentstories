@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, Loader2, Upload, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Loader2, User, Zap } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StoryForm } from "@/components/story-editor";
-import { ImportPanel } from "@/components/story-preview";
+import { AgentSection, SkillsSection } from "@/components/story-editor";
+import { ValidationPanel } from "@/components/story-editor/validation-panel";
 import { storyEditorActions, useStoryEditor } from "@/stores";
 import { useCreateStory } from "@/hooks";
 import type { AgentStory } from "@/lib/schemas";
@@ -18,11 +18,10 @@ export default function NewStoryPage() {
   const router = useRouter();
   const editor = useStoryEditor();
   const createStory = useCreateStory();
-  const [activeTab, setActiveTab] = useState("create");
 
   // Initialize new story on mount
   useEffect(() => {
-    storyEditorActions.initNewStory("light");
+    storyEditorActions.initNewStory();
     return () => {
       storyEditorActions.clearDraft();
     };
@@ -52,27 +51,6 @@ export default function NewStoryPage() {
     }
   };
 
-  const handleImport = async (importedData: Partial<AgentStory>) => {
-    // Load the imported data into the editor
-    const now = new Date().toISOString();
-    const storyData = {
-      ...importedData,
-      version: importedData.version || "1.0",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    // Update the draft with imported data
-    Object.entries(storyData).forEach(([key, value]) => {
-      if (value !== undefined) {
-        storyEditorActions.updateDraft(key as keyof AgentStory, value as AgentStory[keyof AgentStory]);
-      }
-    });
-
-    // Switch to create tab to show the imported data
-    setActiveTab("create");
-  };
-
   return (
     <AppShell className="p-6">
       <div className="mx-auto max-w-4xl space-y-6">
@@ -85,9 +63,9 @@ export default function NewStoryPage() {
               </Link>
             </Button>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">New Story</h1>
+              <h1 className="text-2xl font-bold tracking-tight">New Agent Story</h1>
               <p className="text-sm text-muted-foreground">
-                Create a new agent story specification
+                Define your agent and its skills
               </p>
             </div>
           </div>
@@ -109,25 +87,30 @@ export default function NewStoryPage() {
           </Button>
         </div>
 
-        {/* Tabs for Create/Import */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="create" className="flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
-              Create
+        {/* Validation errors */}
+        {editor.draft.validationErrors.length > 0 && (
+          <ValidationPanel errors={editor.draft.validationErrors} />
+        )}
+
+        {/* Agent/Skills Tabs */}
+        <Tabs defaultValue="agent" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="agent" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Agent
             </TabsTrigger>
-            <TabsTrigger value="import" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Import
+            <TabsTrigger value="skills" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Skills
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="create" className="mt-6">
-            <StoryForm onSave={handleSave} />
+          <TabsContent value="agent" className="space-y-6">
+            <AgentSection />
           </TabsContent>
 
-          <TabsContent value="import" className="mt-6">
-            <ImportPanel onImport={handleImport} />
+          <TabsContent value="skills" className="space-y-6">
+            <SkillsSection />
           </TabsContent>
         </Tabs>
       </div>

@@ -1,14 +1,12 @@
 import { proxy, useSnapshot } from 'valtio';
-import type { AgentStory, StoryFormat, TriggerType } from '@/lib/schemas';
-import { createEmptySkill } from '@/lib/schemas';
+import type { AgentStory } from '@/lib/schemas';
 
-// Draft data type - flexible to handle both formats during editing
+// Draft data type - flexible to handle editing
 type StoryDraftData = Record<string, unknown>;
 
 // Draft state for story being edited
 interface StoryDraft {
   id: string | null;
-  format: StoryFormat;
   data: StoryDraftData;
   originalData: StoryDraftData | null;
   validationErrors: Array<{ path: string; message: string }>;
@@ -24,7 +22,6 @@ interface StoryEditorState {
 
 const initialDraft: StoryDraft = {
   id: null,
-  format: 'light',
   data: {},
   originalData: null,
   validationErrors: [],
@@ -41,26 +38,18 @@ export const storyEditorStore = proxy<StoryEditorState>({
 // Actions
 export const storyEditorActions = {
   // Initialize new story
-  initNewStory: (format: StoryFormat = 'light') => {
+  initNewStory: () => {
     const now = new Date().toISOString();
-    const baseData = {
-      format,
-      version: '1.0',
-      createdAt: now,
-      updatedAt: now,
-      autonomyLevel: 'supervised',
-    };
-
-    // For full format, initialize with an empty skill
-    // For light format, initialize with simple trigger
-    const data = format === 'full'
-      ? { ...baseData, skills: [createEmptySkill()] }
-      : { ...baseData, trigger: { type: 'message' as const, description: '' } };
-
     storyEditorStore.draft = {
       id: null,
-      format,
-      data,
+      data: {
+        id: crypto.randomUUID(),
+        version: '1.0',
+        createdAt: now,
+        updatedAt: now,
+        name: '',
+        skills: []
+      },
       originalData: null,
       validationErrors: [],
       lastSavedAt: null,
@@ -71,7 +60,6 @@ export const storyEditorActions = {
   loadStory: (story: AgentStory) => {
     storyEditorStore.draft = {
       id: story.id,
-      format: story.format,
       data: { ...story },
       originalData: { ...story },
       validationErrors: [],
@@ -110,39 +98,6 @@ export const storyEditorActions = {
   // Clear validation errors
   clearValidationErrors: () => {
     storyEditorStore.draft.validationErrors = [];
-  },
-
-  // Change story format
-  changeFormat: (format: StoryFormat) => {
-    const currentData = storyEditorStore.draft.data as Record<string, unknown>;
-    storyEditorStore.draft.format = format;
-    storyEditorStore.draft.data.format = format;
-
-    // When switching to full format, ensure skills exist
-    if (format === 'full' && !currentData.skills) {
-      // Convert light format to full by creating a skill from the simple statements
-      const skill = createEmptySkill();
-      if (currentData.action) {
-        skill.description = currentData.action as string;
-      }
-      if (currentData.trigger) {
-        const trigger = currentData.trigger as { type?: TriggerType; description?: string };
-        skill.triggers = [{
-          type: trigger.type || 'message',
-          description: trigger.description || ''
-        }];
-      }
-      if (currentData.outcome) {
-        skill.acceptance = {
-          successConditions: [currentData.outcome as string]
-        };
-      }
-      storyEditorStore.draft.data.skills = [skill];
-      // Set purpose from outcome if not already set
-      if (!currentData.purpose && currentData.outcome) {
-        storyEditorStore.draft.data.purpose = currentData.outcome;
-      }
-    }
   },
 
   // Reset to original

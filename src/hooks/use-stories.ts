@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mockDataService } from '@/services';
 import { uiActions, activityActions } from '@/stores';
-import type { AgentStory, AutonomyLevel, StoryFormat } from '@/lib/schemas';
+import type { AgentStory, AutonomyLevel } from '@/lib/schemas';
 
 // Query keys
 export const storyKeys = {
@@ -16,7 +16,6 @@ interface StoryListParams {
   search?: string;
   tags?: string[];
   autonomyLevel?: AutonomyLevel;
-  format?: StoryFormat;
 }
 
 // List stories

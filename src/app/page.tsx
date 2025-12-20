@@ -51,7 +51,7 @@ export default function Home() {
               <p className="text-xs text-muted-foreground">
                 {stats?.totalStories === 0
                   ? "Create your first story to get started"
-                  : `${stats?.storiesByFormat.light ?? 0} light, ${stats?.storiesByFormat.full ?? 0} full format`}
+                  : `${stats?.totalStories ?? 0} agent stories defined`}
               </p>
             </CardContent>
           </Card>
@@ -119,10 +119,9 @@ export default function Home() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{story.name || "Untitled"}</span>
-                          <Badge variant={story.format === "full" ? "full-format" : "light"}>
-                            {story.format}
-                          </Badge>
-                          <Badge variant={story.autonomyLevel}>{story.autonomyLevel}</Badge>
+                          {story.autonomyLevel && (
+                            <Badge variant={story.autonomyLevel}>{story.autonomyLevel}</Badge>
+                          )}
                         </div>
                         <p className="text-sm text-muted-foreground line-clamp-1">
                           {story.role}

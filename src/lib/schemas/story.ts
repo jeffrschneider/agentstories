@@ -1,6 +1,5 @@
 import { z } from 'zod';
-import { SimpleTriggerSchema } from './trigger';
-import { SkillsSchema, SkillSchema, createEmptySkill } from './skill';
+import { SkillsSchema, createEmptySkill } from './skill';
 import { HumanInteractionSchema, AgentCollaborationSchema } from './collaboration';
 import { MemorySchema } from './memory';
 import { AgentGuardrailsSchema } from './guardrails';
@@ -15,74 +14,37 @@ export const AutonomyLevelEnum = z.enum([
 
 export type AutonomyLevel = z.infer<typeof AutonomyLevelEnum>;
 
-// Story format
-export const StoryFormatEnum = z.enum([
-  'light',
-  'full'
-]);
-
-export type StoryFormat = z.infer<typeof StoryFormatEnum>;
-
-// Agent Story Light - Simple format for quick design
-export const AgentStoryLightSchema = z.object({
+// Agent Story Schema - skill-based format
+// Agent = WHO (identity, relationships, memory, guardrails)
+// Skills = WHAT + HOW (capability bundles)
+export const AgentStorySchema = z.object({
   // Metadata
   id: z.string().uuid(),
-  format: z.literal('light'),
   version: z.string().default('1.0'),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
-  createdBy: z.string(),
+  createdBy: z.string().optional(),
 
-  // Core story elements (simple capability statement)
+  // === AGENT IDENTITY (WHO) ===
+  // Only name is required
+  name: z.string().min(1).max(100),
+
+  // Optional identity fields
   identifier: z.string()
-    .min(1)
     .max(50)
     .regex(/^[a-z][a-z0-9-]*$/, {
       message: 'Identifier must start with lowercase letter and contain only lowercase letters, numbers, and hyphens'
-    }),
-  name: z.string().min(1).max(100),
-  role: z.string().min(1).max(200), // "As a [role]"
-  trigger: SimpleTriggerSchema,      // Simple trigger for light format
-  action: z.string().min(1).max(500), // "I [action/goal]"
-  outcome: z.string().min(1).max(500), // "so that [outcome]"
-  autonomyLevel: AutonomyLevelEnum,
-
-  // Optional metadata
-  tags: z.array(z.string()).optional(),
-  notes: z.string().optional()
-});
-
-export type AgentStoryLight = z.infer<typeof AgentStoryLightSchema>;
-
-// Agent Story Full - Skill-based format
-// Agent = WHO (identity, relationships, memory, guardrails)
-// Skills = WHAT + HOW (capability bundles)
-export const AgentStoryFullSchema = z.object({
-  // Metadata
-  id: z.string().uuid(),
-  format: z.literal('full'),
-  version: z.string().default('1.0'),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  createdBy: z.string(),
-
-  // === AGENT IDENTITY (WHO) ===
-  identifier: z.string()
-    .min(1)
-    .max(50)
-    .regex(/^[a-z][a-z0-9-]*$/),
-  name: z.string().min(1).max(100),
-  role: z.string().min(1).max(200),
-  purpose: z.string().min(1).max(500).describe('Why does this agent exist?'),
-  autonomyLevel: AutonomyLevelEnum,
+    })
+    .optional(),
+  role: z.string().max(200).optional(),
+  purpose: z.string().max(500).optional(),
+  autonomyLevel: AutonomyLevelEnum.optional(),
 
   // === SKILLS (WHAT + HOW) ===
-  // Required - at least one skill
-  skills: SkillsSchema.min(1),
+  // Optional - agent can have no skills yet
+  skills: SkillsSchema.optional(),
 
   // === AGENT-LEVEL CONFIGURATION ===
-  // These provide context for all skills
-
   // Human interaction (overall mode, escalation policy)
   humanInteraction: HumanInteractionSchema.optional(),
 
@@ -100,78 +62,28 @@ export const AgentStoryFullSchema = z.object({
   notes: z.string().optional()
 });
 
-export type AgentStoryFull = z.infer<typeof AgentStoryFullSchema>;
-
-// Union schema for any story format
-export const AgentStorySchema = z.discriminatedUnion('format', [
-  AgentStoryLightSchema,
-  AgentStoryFullSchema
-]);
-
 export type AgentStory = z.infer<typeof AgentStorySchema>;
 
-// Helper type guard
-export function isFullFormat(story: AgentStory): story is AgentStoryFull {
-  return story.format === 'full';
-}
+// For backwards compatibility during transition
+export type AgentStoryFull = AgentStory;
+export type AgentStoryLight = AgentStory;
 
-// Upgrade function: convert light format to full by creating a skill from the simple statements
-export function upgradeToFull(light: AgentStoryLight): AgentStoryFull {
-  return {
-    id: light.id,
-    format: 'full' as const,
-    version: light.version,
-    createdAt: light.createdAt,
-    updatedAt: new Date().toISOString(),
-    createdBy: light.createdBy,
-
-    // Agent identity
-    identifier: light.identifier,
-    name: light.name,
-    role: light.role,
-    purpose: light.outcome, // "so that [outcome]" becomes purpose
-    autonomyLevel: light.autonomyLevel,
-
-    // Convert simple statements to a single skill
-    skills: [{
-      name: 'Primary Capability',
-      description: light.action,
-      domain: 'General',
-      acquired: 'built_in',
-      triggers: [{
-        type: light.trigger.type,
-        description: light.trigger.description
-      }],
-      acceptance: {
-        successConditions: [light.outcome]
-      }
-    }],
-
-    tags: light.tags,
-    notes: light.notes
-  };
-}
-
-// Create a new empty full format story
-export function createEmptyFullStory(userId: string): AgentStoryFull {
+// Create a new empty story
+export function createEmptyStory(userId?: string): AgentStory {
   const now = new Date().toISOString();
   return {
     id: crypto.randomUUID(),
-    format: 'full',
     version: '1.0',
     createdAt: now,
     updatedAt: now,
     createdBy: userId,
-
-    identifier: '',
     name: '',
-    role: '',
-    purpose: '',
-    autonomyLevel: 'supervised',
-
-    skills: [createEmptySkill()]
+    skills: []
   };
 }
+
+// Legacy alias
+export const createEmptyFullStory = createEmptyStory;
 
 // Autonomy level metadata for UI
 export const AUTONOMY_LEVEL_METADATA = {

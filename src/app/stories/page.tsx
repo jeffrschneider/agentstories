@@ -18,19 +18,17 @@ import {
 } from "@/components/ui/select";
 import { useStories } from "@/hooks";
 import { useFavorites, tagsActions } from "@/stores";
-import type { AutonomyLevel, StoryFormat } from "@/lib/schemas";
+import type { AutonomyLevel } from "@/lib/schemas";
 
 type FavoriteFilter = "all" | "favorites" | "not-favorites";
 
 export default function StoriesPage() {
   const [search, setSearch] = useState("");
-  const [formatFilter, setFormatFilter] = useState<StoryFormat | "all">("all");
   const [autonomyFilter, setAutonomyFilter] = useState<AutonomyLevel | "all">("all");
   const [favoriteFilter, setFavoriteFilter] = useState<FavoriteFilter>("all");
 
   const { data: stories, isLoading } = useStories({
     search: search || undefined,
-    format: formatFilter === "all" ? undefined : formatFilter,
     autonomyLevel: autonomyFilter === "all" ? undefined : autonomyFilter,
   });
 
@@ -110,20 +108,6 @@ export default function StoriesPage() {
                     </SelectContent>
                   </Select>
                   <Select
-                    value={formatFilter}
-                    onValueChange={(v) => setFormatFilter(v as StoryFormat | "all")}
-                  >
-                    <SelectTrigger className="w-[150px]">
-                      <Filter className="mr-2 h-4 w-4" />
-                      <SelectValue placeholder="Format" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Formats</SelectItem>
-                      <SelectItem value="light">Light</SelectItem>
-                      <SelectItem value="full">Full</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select
                     value={autonomyFilter}
                     onValueChange={(v) => setAutonomyFilter(v as AutonomyLevel | "all")}
                   >
@@ -156,10 +140,9 @@ export default function StoriesPage() {
                       <CardHeader className="pb-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <Badge variant={story.format === "full" ? "default" : "secondary"}>
-                              {story.format}
-                            </Badge>
-                            <Badge variant="outline">{story.autonomyLevel}</Badge>
+                            {story.autonomyLevel && (
+                              <Badge variant="outline">{story.autonomyLevel}</Badge>
+                            )}
                           </div>
                           <FavoriteButton
                             storyId={story.id}
@@ -205,7 +188,7 @@ export default function StoriesPage() {
                 <CardContent className="py-12 text-center">
                   <h3 className="text-lg font-semibold">No stories found</h3>
                   <p className="text-muted-foreground mt-1">
-                    {search || formatFilter !== "all" || autonomyFilter !== "all" || favoriteFilter !== "all"
+                    {search || autonomyFilter !== "all" || favoriteFilter !== "all"
                       ? "Try adjusting your filters"
                       : "Create your first agent story to get started"}
                   </p>

@@ -129,16 +129,11 @@ export {
 // Story
 export {
   AutonomyLevelEnum,
-  StoryFormatEnum,
-  AgentStoryLightSchema,
-  AgentStoryFullSchema,
   AgentStorySchema,
-  isFullFormat,
-  upgradeToFull,
+  createEmptyStory,
   createEmptyFullStory,
   AUTONOMY_LEVEL_METADATA,
   type AutonomyLevel,
-  type StoryFormat,
   type AgentStoryLight,
   type AgentStoryFull,
   type AgentStory
