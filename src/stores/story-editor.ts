@@ -12,6 +12,7 @@ interface StoryDraft {
   originalData: StoryDraftData | null;
   validationErrors: Array<{ path: string; message: string }>;
   lastSavedAt: string | null;
+  hasBeenTouched: boolean; // True after user has made any edits
 }
 
 interface StoryEditorState {
@@ -28,6 +29,7 @@ const initialDraft: StoryDraft = {
   originalData: null,
   validationErrors: [],
   lastSavedAt: null,
+  hasBeenTouched: false,
 };
 
 export const storyEditorStore = proxy<StoryEditorState>({
@@ -53,6 +55,7 @@ export const storyEditorActions = {
       originalData: null,
       validationErrors: [],
       lastSavedAt: null,
+      hasBeenTouched: false,
     };
   },
 
@@ -65,6 +68,7 @@ export const storyEditorActions = {
       originalData: { ...story },
       validationErrors: [],
       lastSavedAt: story.updatedAt,
+      hasBeenTouched: false,
     };
   },
 
@@ -72,6 +76,7 @@ export const storyEditorActions = {
   updateDraft: <K extends keyof AgentStory>(field: K, value: AgentStory[K]) => {
     storyEditorStore.draft.data[field] = value;
     storyEditorStore.draft.data.updatedAt = new Date().toISOString();
+    storyEditorStore.draft.hasBeenTouched = true;
   },
 
   // Update nested field using dot notation path
@@ -89,6 +94,7 @@ export const storyEditorActions = {
 
     current[keys[keys.length - 1]] = value;
     storyEditorStore.draft.data.updatedAt = new Date().toISOString();
+    storyEditorStore.draft.hasBeenTouched = true;
   },
 
   // Set validation errors

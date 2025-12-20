@@ -188,8 +188,8 @@ export function StoryForm({ onSave }: StoryFormProps) {
         </CardContent>
       </Card>
 
-      {/* Validation errors */}
-      {editor.draft.validationErrors.length > 0 && (
+      {/* Validation errors - only show after user has started editing */}
+      {editor.draft.hasBeenTouched && editor.draft.validationErrors.length > 0 && (
         <ValidationPanel errors={editor.draft.validationErrors} />
       )}
 
