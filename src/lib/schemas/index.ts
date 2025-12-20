@@ -3,35 +3,51 @@
 // Trigger
 export {
   TriggerTypeEnum,
-  TriggerSpecificationSchema,
-  TriggerDetailsSchema,
+  SkillTriggerSchema,
+  SimpleTriggerSchema,
+  TriggerConfigSchema,
+  TRIGGER_TYPE_METADATA,
   type TriggerType,
-  type TriggerSpecification,
-  type TriggerDetails
+  type SkillTrigger,
+  type SimpleTrigger,
+  type TriggerConfig
 } from './trigger';
 
 // Behavior
 export {
-  PlanningStrategyEnum,
   BehaviorModelEnum,
-  WorkflowStageSchema,
-  BehaviorConfigSchema,
-  type PlanningStrategy,
+  ExecutionStageSchema,
+  StageTransitionSchema,
+  SequentialBehaviorSchema,
+  WorkflowBehaviorSchema,
+  AdaptiveBehaviorSchema,
+  IterativeBehaviorSchema,
+  SkillBehaviorSchema,
+  BEHAVIOR_MODEL_METADATA,
   type BehaviorModel,
-  type WorkflowStage,
-  type BehaviorConfig
+  type ExecutionStage,
+  type StageTransition,
+  type SequentialBehavior,
+  type WorkflowBehavior,
+  type AdaptiveBehavior,
+  type IterativeBehavior,
+  type SkillBehavior
 } from './behavior';
 
 // Reasoning
 export {
   ReasoningStrategyEnum,
   DecisionPointSchema,
-  IterationConfigSchema,
-  ReasoningSchema,
+  RetryConfigSchema,
+  ConfidenceConfigSchema,
+  SkillReasoningSchema,
+  REASONING_STRATEGY_METADATA,
+  BACKOFF_STRATEGY_METADATA,
   type ReasoningStrategy,
   type DecisionPoint,
-  type IterationConfig,
-  type Reasoning
+  type RetryConfig,
+  type ConfidenceConfig,
+  type SkillReasoning
 } from './reasoning';
 
 // Memory
@@ -49,22 +65,58 @@ export {
 // Tools
 export {
   ToolPermissionEnum,
-  ToolSchema,
-  ToolsSchema,
+  SkillToolSchema,
+  SkillToolsSchema,
+  TOOL_PERMISSION_METADATA,
   type ToolPermission,
-  type Tool,
-  type Tools
+  type SkillTool,
+  type SkillTools
 } from './tools';
 
 // Skills
 export {
   SkillAcquisitionEnum,
+  SkillInputSchema,
+  SkillOutputSchema,
+  FailureModeSchema,
+  SkillFailureHandlingSchema,
   SkillSchema,
   SkillsSchema,
+  SKILL_ACQUISITION_METADATA,
+  SKILL_DOMAINS,
+  createEmptySkill,
+  getSkillCompleteness,
   type SkillAcquisition,
+  type SkillInput,
+  type SkillOutput,
+  type FailureMode,
+  type SkillFailureHandling,
   type Skill,
   type Skills
 } from './skill';
+
+// Guardrails
+export {
+  EnforcementLevelEnum,
+  SkillGuardrailSchema,
+  AgentGuardrailSchema,
+  SkillGuardrailsSchema,
+  AgentGuardrailsSchema,
+  ENFORCEMENT_LEVEL_METADATA,
+  type EnforcementLevel,
+  type SkillGuardrail,
+  type AgentGuardrail,
+  type SkillGuardrails,
+  type AgentGuardrails
+} from './guardrails';
+
+// Acceptance
+export {
+  QualityMetricSchema,
+  SkillAcceptanceCriteriaSchema,
+  type QualityMetric,
+  type SkillAcceptanceCriteria
+} from './acceptance';
 
 // Collaboration
 export {
@@ -74,12 +126,6 @@ export {
   type AgentCollaboration
 } from './collaboration';
 
-// Acceptance
-export {
-  AcceptanceCriteriaSchema,
-  type AcceptanceCriteria
-} from './acceptance';
-
 // Story
 export {
   AutonomyLevelEnum,
@@ -88,6 +134,9 @@ export {
   AgentStoryFullSchema,
   AgentStorySchema,
   isFullFormat,
+  upgradeToFull,
+  createEmptyFullStory,
+  AUTONOMY_LEVEL_METADATA,
   type AutonomyLevel,
   type StoryFormat,
   type AgentStoryLight,
@@ -121,5 +170,6 @@ export {
 export {
   validateStory,
   validatePartialStory,
+  validateSkill,
   type ValidationResult
 } from './validation';

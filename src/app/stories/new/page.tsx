@@ -28,11 +28,23 @@ export default function NewStoryPage() {
   }, []);
 
   const handleSave = async () => {
-    const data = editor.draft.data as Partial<AgentStory>;
+    const data = editor.draft.data as Record<string, unknown>;
+    const format = editor.draft.format;
 
-    // Basic validation
-    if (!data.identifier || !data.name || !data.role || !data.action || !data.outcome) {
-      return;
+    // Basic validation based on format
+    const hasBaseFields = data.identifier && data.name && data.role;
+
+    if (format === 'light') {
+      // Light format needs action and outcome
+      if (!hasBaseFields || !data.action || !data.outcome) {
+        return;
+      }
+    } else {
+      // Full format needs purpose and at least one skill
+      const skills = data.skills as unknown[];
+      if (!hasBaseFields || !data.purpose || !skills || skills.length === 0) {
+        return;
+      }
     }
 
     try {

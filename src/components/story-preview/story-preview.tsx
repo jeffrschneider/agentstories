@@ -3,17 +3,16 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import type { AgentStory, AgentStoryFull } from "@/lib/schemas";
+import type { AgentStory, AgentStoryFull, AgentStoryLight, Skill } from "@/lib/schemas";
 import {
-  Brain,
-  Target,
   Zap,
   Database,
   Wrench,
-  GraduationCap,
   Users,
   CheckCircle2,
   AlertCircle,
+  Target,
+  Brain,
 } from "lucide-react";
 
 interface StoryPreviewProps {
@@ -22,6 +21,85 @@ interface StoryPreviewProps {
 
 function isFullFormat(story: AgentStory): story is AgentStoryFull {
   return story.format === "full";
+}
+
+function isLightFormat(story: AgentStory): story is AgentStoryLight {
+  return story.format === "light";
+}
+
+// Preview a single skill
+function SkillPreview({ skill, index }: { skill: Skill; index: number }) {
+  return (
+    <div className="p-4 bg-muted rounded-lg space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="font-medium">{skill.name || `Skill ${index + 1}`}</h4>
+          <p className="text-sm text-muted-foreground">{skill.description}</p>
+        </div>
+        <div className="flex gap-1">
+          <Badge variant="outline" className="text-xs">{skill.domain}</Badge>
+          <Badge variant="secondary" className="text-xs">{skill.acquired}</Badge>
+        </div>
+      </div>
+
+      {/* Triggers */}
+      {skill.triggers && skill.triggers.length > 0 && (
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1">
+            <Zap className="h-3 w-3" /> Triggers
+          </h5>
+          <div className="space-y-1">
+            {skill.triggers.map((trigger, i) => (
+              <div key={i} className="text-sm flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">{trigger.type}</Badge>
+                <span>{trigger.description}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tools */}
+      {skill.tools && skill.tools.length > 0 && (
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1">
+            <Wrench className="h-3 w-3" /> Tools
+          </h5>
+          <div className="flex flex-wrap gap-1">
+            {skill.tools.map((tool, i) => (
+              <Badge key={i} variant="secondary" className="text-xs">
+                {tool.name}
+              </Badge>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Behavior */}
+      {skill.behavior && (
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1">
+            <Target className="h-3 w-3" /> Behavior
+          </h5>
+          <Badge variant="outline" className="text-xs">{skill.behavior.model}</Badge>
+        </div>
+      )}
+
+      {/* Acceptance */}
+      {skill.acceptance && (
+        <div>
+          <h5 className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-1">
+            <CheckCircle2 className="h-3 w-3" /> Success Conditions
+          </h5>
+          <ul className="list-disc list-inside text-sm">
+            {skill.acceptance.successConditions?.map((c, i) => (
+              <li key={i}>{c}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function StoryPreview({ story }: StoryPreviewProps) {
@@ -41,30 +119,48 @@ export function StoryPreview({ story }: StoryPreviewProps) {
         <p className="text-sm text-muted-foreground font-mono">{story.identifier}</p>
       </div>
 
-      {/* Core Story */}
+      {/* Agent Identity */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Core Story</CardTitle>
+          <CardTitle className="text-lg">Agent Identity</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <h4 className="font-medium text-sm text-muted-foreground mb-1">Role</h4>
-              <p>{story.role || "Not specified"}</p>
-            </div>
-            <div>
-              <h4 className="font-medium text-sm text-muted-foreground mb-1">Trigger</h4>
-              <p>{story.trigger.specification.source || "Not specified"}</p>
-            </div>
-          </div>
           <div>
-            <h4 className="font-medium text-sm text-muted-foreground mb-1">Action</h4>
-            <p>{story.action || "Not specified"}</p>
+            <h4 className="font-medium text-sm text-muted-foreground mb-1">Role</h4>
+            <p>{story.role || "Not specified"}</p>
           </div>
-          <div>
-            <h4 className="font-medium text-sm text-muted-foreground mb-1">Outcome</h4>
-            <p>{story.outcome || "Not specified"}</p>
-          </div>
+
+          {/* Light format: Trigger, Action, Outcome */}
+          {isLightFormat(story) && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Trigger</h4>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">{story.trigger.type}</Badge>
+                    <span>{story.trigger.description || "Not specified"}</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-1">Action</h4>
+                <p>{story.action || "Not specified"}</p>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm text-muted-foreground mb-1">Outcome</h4>
+                <p>{story.outcome || "Not specified"}</p>
+              </div>
+            </>
+          )}
+
+          {/* Full format: Purpose */}
+          {isFull && (
+            <div>
+              <h4 className="font-medium text-sm text-muted-foreground mb-1">Purpose</h4>
+              <p>{story.purpose || "Not specified"}</p>
+            </div>
+          )}
+
           {story.tags && story.tags.length > 0 && (
             <div>
               <h4 className="font-medium text-sm text-muted-foreground mb-2">Tags</h4>
@@ -80,247 +176,28 @@ export function StoryPreview({ story }: StoryPreviewProps) {
         </CardContent>
       </Card>
 
-      {/* Full Format Sections */}
+      {/* Full Format: Skills */}
+      {isFull && story.skills && story.skills.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Skills ({story.skills.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {story.skills.map((skill, i) => (
+                <SkillPreview key={skill.id || i} skill={skill} index={i} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Full Format: Agent-Level Configuration */}
       {isFull && (
         <>
-          {/* Trigger Spec */}
-          {story.triggerSpec && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Zap className="h-4 w-4" />
-                  Trigger Specification
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Type</h4>
-                    <Badge variant="outline">{story.triggerSpec.type}</Badge>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Source</h4>
-                    <p>{story.triggerSpec.source}</p>
-                  </div>
-                </div>
-                {story.triggerSpec.conditions && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Conditions</h4>
-                    <p className="text-sm">{story.triggerSpec.conditions}</p>
-                  </div>
-                )}
-                {story.triggerSpec.examples && story.triggerSpec.examples.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Examples</h4>
-                    <ul className="list-disc list-inside text-sm">
-                      {story.triggerSpec.examples.map((ex, i) => (
-                        <li key={i}>{ex}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Behavior */}
-          {story.behavior && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Behavior
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Type</h4>
-                    <Badge variant="outline">{story.behavior.type}</Badge>
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Planning</h4>
-                    <Badge variant="outline">{story.behavior.planning}</Badge>
-                  </div>
-                </div>
-                {"stages" in story.behavior && story.behavior.stages && story.behavior.stages.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-2">Stages</h4>
-                    <div className="space-y-2">
-                      {story.behavior.stages.map((stage, i) => (
-                        <div key={i} className="p-3 bg-muted rounded-lg">
-                          <div className="font-medium">{stage.name}</div>
-                          <p className="text-sm text-muted-foreground">{stage.purpose}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {"capabilities" in story.behavior && story.behavior.capabilities && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Capabilities</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {story.behavior.capabilities.map((cap, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {cap}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Reasoning */}
-          {story.reasoning && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Brain className="h-4 w-4" />
-                  Reasoning
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Strategy</h4>
-                  <Badge variant="outline">{story.reasoning.strategy}</Badge>
-                </div>
-                {story.reasoning.decisionPoints && story.reasoning.decisionPoints.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-2">Decision Points</h4>
-                    <div className="space-y-2">
-                      {story.reasoning.decisionPoints.map((dp, i) => (
-                        <div key={i} className="p-3 bg-muted rounded-lg">
-                          <div className="font-medium">{dp.name}</div>
-                          <p className="text-sm text-muted-foreground">Inputs: {dp.inputs}</p>
-                          <p className="text-sm text-muted-foreground">Approach: {dp.approach}</p>
-                          {dp.fallback && (
-                            <p className="text-sm text-muted-foreground">Fallback: {dp.fallback}</p>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Memory */}
-          {story.memory && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Database className="h-4 w-4" />
-                  Memory
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {story.memory.working && story.memory.working.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Working Memory</h4>
-                    <ul className="list-disc list-inside text-sm">
-                      {story.memory.working.map((m, i) => (
-                        <li key={i}>{m}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {story.memory.persistent && story.memory.persistent.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-2">Persistent Stores</h4>
-                    <div className="space-y-2">
-                      {story.memory.persistent.map((store, i) => (
-                        <div key={i} className="p-3 bg-muted rounded-lg">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium">{store.name}</span>
-                            <Badge variant="outline" className="text-xs">{store.type}</Badge>
-                          </div>
-                          <p className="text-sm text-muted-foreground">{store.purpose}</p>
-                          <Badge variant="secondary" className="mt-1 text-xs">
-                            {store.updates}
-                          </Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Tools */}
-          {story.tools && story.tools.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Wrench className="h-4 w-4" />
-                  Tools
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {story.tools.map((tool, i) => (
-                    <div key={i} className="p-3 bg-muted rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{tool.name}</span>
-                        <div className="flex gap-1">
-                          {tool.permissions.map((perm, j) => (
-                            <Badge key={j} variant="outline" className="text-xs">
-                              {perm}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{tool.purpose}</p>
-                      {tool.conditions && (
-                        <p className="text-xs text-muted-foreground mt-1">Conditions: {tool.conditions}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Skills */}
-          {story.skills && story.skills.length > 0 && (
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <GraduationCap className="h-4 w-4" />
-                  Skills
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {story.skills.map((skill, i) => (
-                    <div key={i} className="p-3 bg-muted rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">{skill.name}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {skill.acquired}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{skill.domain}</p>
-                      {skill.proficiencies && skill.proficiencies.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {skill.proficiencies.map((p, j) => (
-                            <Badge key={j} variant="secondary" className="text-xs">
-                              {p}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">Quality: {skill.qualityBar}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Human Interaction */}
           {story.humanInteraction && (
             <Card>
@@ -346,9 +223,6 @@ export function StoryPreview({ story }: StoryPreviewProps) {
                             <Badge variant="outline" className="text-xs">{cp.type}</Badge>
                           </div>
                           <p className="text-sm text-muted-foreground">{cp.trigger}</p>
-                          {cp.timeout && (
-                            <p className="text-xs text-muted-foreground">Timeout: {cp.timeout}</p>
-                          )}
                         </div>
                       ))}
                     </div>
@@ -367,49 +241,110 @@ export function StoryPreview({ story }: StoryPreviewProps) {
             </Card>
           )}
 
-          {/* Acceptance Criteria */}
-          {story.acceptance && (
+          {/* Agent Collaboration */}
+          {story.collaboration && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4" />
-                  Acceptance Criteria
+                  <Users className="h-4 w-4" />
+                  Agent Collaboration
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {story.acceptance.functional && story.acceptance.functional.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-sm text-muted-foreground mb-1">Role</h4>
+                  <Badge variant="outline">{story.collaboration.role}</Badge>
+                </div>
+                {story.collaboration.coordinates && story.collaboration.coordinates.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Functional</h4>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Coordinates With</h4>
+                    <div className="space-y-2">
+                      {story.collaboration.coordinates.map((coord, i) => (
+                        <div key={i} className="p-2 bg-muted rounded text-sm">
+                          <span className="font-medium">{coord.agent}</span>
+                          <span className="text-muted-foreground"> via {coord.via} for {coord.for}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {story.collaboration.peers && story.collaboration.peers.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Peers</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {story.collaboration.peers.map((peer, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {peer.agent}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Memory */}
+          {story.memory && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Database className="h-4 w-4" />
+                  Memory
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {story.memory.working && story.memory.working.length > 0 && (
+                  <div>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Working Memory</h4>
                     <ul className="list-disc list-inside text-sm">
-                      {story.acceptance.functional.map((c, i) => (
-                        <li key={i}>{c}</li>
+                      {story.memory.working.map((item, i) => (
+                        <li key={i}>{item}</li>
                       ))}
                     </ul>
                   </div>
                 )}
-                {story.acceptance.quality && story.acceptance.quality.length > 0 && (
+                {story.memory.persistent && story.memory.persistent.length > 0 && (
                   <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1">Quality</h4>
-                    <ul className="list-disc list-inside text-sm">
-                      {story.acceptance.quality.map((c, i) => (
-                        <li key={i}>{c}</li>
+                    <h4 className="font-medium text-sm text-muted-foreground mb-2">Persistent Stores</h4>
+                    <div className="space-y-2">
+                      {story.memory.persistent.map((store, i) => (
+                        <div key={i} className="p-3 bg-muted rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium">{store.name}</span>
+                            <Badge variant="outline" className="text-xs">{store.type}</Badge>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{store.purpose}</p>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 )}
-                {story.acceptance.guardrails && story.acceptance.guardrails.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm text-muted-foreground mb-1 flex items-center gap-1">
-                      <AlertCircle className="h-3 w-3" />
-                      Guardrails
-                    </h4>
-                    <ul className="list-disc list-inside text-sm">
-                      {story.acceptance.guardrails.map((c, i) => (
-                        <li key={i}>{c}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Guardrails */}
+          {story.guardrails && story.guardrails.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Guardrails
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {story.guardrails.map((guardrail, i) => (
+                    <div key={i} className="p-3 bg-muted rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium">{guardrail.name}</span>
+                        <Badge variant="outline" className="text-xs">{guardrail.enforcement}</Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{guardrail.constraint}</p>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           )}

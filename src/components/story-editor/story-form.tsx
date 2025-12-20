@@ -4,13 +4,10 @@ import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
 import {
   Zap,
-  Cog,
-  Layers,
   Users,
-  CheckCircle,
+  Database,
+  Shield,
   ChevronRight,
-  Circle,
-  CircleDot,
 } from "lucide-react";
 import { storyEditorStore, storyEditorActions } from "@/stores";
 import { validateStory } from "@/lib/schemas";
@@ -18,58 +15,34 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CoreStorySection } from "./sections/core-story-section";
-import { TriggerSection } from "./sections/trigger-section";
-import { BehaviorSection } from "./sections/behavior-section";
-import { ReasoningSection } from "./sections/reasoning-section";
-import { MemorySection } from "./sections/memory-section";
-import { ToolsSection } from "./sections/tools-section";
 import { SkillsSection } from "./sections/skills-section";
+import { MemorySection } from "./sections/memory-section";
 import { HumanInteractionSection } from "./sections/human-interaction-section";
 import { AgentCollaborationSection } from "./sections/agent-collaboration-section";
-import { AcceptanceSection } from "./sections/acceptance-section";
 import { ValidationPanel } from "./validation-panel";
 
-// Navigation structure with groups
-const NAV_GROUPS = [
+// Agent-level configuration sections (sidebar)
+const AGENT_CONFIG_SECTIONS = [
   {
-    id: "activation",
-    label: "Activation",
-    icon: Zap,
-    description: "When the agent starts",
-    sections: [
-      { id: "trigger", label: "Trigger", component: TriggerSection },
-    ],
-  },
-  {
-    id: "execution",
-    label: "Execution",
-    icon: Cog,
-    description: "How the agent works",
-    sections: [
-      { id: "behavior", label: "Behavior", component: BehaviorSection },
-      { id: "reasoning", label: "Reasoning", component: ReasoningSection },
-    ],
-  },
-  {
-    id: "capabilities",
-    label: "Capabilities",
-    icon: Layers,
-    description: "What the agent can do",
-    sections: [
-      { id: "tools", label: "Tools", component: ToolsSection },
-      { id: "skills", label: "Skills", component: SkillsSection },
-      { id: "memory", label: "Memory", component: MemorySection },
-    ],
+    id: "human",
+    label: "Human Interaction",
+    icon: Users,
+    description: "Overall interaction mode and escalation",
+    component: HumanInteractionSection,
   },
   {
     id: "collaboration",
-    label: "Collaboration",
+    label: "Agent Collaboration",
     icon: Users,
-    description: "Who the agent works with",
-    sections: [
-      { id: "human", label: "Human Interaction", component: HumanInteractionSection },
-      { id: "agents", label: "Agent Collaboration", component: AgentCollaborationSection },
-    ],
+    description: "Multi-agent relationships",
+    component: AgentCollaborationSection,
+  },
+  {
+    id: "memory",
+    label: "Memory & State",
+    icon: Database,
+    description: "Shared memory across skills",
+    component: MemorySection,
   },
 ];
 
@@ -80,8 +53,7 @@ interface StoryFormProps {
 export function StoryForm({ onSave }: StoryFormProps) {
   const editor = useSnapshot(storyEditorStore);
   const isFullFormat = editor.draft.format === "full";
-  const [activeGroup, setActiveGroup] = useState("activation");
-  const [activeSection, setActiveSection] = useState("trigger");
+  const [activeConfigSection, setActiveConfigSection] = useState<string | null>(null);
 
   // Validate on changes
   useEffect(() => {
@@ -97,54 +69,30 @@ export function StoryForm({ onSave }: StoryFormProps) {
     }
   }, [editor.draft.data]);
 
-  // Check if a section has content
+  // Check if a config section has content
   const sectionHasContent = (sectionId: string): boolean => {
     const data = editor.draft.data as Record<string, unknown>;
     switch (sectionId) {
-      case "trigger":
-        return !!(data.trigger as Record<string, unknown>)?.specification?.type;
-      case "behavior":
-        return !!(data.behavior as Record<string, unknown>)?.type;
-      case "reasoning":
-        return !!(data.reasoning as Record<string, unknown>)?.strategy;
-      case "tools":
-        return ((data.tools as unknown[]) || []).length > 0;
-      case "skills":
-        return ((data.skills as unknown[]) || []).length > 0;
       case "memory":
         const mem = data.memory as Record<string, unknown>;
-        return !!mem?.working || ((mem?.persistent as unknown[]) || []).length > 0;
+        return !!mem?.workingMemory || ((mem?.persistentStores as unknown[]) || []).length > 0;
       case "human":
         return !!(data.humanInteraction as Record<string, unknown>)?.mode;
-      case "agents":
+      case "collaboration":
         return !!(data.collaboration as Record<string, unknown>)?.role;
+      case "guardrails":
+        return ((data.guardrails as unknown[]) || []).length > 0;
       default:
         return false;
     }
   };
 
-  // Get group completion status
-  const getGroupStatus = (groupId: string): "empty" | "partial" | "complete" => {
-    const group = NAV_GROUPS.find((g) => g.id === groupId);
-    if (!group) return "empty";
-
-    const hasContent = group.sections.some((s) => sectionHasContent(s.id));
-    const allHaveContent = group.sections.every((s) => sectionHasContent(s.id));
-
-    if (allHaveContent) return "complete";
-    if (hasContent) return "partial";
-    return "empty";
-  };
-
-  // Render active section content
-  const renderActiveSection = () => {
-    for (const group of NAV_GROUPS) {
-      for (const section of group.sections) {
-        if (section.id === activeSection) {
-          const Component = section.component;
-          return <Component />;
-        }
-      }
+  // Render active config section
+  const renderActiveConfigSection = () => {
+    const section = AGENT_CONFIG_SECTIONS.find(s => s.id === activeConfigSection);
+    if (section) {
+      const Component = section.component;
+      return <Component />;
     }
     return null;
   };
@@ -182,8 +130,8 @@ export function StoryForm({ onSave }: StoryFormProps) {
         <CardContent>
           <p className="text-sm text-muted-foreground">
             {isFullFormat
-              ? "Full format includes all structured annotations for comprehensive agent specification."
-              : "Light format captures core story elements: role, trigger, action, outcome, and autonomy level."}
+              ? "Full format: Define skills with their own triggers, tools, and behavior. Agent-level config applies to all skills."
+              : "Light format: A simple trigger/action/outcome statement for quick agent design."}
           </p>
         </CardContent>
       </Card>
@@ -193,112 +141,98 @@ export function StoryForm({ onSave }: StoryFormProps) {
         <ValidationPanel errors={editor.draft.validationErrors} />
       )}
 
-      {/* Core story section - always shown */}
+      {/* Core story section - always shown (Agent Identity) */}
       <CoreStorySection />
 
-      {/* Full format sections with grouped navigation */}
+      {/* Full format: Skills + Agent Config */}
       {isFullFormat && (
-        <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
-          {/* Navigation sidebar */}
-          <div className="space-y-2">
-            <div className="text-sm font-medium text-muted-foreground mb-3">
-              Specifications
-            </div>
-            {NAV_GROUPS.map((group) => {
-              const Icon = group.icon;
-              const status = getGroupStatus(group.id);
-              const isActiveGroup = activeGroup === group.id;
-
-              return (
-                <div key={group.id} className="space-y-1">
-                  {/* Group header */}
-                  <button
-                    onClick={() => {
-                      setActiveGroup(group.id);
-                      setActiveSection(group.sections[0].id);
-                    }}
-                    className={cn(
-                      "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors",
-                      isActiveGroup
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-muted"
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="flex-1 font-medium text-sm">{group.label}</span>
-                    {status === "complete" && (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    )}
-                    {status === "partial" && (
-                      <CircleDot className="h-4 w-4 text-yellow-500" />
-                    )}
-                    {status === "empty" && (
-                      <Circle className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </button>
-
-                  {/* Section items (visible when group is active) */}
-                  {isActiveGroup && (
-                    <div className="ml-4 space-y-1">
-                      {group.sections.map((section) => {
-                        const hasContent = sectionHasContent(section.id);
-                        const isActive = activeSection === section.id;
-
-                        return (
-                          <button
-                            key={section.id}
-                            onClick={() => setActiveSection(section.id)}
-                            className={cn(
-                              "w-full flex items-center gap-2 px-3 py-1.5 rounded text-left text-sm transition-colors",
-                              isActive
-                                ? "bg-muted font-medium"
-                                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                            )}
-                          >
-                            <ChevronRight className={cn(
-                              "h-3 w-3 transition-transform",
-                              isActive && "rotate-90"
-                            )} />
-                            <span className="flex-1">{section.label}</span>
-                            {hasContent && (
-                              <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                            )}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Acceptance criteria link */}
-            <div className="pt-4 border-t mt-4">
-              <button
-                onClick={() => {
-                  setActiveGroup("");
-                  setActiveSection("acceptance");
-                }}
-                className={cn(
-                  "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-colors",
-                  activeSection === "acceptance"
-                    ? "bg-green-500/10 text-green-700 dark:text-green-400"
-                    : "hover:bg-muted"
-                )}
-              >
-                <CheckCircle className="h-4 w-4" />
-                <span className="flex-1 font-medium text-sm">Success Criteria</span>
-              </button>
-            </div>
+        <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+          {/* Main content: Skills */}
+          <div className="space-y-6">
+            <SkillsSection />
           </div>
 
-          {/* Content area */}
-          <div className="min-w-0">
-            {activeSection === "acceptance" ? (
-              <AcceptanceSection />
-            ) : (
-              renderActiveSection()
-            )}
+          {/* Sidebar: Agent-level configuration */}
+          <div className="space-y-4">
+            <div className="sticky top-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Agent Configuration
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Settings that apply to all skills
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 pt-0">
+                  {AGENT_CONFIG_SECTIONS.map((section) => {
+                    const Icon = section.icon;
+                    const hasContent = sectionHasContent(section.id);
+                    const isActive = activeConfigSection === section.id;
+
+                    return (
+                      <button
+                        key={section.id}
+                        onClick={() => setActiveConfigSection(isActive ? null : section.id)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "hover:bg-muted text-muted-foreground"
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span className="flex-1">{section.label}</span>
+                        {hasContent && (
+                          <div className="h-2 w-2 rounded-full bg-primary" />
+                        )}
+                        <ChevronRight className={cn(
+                          "h-4 w-4 transition-transform",
+                          isActive && "rotate-90"
+                        )} />
+                      </button>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+
+              {/* Active config section panel */}
+              {activeConfigSection && (
+                <div className="mt-4">
+                  {renderActiveConfigSection()}
+                </div>
+              )}
+
+              {/* Architecture summary */}
+              <Card className="mt-4">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">
+                    Architecture
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-xs">
+                  <div className="space-y-1">
+                    <div className="font-medium flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      Agent (WHO)
+                    </div>
+                    <p className="text-muted-foreground pl-4">
+                      Identity, relationships, memory, guardrails
+                    </p>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="font-medium flex items-center gap-1">
+                      <Zap className="h-3 w-3" />
+                      Skills (WHAT + HOW)
+                    </div>
+                    <p className="text-muted-foreground pl-4">
+                      Triggers, tools, behavior, acceptance criteria
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       )}

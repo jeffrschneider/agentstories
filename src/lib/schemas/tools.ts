@@ -10,37 +10,42 @@ export const ToolPermissionEnum = z.enum([
 
 export type ToolPermission = z.infer<typeof ToolPermissionEnum>;
 
-// Tool schema
-export const ToolSchema = z.object({
+// Skill-owned tool declaration
+export const SkillToolSchema = z.object({
   name: z.string().min(1).describe('Tool or MCP Server name'),
-  purpose: z.string().min(1).describe('Why the agent uses this tool'),
+  purpose: z.string().min(1).describe('Why this skill uses this tool'),
   permissions: z.array(ToolPermissionEnum).min(1),
-  conditions: z.string().optional().describe('When tool is available/used')
+  required: z.boolean().default(true).describe('Is this tool mandatory for skill execution?'),
+  conditions: z.string().optional().describe('When/how tool is used')
 });
 
-export type Tool = z.infer<typeof ToolSchema>;
+export type SkillTool = z.infer<typeof SkillToolSchema>;
 
-// Tools collection
-export const ToolsSchema = z.array(ToolSchema);
+// Skills tools collection
+export const SkillToolsSchema = z.array(SkillToolSchema);
 
-export type Tools = z.infer<typeof ToolsSchema>;
+export type SkillTools = z.infer<typeof SkillToolsSchema>;
 
 // Tool permission metadata for UI
 export const TOOL_PERMISSION_METADATA = {
   read: {
     label: 'Read',
-    description: 'Read-only access'
+    description: 'Read-only access',
+    icon: 'Eye'
   },
   write: {
     label: 'Write',
-    description: 'Can create and update data'
+    description: 'Can create and update data',
+    icon: 'Edit'
   },
   execute: {
     label: 'Execute',
-    description: 'Can execute actions'
+    description: 'Can execute actions',
+    icon: 'Play'
   },
   admin: {
     label: 'Admin',
-    description: 'Full administrative access'
+    description: 'Full administrative access',
+    icon: 'Shield'
   }
 } as const;

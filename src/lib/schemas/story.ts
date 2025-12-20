@@ -1,12 +1,9 @@
 import { z } from 'zod';
-import { TriggerSchema, TriggerSpecificationSchema } from './trigger';
-import { BehaviorConfigSchema } from './behavior';
-import { ReasoningSchema } from './reasoning';
-import { ToolsSchema } from './tools';
-import { SkillsSchema } from './skill';
+import { SimpleTriggerSchema } from './trigger';
+import { SkillsSchema, SkillSchema, createEmptySkill } from './skill';
 import { HumanInteractionSchema, AgentCollaborationSchema } from './collaboration';
 import { MemorySchema } from './memory';
-import { AcceptanceCriteriaSchema } from './acceptance';
+import { AgentGuardrailsSchema } from './guardrails';
 
 // Autonomy levels
 export const AutonomyLevelEnum = z.enum([
@@ -36,7 +33,7 @@ export const AgentStoryLightSchema = z.object({
   updatedAt: z.string().datetime(),
   createdBy: z.string(),
 
-  // Core story elements
+  // Core story elements (simple capability statement)
   identifier: z.string()
     .min(1)
     .max(50)
@@ -45,50 +42,62 @@ export const AgentStoryLightSchema = z.object({
     }),
   name: z.string().min(1).max(100),
   role: z.string().min(1).max(200), // "As a [role]"
-  trigger: TriggerSchema,
+  trigger: SimpleTriggerSchema,      // Simple trigger for light format
   action: z.string().min(1).max(500), // "I [action/goal]"
   outcome: z.string().min(1).max(500), // "so that [outcome]"
   autonomyLevel: AutonomyLevelEnum,
 
-  // Optional light metadata
+  // Optional metadata
   tags: z.array(z.string()).optional(),
   notes: z.string().optional()
 });
 
 export type AgentStoryLight = z.infer<typeof AgentStoryLightSchema>;
 
-// Agent Story Full - Complete format with all structured annotations
-export const AgentStoryFullSchema = AgentStoryLightSchema.extend({
+// Agent Story Full - Skill-based format
+// Agent = WHO (identity, relationships, memory, guardrails)
+// Skills = WHAT + HOW (capability bundles)
+export const AgentStoryFullSchema = z.object({
+  // Metadata
+  id: z.string().uuid(),
   format: z.literal('full'),
+  version: z.string().default('1.0'),
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+  createdBy: z.string(),
 
-  // Structured Annotations (all optional except skills and acceptance)
+  // === AGENT IDENTITY (WHO) ===
+  identifier: z.string()
+    .min(1)
+    .max(50)
+    .regex(/^[a-z][a-z0-9-]*$/),
+  name: z.string().min(1).max(100),
+  role: z.string().min(1).max(200),
+  purpose: z.string().min(1).max(500).describe('Why does this agent exist?'),
+  autonomyLevel: AutonomyLevelEnum,
 
-  // 1. Trigger specification (enhances core trigger)
-  triggerSpec: TriggerSpecificationSchema.optional(),
+  // === SKILLS (WHAT + HOW) ===
+  // Required - at least one skill
+  skills: SkillsSchema.min(1),
 
-  // 2. Behavior model
-  behavior: BehaviorConfigSchema.optional(),
+  // === AGENT-LEVEL CONFIGURATION ===
+  // These provide context for all skills
 
-  // 3. Reasoning & decisions (agent-level, shared across skills)
-  reasoning: ReasoningSchema.optional(),
-
-  // 4. Memory & state
-  memory: MemorySchema.optional(),
-
-  // 5. Tools & integrations
-  tools: ToolsSchema.optional(),
-
-  // 6. Skills (required for full format - at least one)
-  skills: SkillsSchema,
-
-  // 7. Human collaboration
+  // Human interaction (overall mode, escalation policy)
   humanInteraction: HumanInteractionSchema.optional(),
 
-  // 8. Agent collaboration
+  // Agent collaboration (supervisor/worker/peer relationships)
   collaboration: AgentCollaborationSchema.optional(),
 
-  // 9. Acceptance criteria (required for full format)
-  acceptance: AcceptanceCriteriaSchema
+  // Memory (persists across skills and sessions)
+  memory: MemorySchema.optional(),
+
+  // High-level guardrails (identity constraints that apply to all skills)
+  guardrails: AgentGuardrailsSchema.optional(),
+
+  // Metadata
+  tags: z.array(z.string()).optional(),
+  notes: z.string().optional()
 });
 
 export type AgentStoryFull = z.infer<typeof AgentStoryFullSchema>;
@@ -106,14 +115,61 @@ export function isFullFormat(story: AgentStory): story is AgentStoryFull {
   return story.format === 'full';
 }
 
-// Upgrade function type
+// Upgrade function: convert light format to full by creating a skill from the simple statements
 export function upgradeToFull(light: AgentStoryLight): AgentStoryFull {
   return {
-    ...light,
+    id: light.id,
     format: 'full' as const,
+    version: light.version,
+    createdAt: light.createdAt,
     updatedAt: new Date().toISOString(),
-    skills: [], // Required - user must add at least one
-    acceptance: { functional: [] } // Required - user must add at least one
+    createdBy: light.createdBy,
+
+    // Agent identity
+    identifier: light.identifier,
+    name: light.name,
+    role: light.role,
+    purpose: light.outcome, // "so that [outcome]" becomes purpose
+    autonomyLevel: light.autonomyLevel,
+
+    // Convert simple statements to a single skill
+    skills: [{
+      name: 'Primary Capability',
+      description: light.action,
+      domain: 'General',
+      acquired: 'built_in',
+      triggers: [{
+        type: light.trigger.type,
+        description: light.trigger.description
+      }],
+      acceptance: {
+        successConditions: [light.outcome]
+      }
+    }],
+
+    tags: light.tags,
+    notes: light.notes
+  };
+}
+
+// Create a new empty full format story
+export function createEmptyFullStory(userId: string): AgentStoryFull {
+  const now = new Date().toISOString();
+  return {
+    id: crypto.randomUUID(),
+    format: 'full',
+    version: '1.0',
+    createdAt: now,
+    updatedAt: now,
+    createdBy: userId,
+
+    identifier: '',
+    name: '',
+    role: '',
+    purpose: '',
+    autonomyLevel: 'supervised',
+
+    skills: [createEmptySkill()]
   };
 }
 
