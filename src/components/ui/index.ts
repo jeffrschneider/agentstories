@@ -59,3 +59,8 @@ export {
   TooltipContent,
   TooltipProvider,
 } from "./tooltip";
+
+export { FavoriteButton } from "./favorite-button";
+export { ActivityFeed } from "./activity-feed";
+export { TagInput } from "./tag-input";
+export { FormField, FormSection, FormActions, ValidationSummary } from "./form-field";

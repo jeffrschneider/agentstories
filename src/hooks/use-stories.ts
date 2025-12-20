@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { mockDataService } from '@/services';
-import { uiActions } from '@/stores';
+import { uiActions, activityActions } from '@/stores';
 import type { AgentStory, AutonomyLevel, StoryFormat } from '@/lib/schemas';
 
 // Query keys
@@ -27,13 +27,21 @@ export function useStories(params?: StoryListParams) {
   });
 }
 
-// Get single story
-export function useStory(id: string) {
-  return useQuery({
+// Get single story with view tracking
+export function useStory(id: string, options?: { trackView?: boolean }) {
+  const query = useQuery({
     queryKey: storyKeys.detail(id),
-    queryFn: () => mockDataService.stories.get(id),
+    queryFn: async () => {
+      const story = await mockDataService.stories.get(id);
+      if (story && options?.trackView !== false) {
+        activityActions.log('view', story.id, story.name || 'Untitled');
+      }
+      return story;
+    },
     enabled: !!id,
   });
+
+  return query;
 }
 
 // Create story
@@ -45,6 +53,7 @@ export function useCreateStory() {
       mockDataService.stories.create(data),
     onSuccess: (newStory) => {
       queryClient.invalidateQueries({ queryKey: storyKeys.lists() });
+      activityActions.log('create', newStory.id, newStory.name || 'Untitled');
       uiActions.addToast({
         type: 'success',
         title: 'Story created',
@@ -72,6 +81,7 @@ export function useUpdateStory() {
       if (updatedStory) {
         queryClient.invalidateQueries({ queryKey: storyKeys.lists() });
         queryClient.setQueryData(storyKeys.detail(updatedStory.id), updatedStory);
+        activityActions.log('edit', updatedStory.id, updatedStory.name || 'Untitled');
         uiActions.addToast({
           type: 'success',
           title: 'Story updated',
@@ -94,10 +104,14 @@ export function useDeleteStory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => mockDataService.stories.delete(id),
-    onSuccess: (_, id) => {
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const deleted = await mockDataService.stories.delete(id);
+      return { deleted, id, name };
+    },
+    onSuccess: ({ id, name }) => {
       queryClient.invalidateQueries({ queryKey: storyKeys.lists() });
       queryClient.removeQueries({ queryKey: storyKeys.detail(id) });
+      activityActions.log('delete', id, name || 'Untitled');
       uiActions.addToast({
         type: 'success',
         title: 'Story deleted',
@@ -123,6 +137,7 @@ export function useDuplicateStory() {
     onSuccess: (duplicatedStory) => {
       if (duplicatedStory) {
         queryClient.invalidateQueries({ queryKey: storyKeys.lists() });
+        activityActions.log('duplicate', duplicatedStory.id, duplicatedStory.name || 'Untitled');
         uiActions.addToast({
           type: 'success',
           title: 'Story duplicated',
@@ -138,4 +153,11 @@ export function useDuplicateStory() {
       });
     },
   });
+}
+
+// Log export activity
+export function useLogExport() {
+  return (storyId: string, storyName: string) => {
+    activityActions.log('export', storyId, storyName);
+  };
 }
