@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSnapshot } from "valtio";
 import {
   Zap,
@@ -9,10 +9,8 @@ import {
   Shield,
   ChevronRight,
 } from "lucide-react";
-import { storyEditorStore, storyEditorActions } from "@/stores";
-import { validateStory } from "@/lib/schemas";
+import { storyEditorStore } from "@/stores";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CoreStorySection } from "./sections/core-story-section";
 import { SkillsSection } from "./sections/skills-section";
@@ -52,22 +50,7 @@ interface StoryFormProps {
 
 export function StoryForm({ onSave }: StoryFormProps) {
   const editor = useSnapshot(storyEditorStore);
-  const isFullFormat = editor.draft.format === "full";
   const [activeConfigSection, setActiveConfigSection] = useState<string | null>(null);
-
-  // Validate on changes
-  useEffect(() => {
-    if (Object.keys(editor.draft.data).length > 0) {
-      const result = validateStory(editor.draft.data);
-      if (!result.valid) {
-        storyEditorActions.setValidationErrors(
-          result.errors.map((e) => ({ path: e.path, message: e.message }))
-        );
-      } else {
-        storyEditorActions.clearValidationErrors();
-      }
-    }
-  }, [editor.draft.data]);
 
   // Check if a config section has content
   const sectionHasContent = (sectionId: string): boolean => {
@@ -99,143 +82,104 @@ export function StoryForm({ onSave }: StoryFormProps) {
 
   return (
     <div className="space-y-6">
-      {/* Format selector */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Story Format</CardTitle>
-              <CardDescription>
-                Choose the level of detail for your agent story
-              </CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Badge
-                variant={isFullFormat ? "outline" : "default"}
-                className="cursor-pointer"
-                onClick={() => storyEditorActions.changeFormat("light")}
-              >
-                Light
-              </Badge>
-              <Badge
-                variant={isFullFormat ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => storyEditorActions.changeFormat("full")}
-              >
-                Full
-              </Badge>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {isFullFormat
-              ? "Full format: Define skills with their own triggers, tools, and behavior. Agent-level config applies to all skills."
-              : "Light format: A simple trigger/action/outcome statement for quick agent design."}
-          </p>
-        </CardContent>
-      </Card>
-
       {/* Validation errors */}
       {editor.draft.validationErrors.length > 0 && (
         <ValidationPanel errors={editor.draft.validationErrors} />
       )}
 
-      {/* Core story section - always shown (Agent Identity) */}
+      {/* Core story section - Agent Identity */}
       <CoreStorySection />
 
-      {/* Full format: Skills + Agent Config */}
-      {isFullFormat && (
-        <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-          {/* Main content: Skills */}
-          <div className="space-y-6">
-            <SkillsSection />
-          </div>
+      {/* Skills + Agent Config */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        {/* Main content: Skills */}
+        <div className="space-y-6">
+          <SkillsSection />
+        </div>
 
-          {/* Sidebar: Agent-level configuration */}
-          <div className="space-y-4">
-            <div className="sticky top-4">
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Shield className="h-4 w-4" />
-                    Agent Configuration
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Settings that apply to all skills
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2 pt-0">
-                  {AGENT_CONFIG_SECTIONS.map((section) => {
-                    const Icon = section.icon;
-                    const hasContent = sectionHasContent(section.id);
-                    const isActive = activeConfigSection === section.id;
+        {/* Sidebar: Agent-level configuration */}
+        <div className="space-y-4">
+          <div className="sticky top-4">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Agent Configuration
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Settings that apply to all skills
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2 pt-0">
+                {AGENT_CONFIG_SECTIONS.map((section) => {
+                  const Icon = section.icon;
+                  const hasContent = sectionHasContent(section.id);
+                  const isActive = activeConfigSection === section.id;
 
-                    return (
-                      <button
-                        key={section.id}
-                        onClick={() => setActiveConfigSection(isActive ? null : section.id)}
-                        className={cn(
-                          "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors",
-                          isActive
-                            ? "bg-primary/10 text-primary"
-                            : "hover:bg-muted text-muted-foreground"
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        <span className="flex-1">{section.label}</span>
-                        {hasContent && (
-                          <div className="h-2 w-2 rounded-full bg-primary" />
-                        )}
-                        <ChevronRight className={cn(
-                          "h-4 w-4 transition-transform",
-                          isActive && "rotate-90"
-                        )} />
-                      </button>
-                    );
-                  })}
-                </CardContent>
-              </Card>
+                  return (
+                    <button
+                      key={section.id}
+                      onClick={() => setActiveConfigSection(isActive ? null : section.id)}
+                      className={cn(
+                        "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-left text-sm transition-colors",
+                        isActive
+                          ? "bg-primary/10 text-primary"
+                          : "hover:bg-muted text-muted-foreground"
+                      )}
+                    >
+                      <Icon className="h-4 w-4" />
+                      <span className="flex-1">{section.label}</span>
+                      {hasContent && (
+                        <div className="h-2 w-2 rounded-full bg-primary" />
+                      )}
+                      <ChevronRight className={cn(
+                        "h-4 w-4 transition-transform",
+                        isActive && "rotate-90"
+                      )} />
+                    </button>
+                  );
+                })}
+              </CardContent>
+            </Card>
 
-              {/* Active config section panel */}
-              {activeConfigSection && (
-                <div className="mt-4">
-                  {renderActiveConfigSection()}
+            {/* Active config section panel */}
+            {activeConfigSection && (
+              <div className="mt-4">
+                {renderActiveConfigSection()}
+              </div>
+            )}
+
+            {/* Architecture summary */}
+            <Card className="mt-4">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-muted-foreground">
+                  Architecture
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-xs">
+                <div className="space-y-1">
+                  <div className="font-medium flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    Agent (WHO)
+                  </div>
+                  <p className="text-muted-foreground pl-4">
+                    Identity, relationships, memory, guardrails
+                  </p>
                 </div>
-              )}
-
-              {/* Architecture summary */}
-              <Card className="mt-4">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">
-                    Architecture
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-xs">
-                  <div className="space-y-1">
-                    <div className="font-medium flex items-center gap-1">
-                      <Shield className="h-3 w-3" />
-                      Agent (WHO)
-                    </div>
-                    <p className="text-muted-foreground pl-4">
-                      Identity, relationships, memory, guardrails
-                    </p>
+                <div className="space-y-1">
+                  <div className="font-medium flex items-center gap-1">
+                    <Zap className="h-3 w-3" />
+                    Skills (WHAT + HOW)
                   </div>
-                  <div className="space-y-1">
-                    <div className="font-medium flex items-center gap-1">
-                      <Zap className="h-3 w-3" />
-                      Skills (WHAT + HOW)
-                    </div>
-                    <p className="text-muted-foreground pl-4">
-                      Triggers, tools, behavior, acceptance criteria
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                  <p className="text-muted-foreground pl-4">
+                    Triggers, tools, behavior, acceptance criteria
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

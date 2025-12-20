@@ -1,4 +1,4 @@
-import type { AgentStory, AgentStoryLight, AgentStoryFull, Template, TemplateCategory } from '@/lib/schemas';
+import type { AgentStory, Template, TemplateCategory } from '@/lib/schemas';
 import { loadFromStorage, saveToStorage } from './storage';
 
 // Simulated delay for realistic async behavior
@@ -13,12 +13,11 @@ function uuid(): string {
   });
 }
 
-// Mock stories data - updated to skill-based architecture
+// Mock stories data - skill-based architecture
 const mockStories: AgentStory[] = [
-  // Light format example
+  // Customer Support Agent
   {
     id: uuid(),
-    format: 'light',
     version: '1.0',
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -26,20 +25,32 @@ const mockStories: AgentStory[] = [
     identifier: 'customer-support-agent',
     name: 'Customer Support Agent',
     role: 'A customer support specialist that handles incoming support tickets',
-    trigger: {
-      type: 'message',
-      description: 'New support ticket created in helpdesk system'
-    },
-    action: 'Analyze the ticket content, categorize the issue, and either provide an automated response or escalate to human support',
-    outcome: 'Ticket is resolved with customer satisfaction or properly escalated with full context',
+    purpose: 'Provide fast, accurate customer support while maintaining high satisfaction',
     autonomyLevel: 'supervised',
     tags: ['customer-service', 'support', 'tickets'],
-  } satisfies AgentStoryLight,
+    skills: [
+      {
+        id: uuid(),
+        name: 'Ticket Analysis',
+        description: 'Analyze incoming tickets and categorize them',
+        domain: 'Customer Service',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'message',
+            description: 'New support ticket created in helpdesk system'
+          }
+        ],
+        acceptance: {
+          successConditions: ['Ticket categorized', 'Priority assigned']
+        }
+      }
+    ]
+  },
 
-  // Light format - Code Review
+  // Code Review Assistant
   {
     id: uuid(),
-    format: 'light',
     version: '1.0',
     createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
@@ -47,20 +58,32 @@ const mockStories: AgentStory[] = [
     identifier: 'code-review-assistant',
     name: 'Code Review Assistant',
     role: 'A code reviewer that analyzes pull requests for quality and best practices',
-    trigger: {
-      type: 'resource_change',
-      description: 'Pull request opened or updated in GitHub repository'
-    },
-    action: 'Review code changes for style, bugs, security issues, and suggest improvements',
-    outcome: 'Pull request receives detailed feedback with actionable suggestions',
+    purpose: 'Improve code quality through automated review and suggestions',
     autonomyLevel: 'collaborative',
     tags: ['development', 'code-review', 'automation'],
-  } satisfies AgentStoryLight,
+    skills: [
+      {
+        id: uuid(),
+        name: 'Code Analysis',
+        description: 'Review code changes for style, bugs, and security issues',
+        domain: 'Development',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'resource_change',
+            description: 'Pull request opened or updated in GitHub repository'
+          }
+        ],
+        acceptance: {
+          successConditions: ['Code reviewed', 'Comments posted']
+        }
+      }
+    ]
+  },
 
-  // Full format example - Support Request Router (skill-based)
+  // Support Request Router
   {
     id: uuid(),
-    format: 'full',
     version: '1.0',
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
@@ -72,7 +95,6 @@ const mockStories: AgentStory[] = [
     autonomyLevel: 'supervised',
     tags: ['customer-support', 'triage', 'routing'],
 
-    // Skills - the core capabilities
     skills: [
       {
         id: uuid(),
@@ -219,7 +241,6 @@ const mockStories: AgentStory[] = [
       }
     ],
 
-    // Agent-level configuration
     humanInteraction: {
       mode: 'on_the_loop',
       escalation: {
@@ -262,12 +283,11 @@ const mockStories: AgentStory[] = [
         enforcement: 'hard'
       }
     ]
-  } satisfies AgentStoryFull,
+  },
 
-  // Full format - Data Pipeline Monitor
+  // Data Pipeline Monitor
   {
     id: uuid(),
-    format: 'full',
     version: '1.0',
     createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
@@ -392,7 +412,7 @@ const mockStories: AgentStory[] = [
         }
       ]
     }
-  } satisfies AgentStoryFull
+  }
 ];
 
 // Mock templates data
@@ -404,7 +424,6 @@ const mockTemplates: Template[] = [
     category: 'customer_service',
     tags: ['support', 'chat', 'tickets'],
     storyTemplate: {
-      format: 'light',
       role: 'A customer service agent that handles customer inquiries',
       autonomyLevel: 'supervised',
     },
@@ -421,7 +440,6 @@ const mockTemplates: Template[] = [
     category: 'scheduled_tasks',
     tags: ['reports', 'automation', 'scheduled'],
     storyTemplate: {
-      format: 'full',
       role: 'A reporting agent that generates and distributes scheduled reports',
       autonomyLevel: 'full',
     },
@@ -438,7 +456,6 @@ const mockTemplates: Template[] = [
     category: 'event_driven',
     tags: ['events', 'processing', 'reactive'],
     storyTemplate: {
-      format: 'full',
       role: 'An event processor that reacts to system events',
       autonomyLevel: 'full',
     },
@@ -455,7 +472,6 @@ const mockTemplates: Template[] = [
     category: 'data_pipeline',
     tags: ['etl', 'data', 'integration'],
     storyTemplate: {
-      format: 'full',
       role: 'A data pipeline agent that transforms and moves data',
       autonomyLevel: 'supervised',
     },
@@ -472,7 +488,6 @@ const mockTemplates: Template[] = [
     category: 'monitoring_alerting',
     tags: ['monitoring', 'alerts', 'observability'],
     storyTemplate: {
-      format: 'full',
       role: 'A monitoring agent that watches systems and alerts on issues',
       autonomyLevel: 'full',
     },
@@ -489,7 +504,6 @@ const mockTemplates: Template[] = [
     category: 'content_generation',
     tags: ['content', 'generation', 'writing'],
     storyTemplate: {
-      format: 'light',
       role: 'A content generator that creates content from templates',
       autonomyLevel: 'collaborative',
     },
@@ -506,7 +520,6 @@ const mockTemplates: Template[] = [
     category: 'multi_agent',
     tags: ['coordination', 'orchestration', 'multi-agent'],
     storyTemplate: {
-      format: 'full',
       role: 'A coordinator agent that orchestrates multiple sub-agents',
       autonomyLevel: 'supervised',
     },
@@ -523,7 +536,6 @@ const mockTemplates: Template[] = [
     category: 'analysis_reporting',
     tags: ['analysis', 'insights', 'data'],
     storyTemplate: {
-      format: 'full',
       role: 'An analysis agent that processes data and generates insights',
       autonomyLevel: 'collaborative',
     },
@@ -540,7 +552,6 @@ const mockTemplates: Template[] = [
     category: 'background_processing',
     tags: ['async', 'background', 'processing'],
     storyTemplate: {
-      format: 'full',
       role: 'A background processor that handles async tasks',
       autonomyLevel: 'full',
     },
@@ -583,7 +594,6 @@ export const mockDataService = {
       search?: string;
       tags?: string[];
       autonomyLevel?: string;
-      format?: string;
     }): Promise<AgentStory[]> => {
       initializeStories();
       await delay(300);
@@ -594,7 +604,7 @@ export const mockDataService = {
         result = result.filter(
           (s) =>
             s.name?.toLowerCase().includes(search) ||
-            s.role.toLowerCase().includes(search)
+            s.role?.toLowerCase().includes(search)
         );
       }
 
@@ -606,10 +616,6 @@ export const mockDataService = {
 
       if (params?.autonomyLevel) {
         result = result.filter((s) => s.autonomyLevel === params.autonomyLevel);
-      }
-
-      if (params?.format) {
-        result = result.filter((s) => s.format === params.format);
       }
 
       return result;
@@ -672,7 +678,7 @@ export const mockDataService = {
         ...story,
         id: uuid(),
         name: `${story.name} (Copy)`,
-        identifier: `${story.identifier}-copy-${Date.now()}`,
+        identifier: story.identifier ? `${story.identifier}-copy-${Date.now()}` : undefined,
         createdAt: now,
         updatedAt: now,
       } as AgentStory;
@@ -722,7 +728,7 @@ export const mockDataService = {
       template.usageCount++;
 
       const now = new Date().toISOString();
-      const baseStory = {
+      const newStory: AgentStory = {
         ...template.storyTemplate,
         id: uuid(),
         version: '1.0',
@@ -731,36 +737,19 @@ export const mockDataService = {
         createdBy: 'user-1',
         identifier: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
         name: `New ${template.name}`,
+        purpose: 'Define the purpose of this agent',
+        skills: [
+          {
+            id: uuid(),
+            name: 'Primary Capability',
+            description: 'Define what this skill does',
+            domain: 'General',
+            acquired: 'built_in',
+            triggers: [{ type: 'manual', description: 'Triggered manually' }],
+            acceptance: { successConditions: ['Define success criteria'] }
+          }
+        ],
       };
-
-      let newStory: AgentStory;
-
-      if (template.storyTemplate.format === 'full') {
-        newStory = {
-          ...baseStory,
-          format: 'full' as const,
-          purpose: 'Define the purpose of this agent',
-          skills: [
-            {
-              id: uuid(),
-              name: 'Primary Capability',
-              description: 'Define what this skill does',
-              domain: 'General',
-              acquired: 'built_in',
-              triggers: [{ type: 'manual', description: 'Triggered manually' }],
-              acceptance: { successConditions: ['Define success criteria'] }
-            }
-          ],
-        } as AgentStoryFull;
-      } else {
-        newStory = {
-          ...baseStory,
-          format: 'light' as const,
-          trigger: { type: 'manual', description: 'Define trigger' },
-          action: 'Define the action this agent will take',
-          outcome: 'Define the expected outcome',
-        } as AgentStoryLight;
-      }
 
       stories.push(newStory);
       persistStories();
@@ -776,10 +765,6 @@ export const mockDataService = {
       return {
         totalStories: stories.length,
         totalTemplates: templates.length,
-        storiesByFormat: {
-          light: stories.filter((s) => s.format === 'light').length,
-          full: stories.filter((s) => s.format === 'full').length,
-        },
         storiesByAutonomy: {
           full: stories.filter((s) => s.autonomyLevel === 'full').length,
           supervised: stories.filter((s) => s.autonomyLevel === 'supervised').length,

@@ -1,10 +1,11 @@
-// Agent Identity
-export { CoreStorySection } from "./core-story-section";
+// Agent section (combines identity + configuration)
+export { AgentSection } from "./agent-section";
 
-// Skills (the main content area for full format)
+// Skills section
 export { SkillsSection } from "./skills-section";
 
-// Agent-level configuration sections
+// Individual sections (used internally by AgentSection)
+export { CoreStorySection } from "./core-story-section";
 export { MemorySection } from "./memory-section";
 export { HumanInteractionSection } from "./human-interaction-section";
 export { AgentCollaborationSection } from "./agent-collaboration-section";

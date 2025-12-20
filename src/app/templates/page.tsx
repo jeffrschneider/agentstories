@@ -110,9 +110,6 @@ export default function TemplatesPage() {
                     <Badge variant="outline">
                       {CATEGORY_LABELS[template.category]}
                     </Badge>
-                    <Badge variant={template.storyTemplate.format === "full" ? "default" : "secondary"}>
-                      {template.storyTemplate.format}
-                    </Badge>
                   </div>
                   <CardTitle className="flex items-center gap-2 text-lg">
                     <LayoutTemplate className="h-4 w-4" />

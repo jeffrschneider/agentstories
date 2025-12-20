@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AgentStorySchema, AgentStoryFull, AgentStoryLightSchema, AgentStoryFullSchema, isFullFormat } from './story';
+import { AgentStorySchema, AgentStory } from './story';
 import { SkillSchema, Skill, getSkillCompleteness } from './skill';
 
 export type ValidationResult = {
@@ -53,61 +53,59 @@ export function validateSkill(data: unknown): ValidationResult {
   };
 }
 
-function checkConsistency(story: z.infer<typeof AgentStorySchema>): ValidationResult['warnings'] {
+function checkConsistency(story: AgentStory): ValidationResult['warnings'] {
   const warnings: ValidationResult['warnings'] = [];
 
-  if (!isFullFormat(story)) return warnings;
-
-  const full = story as AgentStoryFull;
-
   // Check autonomy vs human interaction mode consistency
-  if (story.autonomyLevel === 'full' && full.humanInteraction?.mode === 'in_the_loop') {
+  if (story.autonomyLevel === 'full' && story.humanInteraction?.mode === 'in_the_loop') {
     warnings.push({
       path: 'humanInteraction.mode',
       message: 'Full autonomy with in-the-loop collaboration may be contradictory'
     });
   }
 
-  if (story.autonomyLevel === 'directed' && full.humanInteraction?.mode === 'out_of_loop') {
+  if (story.autonomyLevel === 'directed' && story.humanInteraction?.mode === 'out_of_loop') {
     warnings.push({
       path: 'humanInteraction.mode',
       message: 'Directed autonomy with out-of-loop collaboration may be contradictory'
     });
   }
 
-  // Validate each skill
-  for (let i = 0; i < full.skills.length; i++) {
-    const skill = full.skills[i];
-    const skillWarnings = checkSkillConsistency(skill);
-    for (const w of skillWarnings) {
+  // Validate each skill if present
+  if (story.skills) {
+    for (let i = 0; i < story.skills.length; i++) {
+      const skill = story.skills[i];
+      const skillWarnings = checkSkillConsistency(skill);
+      for (const w of skillWarnings) {
+        warnings.push({
+          path: `skills[${i}].${w.path}`,
+          message: w.message
+        });
+      }
+    }
+
+    // Check for duplicate skill names
+    const skillNames = story.skills.map(s => s.name);
+    const duplicates = skillNames.filter((name, i) => skillNames.indexOf(name) !== i);
+    if (duplicates.length > 0) {
       warnings.push({
-        path: `skills[${i}].${w.path}`,
-        message: w.message
+        path: 'skills',
+        message: `Duplicate skill names: ${[...new Set(duplicates)].join(', ')}`
       });
     }
-  }
 
-  // Check for duplicate skill names
-  const skillNames = full.skills.map(s => s.name);
-  const duplicates = skillNames.filter((name, i) => skillNames.indexOf(name) !== i);
-  if (duplicates.length > 0) {
-    warnings.push({
-      path: 'skills',
-      message: `Duplicate skill names: ${[...new Set(duplicates)].join(', ')}`
-    });
-  }
-
-  // Check agent guardrails don't duplicate skill guardrails
-  if (full.guardrails) {
-    const agentConstraints = new Set(full.guardrails.map(g => g.name.toLowerCase()));
-    for (const skill of full.skills) {
-      if (skill.guardrails) {
-        for (const sg of skill.guardrails) {
-          if (agentConstraints.has(sg.name.toLowerCase())) {
-            warnings.push({
-              path: `skills.${skill.name}.guardrails`,
-              message: `Skill guardrail "${sg.name}" duplicates agent-level guardrail`
-            });
+    // Check agent guardrails don't duplicate skill guardrails
+    if (story.guardrails) {
+      const agentConstraints = new Set(story.guardrails.map(g => g.name.toLowerCase()));
+      for (const skill of story.skills) {
+        if (skill.guardrails) {
+          for (const sg of skill.guardrails) {
+            if (agentConstraints.has(sg.name.toLowerCase())) {
+              warnings.push({
+                path: `skills.${skill.name}.guardrails`,
+                message: `Skill guardrail "${sg.name}" duplicates agent-level guardrail`
+              });
+            }
           }
         }
       }
@@ -178,8 +176,8 @@ function checkSkillConsistency(skill: Skill): ValidationResult['warnings'] {
   }
 
   // Check for schedule triggers with no timeout
-  const hasScheduleTrigger = skill.triggers.some(t => t.type === 'schedule');
-  if (hasScheduleTrigger && !skill.acceptance.timeout) {
+  const hasScheduleTrigger = skill.triggers?.some(t => t.type === 'schedule');
+  if (hasScheduleTrigger && !skill.acceptance?.timeout) {
     warnings.push({
       path: 'acceptance.timeout',
       message: 'Scheduled skill should have a timeout defined'
@@ -189,31 +187,21 @@ function checkSkillConsistency(skill: Skill): ValidationResult['warnings'] {
   return warnings;
 }
 
-// Partial validation for drafts
+// Partial validation for drafts - more lenient
 export function validatePartialStory(data: unknown): ValidationResult {
-  // Create partial schemas for both formats
-  const PartialLightSchema = AgentStoryLightSchema.partial().extend({
-    format: z.literal('light').optional()
-  });
-  const PartialFullSchema = AgentStoryFullSchema.partial().extend({
-    format: z.literal('full').optional()
+  const PartialSchema = AgentStorySchema.partial().extend({
+    // Only name is truly required
+    name: AgentStorySchema.shape.name
   });
 
-  // Try to validate as either format
-  const lightResult = PartialLightSchema.safeParse(data);
-  if (lightResult.success) {
+  const result = PartialSchema.safeParse(data);
+  if (result.success) {
     return { valid: true, errors: [], warnings: [] };
   }
 
-  const fullResult = PartialFullSchema.safeParse(data);
-  if (fullResult.success) {
-    return { valid: true, errors: [], warnings: [] };
-  }
-
-  // Return errors from the full schema (more comprehensive)
   return {
     valid: false,
-    errors: fullResult.error.issues.map((issue: z.ZodIssue) => ({
+    errors: result.error.issues.map((issue: z.ZodIssue) => ({
       path: issue.path.join('.'),
       message: issue.message,
       code: issue.code

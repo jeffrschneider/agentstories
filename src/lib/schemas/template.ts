@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { AgentStoryLightSchema, AgentStoryFullSchema, StoryFormatEnum } from './story';
+import { AgentStorySchema } from './story';
 
 // Template categories
 export const TemplateCategoryEnum = z.enum([
@@ -17,19 +17,8 @@ export const TemplateCategoryEnum = z.enum([
 
 export type TemplateCategory = z.infer<typeof TemplateCategoryEnum>;
 
-// Partial story template - either light or full format with optional fields
-const PartialLightStoryTemplate = AgentStoryLightSchema.partial().extend({
-  format: z.literal('light')
-});
-
-const PartialFullStoryTemplate = AgentStoryFullSchema.partial().extend({
-  format: z.literal('full')
-});
-
-const StoryTemplateSchema = z.discriminatedUnion('format', [
-  PartialLightStoryTemplate,
-  PartialFullStoryTemplate
-]);
+// Partial story template - story schema with all fields optional (name generated from template)
+const StoryTemplateSchema = AgentStorySchema.partial();
 
 // Template schema
 export const TemplateSchema = z.object({
@@ -39,7 +28,7 @@ export const TemplateSchema = z.object({
   category: TemplateCategoryEnum,
   tags: z.array(z.string()),
 
-  // Template content - a partial story with required format
+  // Template content - a partial story
   storyTemplate: StoryTemplateSchema,
 
   // Template metadata
