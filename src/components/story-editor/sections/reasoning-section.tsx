@@ -9,12 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-const REASONING_STRATEGIES = {
-  rule_based: { label: "Rule-based", description: "Follows predefined rules and logic" },
-  llm_guided: { label: "LLM-guided", description: "Uses language model for decisions" },
-  hybrid: { label: "Hybrid", description: "Combines rules and LLM reasoning" },
-};
+import { Collapsible } from "@/components/ui/collapsible";
+import { REASONING_STRATEGY_METADATA } from "@/lib/schemas/reasoning";
 
 interface DecisionPoint {
   name: string;
@@ -23,10 +19,17 @@ interface DecisionPoint {
   fallback?: string;
 }
 
+interface IterationConfig {
+  enabled: boolean;
+  maxAttempts?: number;
+  retryConditions?: string;
+}
+
 export function ReasoningSection() {
   const editor = useSnapshot(storyEditorStore);
   const reasoning = (editor.draft.data.reasoning as Record<string, unknown>) || {};
   const decisionPoints = (reasoning.decisionPoints as DecisionPoint[]) || [];
+  const iteration = (reasoning.iteration as IterationConfig) || { enabled: false };
 
   const updateField = (path: string, value: unknown) => {
     storyEditorActions.updateNestedField(`reasoning.${path}`, value);
@@ -68,7 +71,7 @@ export function ReasoningSection() {
               <SelectValue placeholder="Select strategy" />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(REASONING_STRATEGIES).map(([key, meta]) => (
+              {Object.entries(REASONING_STRATEGY_METADATA).map(([key, meta]) => (
                 <SelectItem key={key} value={key}>
                   <div className="flex flex-col">
                     <span>{meta.label}</span>
@@ -85,7 +88,12 @@ export function ReasoningSection() {
         {/* Decision Points */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <Label>Decision Points</Label>
+            <div>
+              <Label>Decision Points</Label>
+              <p className="text-xs text-muted-foreground">
+                Key decisions the agent needs to make
+              </p>
+            </div>
             <Button variant="outline" size="sm" onClick={addDecisionPoint}>
               <Plus className="mr-1 h-3 w-3" />
               Add Decision Point
@@ -127,11 +135,60 @@ export function ReasoningSection() {
             </div>
           ))}
           {decisionPoints.length === 0 && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-muted-foreground text-center py-2">
               No decision points defined.
             </p>
           )}
         </div>
+
+        {/* Iteration Configuration */}
+        <Collapsible
+          title="Iteration & Retry Configuration"
+          description="Configure how the agent retries failed operations"
+          defaultOpen={iteration.enabled}
+        >
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="iteration-enabled"
+                checked={iteration.enabled}
+                onChange={(e) => updateField("iteration.enabled", e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <Label htmlFor="iteration-enabled" className="text-sm font-normal">
+                Enable iteration/retry
+              </Label>
+            </div>
+
+            {iteration.enabled && (
+              <>
+                <div className="space-y-2">
+                  <Label>Max Attempts</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    placeholder="e.g., 3"
+                    value={iteration.maxAttempts || ""}
+                    onChange={(e) => {
+                      const val = e.target.value ? parseInt(e.target.value) : undefined;
+                      updateField("iteration.maxAttempts", val);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Retry Conditions</Label>
+                  <Textarea
+                    placeholder="When should the agent retry? e.g., 'Confidence below 80%', 'API timeout'"
+                    value={iteration.retryConditions || ""}
+                    onChange={(e) => updateField("iteration.retryConditions", e.target.value)}
+                    rows={2}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </Collapsible>
       </CardContent>
     </Card>
   );
