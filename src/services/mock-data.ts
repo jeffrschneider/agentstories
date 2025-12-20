@@ -13,8 +13,9 @@ function uuid(): string {
   });
 }
 
-// Mock stories data
+// Mock stories data - updated to skill-based architecture
 const mockStories: AgentStory[] = [
+  // Light format example
   {
     id: uuid(),
     format: 'light',
@@ -26,18 +27,16 @@ const mockStories: AgentStory[] = [
     name: 'Customer Support Agent',
     role: 'A customer support specialist that handles incoming support tickets',
     trigger: {
-      specification: {
-        type: 'message',
-        source: 'helpdesk system',
-        conditions: 'New support ticket created',
-        examples: ['Customer complaint ticket', 'Feature request ticket']
-      }
+      type: 'message',
+      description: 'New support ticket created in helpdesk system'
     },
     action: 'Analyze the ticket content, categorize the issue, and either provide an automated response or escalate to human support',
     outcome: 'Ticket is resolved with customer satisfaction or properly escalated with full context',
     autonomyLevel: 'supervised',
     tags: ['customer-service', 'support', 'tickets'],
   } satisfies AgentStoryLight,
+
+  // Light format - Code Review
   {
     id: uuid(),
     format: 'light',
@@ -49,18 +48,16 @@ const mockStories: AgentStory[] = [
     name: 'Code Review Assistant',
     role: 'A code reviewer that analyzes pull requests for quality and best practices',
     trigger: {
-      specification: {
-        type: 'resource_change',
-        source: 'GitHub repository',
-        conditions: 'Pull request opened or updated',
-        examples: ['New PR created', 'PR commits pushed']
-      }
+      type: 'resource_change',
+      description: 'Pull request opened or updated in GitHub repository'
     },
     action: 'Review code changes for style, bugs, security issues, and suggest improvements',
     outcome: 'Pull request receives detailed feedback with actionable suggestions',
     autonomyLevel: 'collaborative',
     tags: ['development', 'code-review', 'automation'],
   } satisfies AgentStoryLight,
+
+  // Full format example - Support Request Router (skill-based)
   {
     id: uuid(),
     format: 'full',
@@ -68,105 +65,334 @@ const mockStories: AgentStory[] = [
     createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date().toISOString(),
     createdBy: 'user-1',
+    identifier: 'support-request-router',
+    name: 'Support Request Router',
+    role: 'Customer Support Triage Agent',
+    purpose: 'Ensure support requests reach the right team quickly with full context',
+    autonomyLevel: 'supervised',
+    tags: ['customer-support', 'triage', 'routing'],
+
+    // Skills - the core capabilities
+    skills: [
+      {
+        id: uuid(),
+        name: 'Request Classification',
+        description: 'Categorize incoming requests by type, urgency, and sentiment',
+        domain: 'Natural Language Understanding',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'message',
+            description: 'New support request received',
+            conditions: ['Source is customer support gateway', 'Request not previously classified'],
+            examples: ['Customer submits ticket via web form', 'Email received at support@company.com']
+          }
+        ],
+        tools: [
+          {
+            name: 'Customer Database',
+            purpose: 'Lookup customer tier and history',
+            permissions: ['read'],
+            required: false
+          },
+          {
+            name: 'Classification Model API',
+            purpose: 'ML-based categorization',
+            permissions: ['execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Extract key phrases from message',
+            'Lookup customer context if available',
+            'Run classification model',
+            'Apply confidence thresholds'
+          ]
+        },
+        reasoning: {
+          strategy: 'hybrid',
+          decisionPoints: [
+            {
+              name: 'Confidence Check',
+              inputs: ['model_confidence_score'],
+              approach: 'Escalate if confidence < 0.8',
+              outcomes: ['accept', 'escalate']
+            }
+          ],
+          retry: {
+            maxAttempts: 2,
+            backoffStrategy: 'exponential',
+            retryOn: ['Model timeout']
+          }
+        },
+        acceptance: {
+          successConditions: [
+            'Category assigned',
+            'Urgency determined',
+            'Confidence recorded'
+          ],
+          qualityMetrics: [
+            { name: 'accuracy', target: '>= 95%' },
+            { name: 'latency', target: '< 500ms p95' }
+          ]
+        },
+        failureHandling: {
+          modes: [
+            {
+              condition: 'Model unavailable',
+              recovery: 'Use rule-based fallback classifier',
+              escalate: false
+            },
+            {
+              condition: 'All attempts fail',
+              recovery: 'Route to human classifier',
+              escalate: true
+            }
+          ],
+          defaultFallback: 'Flag for manual classification',
+          notifyOnFailure: true
+        },
+        guardrails: [
+          {
+            name: 'No PII logging',
+            constraint: 'Never log raw message content',
+            enforcement: 'hard'
+          }
+        ]
+      },
+      {
+        id: uuid(),
+        name: 'Queue Routing',
+        description: 'Route classified requests to appropriate support queues',
+        domain: 'Workflow Management',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'Classification skill completed',
+            conditions: ['Classification result available']
+          }
+        ],
+        tools: [
+          {
+            name: 'Queue Manager API',
+            purpose: 'Check queue capacity and route',
+            permissions: ['read', 'execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'workflow',
+          stages: [
+            {
+              name: 'Check VIP Status',
+              purpose: 'Prioritize high-value customers',
+              transitions: [{ to: 'Select Queue', when: 'VIP status checked' }]
+            },
+            {
+              name: 'Select Queue',
+              purpose: 'Match category to queue',
+              transitions: [{ to: 'Confirm Route', when: 'Queue selected' }]
+            },
+            {
+              name: 'Confirm Route',
+              purpose: 'Finalize routing decision'
+            }
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Request assigned to queue',
+            'Priority set correctly',
+            'Routing logged'
+          ]
+        },
+        guardrails: [
+          {
+            name: 'Compliance routing',
+            constraint: 'Compliance issues never go to standard queues',
+            enforcement: 'hard'
+          }
+        ]
+      }
+    ],
+
+    // Agent-level configuration
+    humanInteraction: {
+      mode: 'on_the_loop',
+      escalation: {
+        conditions: 'Critical issue or low confidence',
+        channel: 'Slack #support-escalations'
+      }
+    },
+    collaboration: {
+      role: 'worker',
+      reportsTo: 'support-orchestrator'
+    },
+    memory: {
+      working: ['Current request context', 'Customer sentiment from recent interactions'],
+      persistent: [
+        {
+          name: 'Routing History',
+          type: 'relational',
+          purpose: 'Track routing patterns and outcomes',
+          updates: 'append'
+        }
+      ],
+      learning: [
+        {
+          type: 'feedback_loop',
+          signal: 'Human corrections to classifications'
+        }
+      ]
+    },
+    guardrails: [
+      {
+        name: 'Never auto-close',
+        constraint: 'Never close tickets without customer confirmation',
+        rationale: 'Prevent premature resolution',
+        enforcement: 'hard'
+      },
+      {
+        name: 'Audit trail',
+        constraint: 'All routing decisions must be logged',
+        rationale: 'Compliance and debugging',
+        enforcement: 'hard'
+      }
+    ]
+  } satisfies AgentStoryFull,
+
+  // Full format - Data Pipeline Monitor
+  {
+    id: uuid(),
+    format: 'full',
+    version: '1.0',
+    createdAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date().toISOString(),
+    createdBy: 'user-1',
     identifier: 'data-pipeline-monitor',
     name: 'Data Pipeline Monitor',
-    role: 'A monitoring agent that watches data pipeline health and triggers alerts',
-    trigger: {
-      specification: {
-        type: 'schedule',
-        source: 'cron scheduler',
-        conditions: 'Every 5 minutes',
-        examples: ['Scheduled health check', 'Error detection scan']
-      },
-      details: {
-        type: 'schedule',
-        cronExpression: '*/5 * * * *',
-        timezone: 'UTC',
-      },
-    },
-    action: 'Check pipeline status, analyze error patterns, and notify relevant teams',
-    outcome: 'Pipeline issues are detected early and relevant teams are notified with context',
+    role: 'Infrastructure Monitoring Agent',
+    purpose: 'Detect pipeline issues early and notify relevant teams with context',
     autonomyLevel: 'full',
     tags: ['monitoring', 'data-pipeline', 'alerting'],
-    behavior: {
-      type: 'workflow',
-      planning: 'none',
-      stages: [
-        { name: 'check', purpose: 'Check pipeline health metrics' },
-        { name: 'analyze', purpose: 'Analyze any detected issues' },
-        { name: 'notify', purpose: 'Send notifications if needed' },
-      ],
-    },
-    reasoning: {
-      strategy: 'rule_based',
-      decisionPoints: [
-        {
-          name: 'severity_assessment',
-          inputs: 'error_rate, pipeline_delay, data_quality_score',
-          approach: 'Apply threshold rules to determine alert severity',
-          fallback: 'Default to high severity if uncertain',
+
+    skills: [
+      {
+        id: uuid(),
+        name: 'Health Check',
+        description: 'Monitor pipeline health metrics and detect anomalies',
+        domain: 'Data Processing',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'schedule',
+            description: 'Every 5 minutes',
+            conditions: ['Pipeline is running']
+          }
+        ],
+        tools: [
+          {
+            name: 'Pipeline Metrics API',
+            purpose: 'Fetch current pipeline metrics and status',
+            permissions: ['read'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Fetch current metrics',
+            'Compare against thresholds',
+            'Detect anomalies',
+            'Return health status'
+          ]
         },
-      ],
+        acceptance: {
+          successConditions: [
+            'All pipeline components checked',
+            'Health status determined',
+            'Metrics recorded'
+          ],
+          timeout: '30 seconds'
+        }
+      },
+      {
+        id: uuid(),
+        name: 'Alert Routing',
+        description: 'Send alerts to appropriate channels based on severity',
+        domain: 'Workflow Management',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'Health check detected issue',
+            conditions: ['Issue severity >= warning']
+          }
+        ],
+        tools: [
+          {
+            name: 'Slack Notifier',
+            purpose: 'Send notifications to Slack channels',
+            permissions: ['execute'],
+            required: true
+          },
+          {
+            name: 'PagerDuty',
+            purpose: 'Escalate critical issues',
+            permissions: ['execute'],
+            required: false,
+            conditions: 'Only for critical severity'
+          }
+        ],
+        reasoning: {
+          strategy: 'rule_based',
+          decisionPoints: [
+            {
+              name: 'Severity Assessment',
+              inputs: ['error_rate', 'pipeline_delay', 'data_quality_score'],
+              approach: 'Apply threshold rules to determine alert severity',
+              outcomes: ['info', 'warning', 'critical']
+            }
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Alert sent to correct channel',
+            'No duplicate alerts within 15 minutes',
+            'Alert includes context'
+          ]
+        },
+        guardrails: [
+          {
+            name: 'Deduplication',
+            constraint: 'Do not send duplicate alerts for same issue',
+            enforcement: 'hard'
+          }
+        ]
+      }
+    ],
+
+    humanInteraction: {
+      mode: 'out_of_loop',
+      escalation: {
+        conditions: 'Critical failure or unknown error pattern',
+        channel: 'PagerDuty to on-call engineer'
+      }
     },
     memory: {
       persistent: [
         {
-          name: 'alert_history',
+          name: 'Alert History',
           type: 'kv',
-          purpose: 'Track recent alerts to prevent duplicate notifications',
-          updates: 'append',
-        },
-      ],
-    },
-    tools: [
-      {
-        name: 'pipeline_metrics',
-        purpose: 'Fetch current pipeline metrics and status',
-        permissions: ['read'],
-      },
-      {
-        name: 'slack_notify',
-        purpose: 'Send notifications to Slack channels',
-        permissions: ['execute'],
-      },
-    ],
-    skills: [
-      {
-        name: 'metric_analysis',
-        domain: 'Data pipeline monitoring',
-        proficiencies: ['Anomaly detection', 'Threshold evaluation', 'Trend analysis'],
-        qualityBar: 'Accurately identifies issues with < 5% false positive rate',
-        acquired: 'built_in',
-        toolsUsed: ['pipeline_metrics'],
-      },
-      {
-        name: 'alert_routing',
-        domain: 'Notification management',
-        proficiencies: ['Severity classification', 'Channel selection', 'Message formatting'],
-        qualityBar: 'Routes alerts to correct channels within 30 seconds',
-        acquired: 'built_in',
-        toolsUsed: ['slack_notify'],
-      },
-    ],
-    humanInteraction: {
-      mode: 'out_of_loop',
-      escalation: {
-        conditions: 'Critical failure or unknown error pattern detected',
-        channel: 'PagerDuty alert to on-call engineer',
-      },
-    },
-    acceptance: {
-      functional: [
-        'Detects pipeline failures within 5 minutes',
-        'Sends alerts with relevant context and suggested actions',
-        'Does not send duplicate alerts for the same issue',
-      ],
-      quality: [
-        'Check completes in under 30 seconds',
-        'Alert delivery within 1 minute of detection',
-      ],
-    },
-  } satisfies AgentStoryFull,
+          purpose: 'Track recent alerts to prevent duplicates',
+          updates: 'append'
+        }
+      ]
+    }
+  } satisfies AgentStoryFull
 ];
 
 // Mock templates data
@@ -505,14 +731,6 @@ export const mockDataService = {
         createdBy: 'user-1',
         identifier: `${template.name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`,
         name: `New ${template.name}`,
-        trigger: {
-          specification: {
-            type: 'manual' as const,
-            source: 'User initiated',
-          }
-        },
-        action: 'Define the action this agent will take',
-        outcome: 'Define the expected outcome',
       };
 
       let newStory: AgentStory;
@@ -521,13 +739,26 @@ export const mockDataService = {
         newStory = {
           ...baseStory,
           format: 'full' as const,
-          skills: [],
-          acceptance: { functional: [] },
+          purpose: 'Define the purpose of this agent',
+          skills: [
+            {
+              id: uuid(),
+              name: 'Primary Capability',
+              description: 'Define what this skill does',
+              domain: 'General',
+              acquired: 'built_in',
+              triggers: [{ type: 'manual', description: 'Triggered manually' }],
+              acceptance: { successConditions: ['Define success criteria'] }
+            }
+          ],
         } as AgentStoryFull;
       } else {
         newStory = {
           ...baseStory,
           format: 'light' as const,
+          trigger: { type: 'manual', description: 'Define trigger' },
+          action: 'Define the action this agent will take',
+          outcome: 'Define the expected outcome',
         } as AgentStoryLight;
       }
 

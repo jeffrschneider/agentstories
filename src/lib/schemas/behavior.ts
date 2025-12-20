@@ -1,109 +1,99 @@
 import { z } from 'zod';
 
-// Planning strategy enum
-export const PlanningStrategyEnum = z.enum([
-  'none',       // No planning - direct execution
-  'local',      // Agent plans its own work
-  'delegated',  // Planning delegated to another agent
-  'emergent'    // Planning emerges from agent collaboration
-]);
-
-export type PlanningStrategy = z.infer<typeof PlanningStrategyEnum>;
-
-// Behavior model type enum
+// Behavior model types - now at skill level
 export const BehaviorModelEnum = z.enum([
-  'workflow',
-  'adaptive',
-  'hybrid'
+  'sequential',   // Linear step-by-step execution
+  'workflow',     // Multi-stage with conditional transitions
+  'adaptive',     // Dynamic based on context
+  'iterative'     // Loop until condition met
 ]);
 
 export type BehaviorModel = z.infer<typeof BehaviorModelEnum>;
 
-// Stage transition definition
+// Stage transition within a skill
 export const StageTransitionSchema = z.object({
-  to: z.string().min(1).describe('Name of the next stage'),
-  when: z.string().min(1).describe('Condition for this transition')
+  to: z.string().min(1).describe('Target stage name'),
+  when: z.string().min(1).describe('Transition condition')
 });
 
 export type StageTransition = z.infer<typeof StageTransitionSchema>;
 
-// Workflow stage definition
-export const WorkflowStageSchema = z.object({
+// Execution stage
+export const ExecutionStageSchema = z.object({
   name: z.string().min(1),
   purpose: z.string().min(1).describe('What this stage accomplishes'),
+  actions: z.array(z.string()).optional().describe('Actions performed in this stage'),
   transitions: z.array(StageTransitionSchema).optional()
 });
 
-export type WorkflowStage = z.infer<typeof WorkflowStageSchema>;
+export type ExecutionStage = z.infer<typeof ExecutionStageSchema>;
 
-// Workflow behavior - predictable stage-based execution
+// Sequential behavior - simple step-by-step
+export const SequentialBehaviorSchema = z.object({
+  model: z.literal('sequential'),
+  steps: z.array(z.string()).min(1).describe('Ordered list of steps')
+});
+
+export type SequentialBehavior = z.infer<typeof SequentialBehaviorSchema>;
+
+// Workflow behavior (multi-stage with transitions)
 export const WorkflowBehaviorSchema = z.object({
-  type: z.literal('workflow'),
-  stages: z.array(WorkflowStageSchema).min(1),
-  planning: PlanningStrategyEnum.default('none')
+  model: z.literal('workflow'),
+  stages: z.array(ExecutionStageSchema).min(1),
+  entryStage: z.string().optional().describe('Starting stage (defaults to first)')
 });
 
 export type WorkflowBehavior = z.infer<typeof WorkflowBehaviorSchema>;
 
-// Adaptive behavior - runtime decisions based on context
+// Adaptive behavior
 export const AdaptiveBehaviorSchema = z.object({
-  type: z.literal('adaptive'),
-  capabilities: z.array(z.string()).min(1).describe('High-level capabilities the agent can invoke'),
-  planning: PlanningStrategyEnum.default('local')
+  model: z.literal('adaptive'),
+  capabilities: z.array(z.string()).min(1).describe('Available actions to choose from'),
+  selectionStrategy: z.string().optional().describe('How to select next action')
 });
 
 export type AdaptiveBehavior = z.infer<typeof AdaptiveBehaviorSchema>;
 
-// Hybrid behavior - structured workflows with adaptive decision points
-export const HybridBehaviorSchema = z.object({
-  type: z.literal('hybrid'),
-  stages: z.array(WorkflowStageSchema).optional(),
-  capabilities: z.array(z.string()).optional(),
-  planning: PlanningStrategyEnum.default('local')
+// Iterative behavior
+export const IterativeBehaviorSchema = z.object({
+  model: z.literal('iterative'),
+  body: z.array(z.string()).min(1).describe('Actions per iteration'),
+  terminationCondition: z.string().min(1),
+  maxIterations: z.number().int().positive().optional()
 });
 
-export type HybridBehavior = z.infer<typeof HybridBehaviorSchema>;
+export type IterativeBehavior = z.infer<typeof IterativeBehaviorSchema>;
 
-// Union of all behavior types
-export const BehaviorConfigSchema = z.discriminatedUnion('type', [
+// Union of all skill behavior types
+export const SkillBehaviorSchema = z.discriminatedUnion('model', [
+  SequentialBehaviorSchema,
   WorkflowBehaviorSchema,
   AdaptiveBehaviorSchema,
-  HybridBehaviorSchema
+  IterativeBehaviorSchema
 ]);
 
-export type BehaviorConfig = z.infer<typeof BehaviorConfigSchema>;
+export type SkillBehavior = z.infer<typeof SkillBehaviorSchema>;
 
 // Behavior model metadata for UI
 export const BEHAVIOR_MODEL_METADATA = {
+  sequential: {
+    label: 'Sequential',
+    description: 'Linear step-by-step execution',
+    icon: 'List'
+  },
   workflow: {
     label: 'Workflow',
-    description: 'Predictable stage-based execution with defined transitions'
+    description: 'Multi-stage with conditional transitions',
+    icon: 'GitBranch'
   },
   adaptive: {
     label: 'Adaptive',
-    description: 'Runtime decisions based on context and capabilities'
+    description: 'Dynamic based on context',
+    icon: 'Sparkles'
   },
-  hybrid: {
-    label: 'Hybrid',
-    description: 'Structured workflows with adaptive decision points'
-  }
-} as const;
-
-export const PLANNING_STRATEGY_METADATA = {
-  none: {
-    label: 'None',
-    description: 'No planning - direct execution'
-  },
-  local: {
-    label: 'Local',
-    description: 'Agent plans its own work'
-  },
-  delegated: {
-    label: 'Delegated',
-    description: 'Planning delegated to another agent'
-  },
-  emergent: {
-    label: 'Emergent',
-    description: 'Planning emerges from agent collaboration'
+  iterative: {
+    label: 'Iterative',
+    description: 'Loop until termination condition met',
+    icon: 'Repeat'
   }
 } as const;
