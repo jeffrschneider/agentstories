@@ -7,14 +7,16 @@ import {
   ArrowLeft,
   Bot,
   User,
-  Users,
   Save,
   Loader2,
   Plus,
   Trash2,
-  AlertCircle,
   CheckCircle,
   ArrowRight,
+  Target,
+  FileText,
+  Play,
+  Timer,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -46,11 +48,20 @@ import {
   useStory,
 } from "@/hooks";
 import {
-  TASK_OWNER_METADATA,
-  TRANSITION_STATUS_METADATA,
-  calculateHAPPercentages,
+  INTEGRATION_STATUS_METADATA,
+  RESPONSIBILITY_PHASE_METADATA,
+  PHASE_OWNER_METADATA,
+  RESPONSIBILITY_PRESETS,
+  calculatePhaseDistribution,
+  createEmptyTaskResponsibility,
 } from "@/lib/schemas";
-import type { TaskOwner, TransitionStatus, TaskAssignment } from "@/lib/schemas";
+import type {
+  HAPIntegrationStatus,
+  TaskResponsibility,
+  ResponsibilityPhase,
+  PhaseOwner,
+  ResponsibilityPreset,
+} from "@/lib/schemas";
 
 export default function HAPDetailPage({
   params,
@@ -68,22 +79,16 @@ export default function HAPDetailPage({
   const { data: agentStory } = useStory(hap?.agentStoryId || "", { trackView: false });
 
   const [editMode, setEditMode] = useState(false);
-  const [taskAssignments, setTaskAssignments] = useState<TaskAssignment[]>([]);
-  const [transitionStatus, setTransitionStatus] = useState<TransitionStatus>("not_started");
+  const [tasks, setTasks] = useState<TaskResponsibility[]>([]);
+  const [integrationStatus, setIntegrationStatus] = useState<HAPIntegrationStatus>("not_started");
   const [notes, setNotes] = useState("");
-  const [targetDate, setTargetDate] = useState("");
 
   // Initialize edit state when HAP loads
   const initEditState = () => {
     if (hap) {
-      setTaskAssignments([...hap.asIs.taskAssignments]);
-      setTransitionStatus(hap.transitionStatus);
+      setTasks([...hap.tasks]);
+      setIntegrationStatus(hap.integrationStatus);
       setNotes(hap.notes || "");
-      setTargetDate(
-        hap.targetCompletionDate
-          ? new Date(hap.targetCompletionDate).toISOString().split("T")[0]
-          : ""
-      );
       setEditMode(true);
     }
   };
@@ -91,65 +96,64 @@ export default function HAPDetailPage({
   const handleSave = async () => {
     if (!hap) return;
 
-    const asIsPercents = calculateHAPPercentages(taskAssignments, false);
-    const toBePercents = calculateHAPPercentages(taskAssignments, true);
-
     await updateHAP.mutateAsync({
       id: hap.id,
       data: {
-        asIs: {
-          ...hap.asIs,
-          taskAssignments,
-          humanPercent: asIsPercents.humanPercent,
-          agentPercent: asIsPercents.agentPercent,
-        },
-        toBe: {
-          ...hap.toBe,
-          taskAssignments,
-          humanPercent: toBePercents.humanPercent,
-          agentPercent: toBePercents.agentPercent,
-        },
-        transitionStatus,
+        tasks,
+        integrationStatus,
         notes,
-        targetCompletionDate: targetDate
-          ? new Date(targetDate).toISOString()
-          : undefined,
       },
     });
 
     setEditMode(false);
   };
 
-  const updateTaskOwner = (
-    index: number,
-    field: "currentOwner" | "targetOwner",
-    value: TaskOwner
+  const updatePhaseOwner = (
+    taskIndex: number,
+    phase: ResponsibilityPhase,
+    owner: PhaseOwner
   ) => {
-    const updated = [...taskAssignments];
-    updated[index] = { ...updated[index], [field]: value };
-    setTaskAssignments(updated);
+    const updated = [...tasks];
+    updated[taskIndex] = {
+      ...updated[taskIndex],
+      phases: {
+        ...updated[taskIndex].phases,
+        [phase]: {
+          ...updated[taskIndex].phases[phase],
+          owner,
+        },
+      },
+    };
+    setTasks(updated);
+  };
+
+  const applyPresetToTask = (taskIndex: number, preset: ResponsibilityPreset) => {
+    const updated = [...tasks];
+    const presetConfig = RESPONSIBILITY_PRESETS[preset];
+    updated[taskIndex] = {
+      ...updated[taskIndex],
+      phases: {
+        manage: { ...updated[taskIndex].phases.manage, owner: presetConfig.phases.manage },
+        define: { ...updated[taskIndex].phases.define, owner: presetConfig.phases.define },
+        perform: { ...updated[taskIndex].phases.perform, owner: presetConfig.phases.perform },
+        review: { ...updated[taskIndex].phases.review, owner: presetConfig.phases.review },
+      },
+    };
+    setTasks(updated);
   };
 
   const addTask = () => {
-    setTaskAssignments([
-      ...taskAssignments,
-      {
-        id: crypto.randomUUID(),
-        taskName: "",
-        currentOwner: "human",
-        targetOwner: "human",
-      },
-    ]);
+    setTasks([...tasks, createEmptyTaskResponsibility("")]);
   };
 
   const removeTask = (index: number) => {
-    setTaskAssignments(taskAssignments.filter((_, i) => i !== index));
+    setTasks(tasks.filter((_, i) => i !== index));
   };
 
   const updateTaskName = (index: number, name: string) => {
-    const updated = [...taskAssignments];
+    const updated = [...tasks];
     updated[index] = { ...updated[index], taskName: name };
-    setTaskAssignments(updated);
+    setTasks(updated);
   };
 
   if (isLoading) {
@@ -175,38 +179,40 @@ export default function HAPDetailPage({
     );
   }
 
-  // Calculate progress
-  const tasksDone = hap.asIs.taskAssignments.filter(
-    (t) => t.currentOwner === t.targetOwner
-  ).length;
-  const totalTasks = hap.asIs.taskAssignments.length;
-  const progressPercent =
-    totalTasks > 0 ? Math.round((tasksDone / totalTasks) * 100) : 0;
+  // Calculate distribution
+  const distribution = calculatePhaseDistribution(editMode ? tasks : hap.tasks);
+  const pendingSkills = hap.skillRequirements?.filter(
+    r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
+  ).length || 0;
 
-  const getOwnerIcon = (owner: TaskOwner) => {
-    switch (owner) {
-      case "human":
-        return <User className="h-4 w-4 text-blue-500" />;
-      case "agent":
-        return <Bot className="h-4 w-4 text-purple-500" />;
-      case "shared":
-        return <Users className="h-4 w-4 text-green-500" />;
-    }
-  };
-
-  const getStatusColor = (status: TransitionStatus) => {
-    const meta = TRANSITION_STATUS_METADATA[status];
+  const getStatusColor = (status: HAPIntegrationStatus) => {
+    const meta = INTEGRATION_STATUS_METADATA[status];
     switch (meta.color) {
       case "green":
         return "bg-green-500";
+      case "emerald":
+        return "bg-emerald-500";
       case "yellow":
         return "bg-yellow-500";
-      case "red":
-        return "bg-red-500";
+      case "orange":
+        return "bg-orange-500";
       case "blue":
         return "bg-blue-500";
       default:
         return "bg-gray-500";
+    }
+  };
+
+  const getPhaseIcon = (phase: ResponsibilityPhase) => {
+    switch (phase) {
+      case "manage":
+        return <Target className="h-4 w-4" />;
+      case "define":
+        return <FileText className="h-4 w-4" />;
+      case "perform":
+        return <Play className="h-4 w-4" />;
+      case "review":
+        return <CheckCircle className="h-4 w-4" />;
     }
   };
 
@@ -224,13 +230,16 @@ export default function HAPDetailPage({
             <div>
               <div className="flex items-center gap-2">
                 <div
-                  className={`h-2 w-2 rounded-full ${getStatusColor(
-                    hap.transitionStatus
-                  )}`}
+                  className={`h-2 w-2 rounded-full ${getStatusColor(hap.integrationStatus)}`}
                 />
                 <Badge variant="outline">
-                  {TRANSITION_STATUS_METADATA[hap.transitionStatus].label}
+                  {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
                 </Badge>
+                {pendingSkills > 0 && (
+                  <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+                    {pendingSkills} skills pending
+                  </Badge>
+                )}
               </div>
               <h1 className="text-2xl font-bold tracking-tight mt-1">
                 {person?.name || "Unknown"} + AI Agent
@@ -308,18 +317,25 @@ export default function HAPDetailPage({
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                Transformation Progress
+                Responsibility Distribution
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>
-                    {tasksDone} of {totalTasks} tasks
-                  </span>
-                  <span className="font-medium">{progressPercent}%</span>
+                  <span>Human: {distribution.humanPercent}%</span>
+                  <span>Agent: {distribution.agentPercent}%</span>
                 </div>
-                <Progress value={progressPercent} />
+                <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="bg-blue-500"
+                    style={{ width: `${distribution.humanPercent}%` }}
+                  />
+                  <div
+                    className="bg-purple-500"
+                    style={{ width: `${distribution.agentPercent}%` }}
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -328,8 +344,8 @@ export default function HAPDetailPage({
         {/* Main Content */}
         <Tabs defaultValue="tasks" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="tasks">Task Assignments</TabsTrigger>
-            <TabsTrigger value="comparison">As-Is vs To-Be</TabsTrigger>
+            <TabsTrigger value="tasks">Task Responsibilities</TabsTrigger>
+            <TabsTrigger value="skills">Skill Requirements</TabsTrigger>
             <TabsTrigger value="details">Details</TabsTrigger>
           </TabsList>
 
@@ -338,9 +354,9 @@ export default function HAPDetailPage({
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Task Assignments</CardTitle>
+                    <CardTitle>Task Responsibilities</CardTitle>
                     <CardDescription>
-                      Define who handles each task - current state and target state
+                      Define who handles each phase: Manage, Define, Perform, Review
                     </CardDescription>
                   </div>
                   {editMode && (
@@ -352,317 +368,194 @@ export default function HAPDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {/* Header */}
-                  <div className="grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground px-2">
-                    <div className="col-span-5">Task</div>
-                    <div className="col-span-3 text-center">As-Is</div>
-                    <div className="col-span-1 text-center"></div>
-                    <div className="col-span-3 text-center">To-Be</div>
+                  <div className="grid grid-cols-12 gap-2 text-sm font-medium text-muted-foreground px-2">
+                    <div className="col-span-3">Task</div>
+                    <div className="col-span-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Target className="h-3 w-3" />
+                        Manage
+                      </div>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        Define
+                      </div>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Play className="h-3 w-3" />
+                        Perform
+                      </div>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        Review
+                      </div>
+                    </div>
+                    <div className="col-span-1"></div>
                   </div>
 
                   {/* Tasks */}
-                  {(editMode ? taskAssignments : hap.asIs.taskAssignments).map(
-                    (task, index) => (
-                      <div
-                        key={task.id}
-                        className="grid grid-cols-12 gap-4 items-center p-2 rounded-lg bg-muted/50"
-                      >
-                        <div className="col-span-5">
-                          {editMode ? (
-                            <Input
-                              value={task.taskName}
-                              onChange={(e) =>
-                                updateTaskName(index, e.target.value)
-                              }
-                              placeholder="Task name"
-                            />
-                          ) : (
-                            <span className="font-medium">{task.taskName}</span>
-                          )}
-                        </div>
-                        <div className="col-span-3">
-                          {editMode ? (
-                            <Select
-                              value={task.currentOwner}
-                              onValueChange={(v) =>
-                                updateTaskOwner(index, "currentOwner", v as TaskOwner)
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="human">
-                                  <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4" />
-                                    Human
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="agent">
-                                  <div className="flex items-center gap-2">
-                                    <Bot className="h-4 w-4" />
-                                    Agent
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="shared">
-                                  <div className="flex items-center gap-2">
-                                    <Users className="h-4 w-4" />
-                                    Shared
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          ) : (
-                            <div className="flex items-center justify-center gap-2">
-                              {getOwnerIcon(task.currentOwner)}
-                              <span className="text-sm">
-                                {TASK_OWNER_METADATA[task.currentOwner].label}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <div className="col-span-1 flex justify-center">
-                          {task.currentOwner !== task.targetOwner ? (
-                            <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                          ) : (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          )}
-                        </div>
-                        <div className="col-span-3 flex items-center gap-2">
-                          {editMode ? (
-                            <>
+                  {(editMode ? tasks : hap.tasks).map((task, index) => (
+                    <div
+                      key={task.id}
+                      className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-muted/50"
+                    >
+                      <div className="col-span-3">
+                        {editMode ? (
+                          <Input
+                            value={task.taskName}
+                            onChange={(e) => updateTaskName(index, e.target.value)}
+                            placeholder="Task name"
+                          />
+                        ) : (
+                          <span className="font-medium">{task.taskName}</span>
+                        )}
+                      </div>
+                      {(["manage", "define", "perform", "review"] as ResponsibilityPhase[]).map(
+                        (phase) => (
+                          <div key={phase} className="col-span-2">
+                            {editMode ? (
                               <Select
-                                value={task.targetOwner}
+                                value={task.phases[phase].owner}
                                 onValueChange={(v) =>
-                                  updateTaskOwner(index, "targetOwner", v as TaskOwner)
+                                  updatePhaseOwner(index, phase, v as PhaseOwner)
                                 }
                               >
-                                <SelectTrigger>
+                                <SelectTrigger className="h-8">
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="human">
-                                    <div className="flex items-center gap-2">
-                                      <User className="h-4 w-4" />
+                                    <div className="flex items-center gap-1">
+                                      <User className="h-3 w-3 text-blue-500" />
                                       Human
                                     </div>
                                   </SelectItem>
                                   <SelectItem value="agent">
-                                    <div className="flex items-center gap-2">
-                                      <Bot className="h-4 w-4" />
+                                    <div className="flex items-center gap-1">
+                                      <Bot className="h-3 w-3 text-purple-500" />
                                       Agent
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="shared">
-                                    <div className="flex items-center gap-2">
-                                      <Users className="h-4 w-4" />
-                                      Shared
                                     </div>
                                   </SelectItem>
                                 </SelectContent>
                               </Select>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => removeTask(index)}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </>
-                          ) : (
-                            <div className="flex items-center justify-center gap-2 w-full">
-                              {getOwnerIcon(task.targetOwner)}
-                              <span className="text-sm">
-                                {TASK_OWNER_METADATA[task.targetOwner].label}
-                              </span>
-                            </div>
-                          )}
-                        </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                {task.phases[phase].owner === "human" ? (
+                                  <User className="h-4 w-4 text-blue-500" />
+                                ) : (
+                                  <Bot className="h-4 w-4 text-purple-500" />
+                                )}
+                                <span className="text-xs">
+                                  {PHASE_OWNER_METADATA[task.phases[phase].owner].label}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      )}
+                      <div className="col-span-1 flex justify-end">
+                        {editMode && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => removeTask(index)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        )}
                       </div>
-                    )
-                  )}
+                    </div>
+                  ))}
 
-                  {(editMode ? taskAssignments : hap.asIs.taskAssignments)
-                    .length === 0 && (
+                  {(editMode ? tasks : hap.tasks).length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
                       No tasks defined yet.{" "}
                       {editMode && "Click 'Add Task' to get started."}
                     </div>
                   )}
                 </div>
+
+                {/* Presets (in edit mode) */}
+                {editMode && tasks.length > 0 && (
+                  <div className="mt-6 pt-4 border-t">
+                    <Label className="text-sm">Quick Apply Preset to All Tasks</Label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {Object.entries(RESPONSIBILITY_PRESETS).map(([key, preset]) => (
+                        <Button
+                          key={key}
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            tasks.forEach((_, i) => applyPresetToTask(i, key as ResponsibilityPreset));
+                          }}
+                        >
+                          {preset.label} ({preset.pattern})
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="comparison" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-blue-500" />
-                    As-Is (Current State)
-                  </CardTitle>
-                  <CardDescription>
-                    How responsibilities are currently distributed
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Human</span>
-                      <span className="font-medium">{hap.asIs.humanPercent}%</span>
-                    </div>
-                    <div className="h-4 rounded-full bg-muted overflow-hidden">
+          <TabsContent value="skills" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Skill Requirements</CardTitle>
+                <CardDescription>
+                  Agent phases that need skills to be defined
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {hap.skillRequirements && hap.skillRequirements.length > 0 ? (
+                  <div className="space-y-3">
+                    {hap.skillRequirements.map((req) => (
                       <div
-                        className="h-full bg-blue-500"
-                        style={{ width: `${hap.asIs.humanPercent}%` }}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Agent</span>
-                      <span className="font-medium">{hap.asIs.agentPercent}%</span>
-                    </div>
-                    <div className="h-4 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-purple-500"
-                        style={{ width: `${hap.asIs.agentPercent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium mb-2">Task Breakdown</h4>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-2">
-                          <User className="h-3 w-3 text-blue-500" />
-                          Human tasks
-                        </span>
-                        <span>
-                          {
-                            hap.asIs.taskAssignments.filter(
-                              (t) => t.currentOwner === "human"
-                            ).length
+                        key={req.id}
+                        className="flex items-center justify-between p-3 rounded-lg border"
+                      >
+                        <div>
+                          <p className="font-medium">{req.taskName}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Phase: {RESPONSIBILITY_PHASE_METADATA[req.phase].label}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Suggested skill: {req.suggestedSkillName}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            req.status === "applied"
+                              ? "default"
+                              : req.status === "ready"
+                              ? "secondary"
+                              : "outline"
                           }
-                        </span>
+                        >
+                          {req.status}
+                        </Badge>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-2">
-                          <Bot className="h-3 w-3 text-purple-500" />
-                          Agent tasks
-                        </span>
-                        <span>
-                          {
-                            hap.asIs.taskAssignments.filter(
-                              (t) => t.currentOwner === "agent"
-                            ).length
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-2">
-                          <Users className="h-3 w-3 text-green-500" />
-                          Shared tasks
-                        </span>
-                        <span>
-                          {
-                            hap.asIs.taskAssignments.filter(
-                              (t) => t.currentOwner === "shared"
-                            ).length
-                          }
-                        </span>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <div className="h-3 w-3 rounded-full bg-green-500" />
-                    To-Be (Target State)
-                  </CardTitle>
-                  <CardDescription>
-                    How responsibilities should be distributed
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Human</span>
-                      <span className="font-medium">{hap.toBe.humanPercent}%</span>
-                    </div>
-                    <div className="h-4 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-blue-500"
-                        style={{ width: `${hap.toBe.humanPercent}%` }}
-                      />
-                    </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Timer className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p>No pending skill requirements</p>
+                    <p className="text-sm">
+                      Assign phases to the agent to generate skill requirements
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Agent</span>
-                      <span className="font-medium">{hap.toBe.agentPercent}%</span>
-                    </div>
-                    <div className="h-4 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-purple-500"
-                        style={{ width: `${hap.toBe.agentPercent}%` }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t">
-                    <h4 className="font-medium mb-2">Task Breakdown</h4>
-                    <div className="space-y-1 text-sm">
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-2">
-                          <User className="h-3 w-3 text-blue-500" />
-                          Human tasks
-                        </span>
-                        <span>
-                          {
-                            hap.asIs.taskAssignments.filter(
-                              (t) => t.targetOwner === "human"
-                            ).length
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-2">
-                          <Bot className="h-3 w-3 text-purple-500" />
-                          Agent tasks
-                        </span>
-                        <span>
-                          {
-                            hap.asIs.taskAssignments.filter(
-                              (t) => t.targetOwner === "agent"
-                            ).length
-                          }
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="flex items-center gap-2">
-                          <Users className="h-3 w-3 text-green-500" />
-                          Shared tasks
-                        </span>
-                        <span>
-                          {
-                            hap.asIs.taskAssignments.filter(
-                              (t) => t.targetOwner === "shared"
-                            ).length
-                          }
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           <TabsContent value="details" className="space-y-4">
@@ -674,18 +567,18 @@ export default function HAPDetailPage({
                 {editMode ? (
                   <>
                     <div className="space-y-2">
-                      <Label>Transition Status</Label>
+                      <Label>Integration Status</Label>
                       <Select
-                        value={transitionStatus}
+                        value={integrationStatus}
                         onValueChange={(v) =>
-                          setTransitionStatus(v as TransitionStatus)
+                          setIntegrationStatus(v as HAPIntegrationStatus)
                         }
                       >
                         <SelectTrigger>
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Object.entries(TRANSITION_STATUS_METADATA).map(
+                          {Object.entries(INTEGRATION_STATUS_METADATA).map(
                             ([key, meta]) => (
                               <SelectItem key={key} value={key}>
                                 {meta.label}
@@ -694,14 +587,6 @@ export default function HAPDetailPage({
                           )}
                         </SelectContent>
                       </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Target Completion Date</Label>
-                      <Input
-                        type="date"
-                        value={targetDate}
-                        onChange={(e) => setTargetDate(e.target.value)}
-                      />
                     </div>
                     <div className="space-y-2">
                       <Label>Notes</Label>
@@ -718,23 +603,15 @@ export default function HAPDetailPage({
                     <div className="grid gap-4 md:grid-cols-2">
                       <div>
                         <Label className="text-muted-foreground">
-                          Transition Status
+                          Integration Status
                         </Label>
                         <p className="font-medium">
-                          {TRANSITION_STATUS_METADATA[hap.transitionStatus].label}
+                          {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
                         </p>
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">
-                          Target Completion
-                        </Label>
-                        <p className="font-medium">
-                          {hap.targetCompletionDate
-                            ? new Date(
-                                hap.targetCompletionDate
-                              ).toLocaleDateString()
-                            : "Not set"}
-                        </p>
+                        <Label className="text-muted-foreground">Tasks</Label>
+                        <p className="font-medium">{hap.tasks.length} defined</p>
                       </div>
                     </div>
                     {hap.notes && (
@@ -743,22 +620,12 @@ export default function HAPDetailPage({
                         <p className="mt-1">{hap.notes}</p>
                       </div>
                     )}
-                    {hap.topBlockers && hap.topBlockers.length > 0 && (
-                      <div>
-                        <Label className="text-muted-foreground">Blockers</Label>
-                        <ul className="mt-1 space-y-1">
-                          {hap.topBlockers.map((blocker, i) => (
-                            <li
-                              key={i}
-                              className="flex items-start gap-2 text-red-600"
-                            >
-                              <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                              {blocker}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    <div>
+                      <Label className="text-muted-foreground">Created</Label>
+                      <p className="mt-1">
+                        {new Date(hap.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
                   </>
                 )}
               </CardContent>

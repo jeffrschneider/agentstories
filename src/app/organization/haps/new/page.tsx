@@ -11,9 +11,12 @@ import {
   Briefcase,
   Check,
   Loader2,
-  Users,
   Plus,
   Trash2,
+  Target,
+  FileText,
+  Play,
+  CheckCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -43,11 +46,20 @@ import {
   useDepartments,
 } from "@/hooks";
 import {
-  createEmptyHAPState,
-  calculateHAPPercentages,
-  TASK_OWNER_METADATA,
+  createEmptyTaskResponsibility,
+  createTaskFromPreset,
+  RESPONSIBILITY_PRESETS,
+  PHASE_OWNER_METADATA,
 } from "@/lib/schemas";
-import type { TaskAssignment, TaskOwner, Person, Role, AgentStory } from "@/lib/schemas";
+import type {
+  TaskResponsibility,
+  PhaseOwner,
+  ResponsibilityPhase,
+  ResponsibilityPreset,
+  Person,
+  Role,
+  AgentStory,
+} from "@/lib/schemas";
 
 type WizardStep = "person" | "role" | "agent" | "tasks" | "review";
 
@@ -55,7 +67,7 @@ const STEPS: { key: WizardStep; label: string; icon: React.ComponentType<{ class
   { key: "person", label: "Select Person", icon: User },
   { key: "role", label: "Select Role", icon: Briefcase },
   { key: "agent", label: "Select Agent", icon: Bot },
-  { key: "tasks", label: "Define Tasks", icon: Users },
+  { key: "tasks", label: "Define Tasks", icon: Target },
   { key: "review", label: "Review", icon: Check },
 ];
 
@@ -67,9 +79,8 @@ export default function NewHAPPage() {
   const [selectedPerson, setSelectedPerson] = useState<Person | null>(null);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentStory | null>(null);
-  const [taskAssignments, setTaskAssignments] = useState<TaskAssignment[]>([]);
+  const [tasks, setTasks] = useState<TaskResponsibility[]>([]);
   const [notes, setNotes] = useState("");
-  const [targetDate, setTargetDate] = useState("");
 
   // Data fetching
   const { data: people, isLoading: peopleLoading } = usePeople();
@@ -89,7 +100,7 @@ export default function NewHAPPage() {
       case "agent":
         return selectedAgent !== null;
       case "tasks":
-        return taskAssignments.length > 0 && taskAssignments.every((t) => t.taskName.trim());
+        return tasks.length > 0 && tasks.every((t) => t.taskName.trim());
       case "review":
         return true;
       default:
@@ -101,15 +112,15 @@ export default function NewHAPPage() {
     const nextIndex = currentStepIndex + 1;
     if (nextIndex < STEPS.length) {
       // If moving to tasks step and no tasks yet, seed from role responsibilities
-      if (STEPS[nextIndex].key === "tasks" && taskAssignments.length === 0 && selectedRole) {
-        const seededTasks: TaskAssignment[] = selectedRole.responsibilities.map((resp) => ({
-          id: crypto.randomUUID(),
-          taskName: resp.name,
-          description: resp.description,
-          currentOwner: "human" as TaskOwner,
-          targetOwner: resp.aiCandidate ? "agent" : "human",
-        }));
-        setTaskAssignments(seededTasks);
+      if (STEPS[nextIndex].key === "tasks" && tasks.length === 0 && selectedRole) {
+        const seededTasks: TaskResponsibility[] = selectedRole.responsibilities.map((resp) => {
+          // Use human-controlled preset for AI candidates, human-only for others
+          const preset: ResponsibilityPreset = resp.aiCandidate ? 'human-controlled' : 'human-only';
+          const task = createTaskFromPreset(resp.name, preset);
+          task.description = resp.description;
+          return task;
+        });
+        setTasks(seededTasks);
       }
       setCurrentStep(STEPS[nextIndex].key);
     }
@@ -125,52 +136,65 @@ export default function NewHAPPage() {
   const handleCreate = async () => {
     if (!selectedPerson || !selectedRole || !selectedAgent) return;
 
-    const asIsPercents = calculateHAPPercentages(taskAssignments, false);
-    const toBePercents = calculateHAPPercentages(taskAssignments, true);
-
     await createHAP.mutateAsync({
       personId: selectedPerson.id,
       roleId: selectedRole.id,
       agentStoryId: selectedAgent.id,
-      asIs: {
-        taskAssignments,
-        humanPercent: asIsPercents.humanPercent,
-        agentPercent: asIsPercents.agentPercent,
-        effectiveDate: new Date().toISOString(),
-      },
-      toBe: {
-        taskAssignments,
-        humanPercent: toBePercents.humanPercent,
-        agentPercent: toBePercents.agentPercent,
-      },
-      transitionStatus: "planned",
+      tasks,
+      skillRequirements: [],
+      integrationStatus: "planning",
       notes: notes || undefined,
-      targetCompletionDate: targetDate ? new Date(targetDate).toISOString() : undefined,
     });
 
     router.push("/organization/haps");
   };
 
   const addTask = () => {
-    setTaskAssignments([
-      ...taskAssignments,
-      {
-        id: crypto.randomUUID(),
-        taskName: "",
-        currentOwner: "human",
-        targetOwner: "human",
-      },
-    ]);
+    setTasks([...tasks, createEmptyTaskResponsibility("")]);
   };
 
   const removeTask = (index: number) => {
-    setTaskAssignments(taskAssignments.filter((_, i) => i !== index));
+    setTasks(tasks.filter((_, i) => i !== index));
   };
 
-  const updateTask = (index: number, updates: Partial<TaskAssignment>) => {
-    const updated = [...taskAssignments];
+  const updateTask = (index: number, updates: Partial<TaskResponsibility>) => {
+    const updated = [...tasks];
     updated[index] = { ...updated[index], ...updates };
-    setTaskAssignments(updated);
+    setTasks(updated);
+  };
+
+  const updatePhaseOwner = (
+    taskIndex: number,
+    phase: ResponsibilityPhase,
+    owner: PhaseOwner
+  ) => {
+    const updated = [...tasks];
+    updated[taskIndex] = {
+      ...updated[taskIndex],
+      phases: {
+        ...updated[taskIndex].phases,
+        [phase]: {
+          ...updated[taskIndex].phases[phase],
+          owner,
+        },
+      },
+    };
+    setTasks(updated);
+  };
+
+  const applyPresetToTask = (taskIndex: number, preset: ResponsibilityPreset) => {
+    const updated = [...tasks];
+    const presetConfig = RESPONSIBILITY_PRESETS[preset];
+    updated[taskIndex] = {
+      ...updated[taskIndex],
+      phases: {
+        manage: { ...updated[taskIndex].phases.manage, owner: presetConfig.phases.manage },
+        define: { ...updated[taskIndex].phases.define, owner: presetConfig.phases.define },
+        perform: { ...updated[taskIndex].phases.perform, owner: presetConfig.phases.perform },
+        review: { ...updated[taskIndex].phases.review, owner: presetConfig.phases.review },
+      },
+    };
+    setTasks(updated);
   };
 
   const getDeptName = (deptId: string) => {
@@ -412,9 +436,9 @@ export default function NewHAPPage() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-medium">Define Task Assignments</h3>
+                    <h3 className="text-lg font-medium">Define Task Responsibilities</h3>
                     <p className="text-sm text-muted-foreground">
-                      Specify who handles each task now (As-Is) and who should (To-Be)
+                      For each task, specify who handles each phase: Manage, Define, Perform, Review
                     </p>
                   </div>
                   <Button size="sm" onClick={addTask}>
@@ -423,21 +447,63 @@ export default function NewHAPPage() {
                   </Button>
                 </div>
 
+                {/* Preset quick apply */}
+                {tasks.length > 0 && (
+                  <div className="flex flex-wrap gap-2 p-3 bg-muted/50 rounded-lg">
+                    <span className="text-sm text-muted-foreground mr-2">Apply to all:</span>
+                    {Object.entries(RESPONSIBILITY_PRESETS).slice(0, 4).map(([key, preset]) => (
+                      <Button
+                        key={key}
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          tasks.forEach((_, i) => applyPresetToTask(i, key as ResponsibilityPreset));
+                        }}
+                      >
+                        {preset.pattern}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {/* Header */}
-                  <div className="grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground px-2">
-                    <div className="col-span-4">Task</div>
-                    <div className="col-span-3 text-center">As-Is (Current)</div>
-                    <div className="col-span-3 text-center">To-Be (Target)</div>
-                    <div className="col-span-2"></div>
+                  <div className="grid grid-cols-12 gap-2 text-sm font-medium text-muted-foreground px-2">
+                    <div className="col-span-3">Task</div>
+                    <div className="col-span-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Target className="h-3 w-3" />
+                        M
+                      </div>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <FileText className="h-3 w-3" />
+                        D
+                      </div>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <Play className="h-3 w-3" />
+                        P
+                      </div>
+                    </div>
+                    <div className="col-span-2 text-center">
+                      <div className="flex items-center justify-center gap-1">
+                        <CheckCircle className="h-3 w-3" />
+                        R
+                      </div>
+                    </div>
+                    <div className="col-span-1"></div>
                   </div>
 
-                  {taskAssignments.map((task, index) => (
+                  {tasks.map((task, index) => (
                     <div
                       key={task.id}
-                      className="grid grid-cols-12 gap-4 items-center p-2 rounded-lg bg-muted/50"
+                      className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-muted/50"
                     >
-                      <div className="col-span-4">
+                      <div className="col-span-3">
                         <Input
                           value={task.taskName}
                           onChange={(e) =>
@@ -446,74 +512,41 @@ export default function NewHAPPage() {
                           placeholder="Task name"
                         />
                       </div>
-                      <div className="col-span-3">
-                        <Select
-                          value={task.currentOwner}
-                          onValueChange={(v) =>
-                            updateTask(index, { currentOwner: v as TaskOwner })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="human">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                Human
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="agent">
-                              <div className="flex items-center gap-2">
-                                <Bot className="h-4 w-4" />
-                                Agent
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="shared">
-                              <div className="flex items-center gap-2">
-                                <Users className="h-4 w-4" />
-                                Shared
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-3">
-                        <Select
-                          value={task.targetOwner}
-                          onValueChange={(v) =>
-                            updateTask(index, { targetOwner: v as TaskOwner })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="human">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                Human
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="agent">
-                              <div className="flex items-center gap-2">
-                                <Bot className="h-4 w-4" />
-                                Agent
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="shared">
-                              <div className="flex items-center gap-2">
-                                <Users className="h-4 w-4" />
-                                Shared
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-2 flex justify-end">
+                      {(["manage", "define", "perform", "review"] as ResponsibilityPhase[]).map(
+                        (phase) => (
+                          <div key={phase} className="col-span-2">
+                            <Select
+                              value={task.phases[phase].owner}
+                              onValueChange={(v) =>
+                                updatePhaseOwner(index, phase, v as PhaseOwner)
+                              }
+                            >
+                              <SelectTrigger className="h-8">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="human">
+                                  <div className="flex items-center gap-1">
+                                    <User className="h-3 w-3 text-blue-500" />
+                                    H
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="agent">
+                                  <div className="flex items-center gap-1">
+                                    <Bot className="h-3 w-3 text-purple-500" />
+                                    A
+                                  </div>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )
+                      )}
+                      <div className="col-span-1 flex justify-end">
                         <Button
                           variant="ghost"
                           size="icon"
+                          className="h-8 w-8"
                           onClick={() => removeTask(index)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
@@ -522,11 +555,16 @@ export default function NewHAPPage() {
                     </div>
                   ))}
 
-                  {taskAssignments.length === 0 && (
+                  {tasks.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground">
                       No tasks yet. Click &quot;Add Task&quot; to get started.
                     </div>
                   )}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  <p><strong>M</strong> = Manage (set goals/priorities) | <strong>D</strong> = Define (specify requirements) | <strong>P</strong> = Perform (execute) | <strong>R</strong> = Review (validate)</p>
+                  <p className="mt-1"><strong>H</strong> = Human | <strong>A</strong> = Agent</p>
                 </div>
               </div>
             )}
@@ -583,45 +621,37 @@ export default function NewHAPPage() {
                 </div>
 
                 <div className="space-y-3">
-                  <h4 className="font-medium">Task Assignments ({taskAssignments.length})</h4>
-                  <div className="rounded-lg border">
+                  <h4 className="font-medium">Task Responsibilities ({tasks.length})</h4>
+                  <div className="rounded-lg border overflow-hidden">
                     <table className="w-full text-sm">
                       <thead className="bg-muted/50">
                         <tr>
                           <th className="p-2 text-left">Task</th>
-                          <th className="p-2 text-center">As-Is</th>
-                          <th className="p-2 text-center">To-Be</th>
+                          <th className="p-2 text-center">Manage</th>
+                          <th className="p-2 text-center">Define</th>
+                          <th className="p-2 text-center">Perform</th>
+                          <th className="p-2 text-center">Review</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {taskAssignments.map((task) => (
+                        {tasks.map((task) => (
                           <tr key={task.id} className="border-t">
                             <td className="p-2">{task.taskName}</td>
-                            <td className="p-2 text-center">
-                              <Badge variant="outline">
-                                {TASK_OWNER_METADATA[task.currentOwner].label}
-                              </Badge>
-                            </td>
-                            <td className="p-2 text-center">
-                              <Badge variant="outline">
-                                {TASK_OWNER_METADATA[task.targetOwner].label}
-                              </Badge>
-                            </td>
+                            {(["manage", "define", "perform", "review"] as ResponsibilityPhase[]).map(
+                              (phase) => (
+                                <td key={phase} className="p-2 text-center">
+                                  {task.phases[phase].owner === "human" ? (
+                                    <User className="h-4 w-4 text-blue-500 inline" />
+                                  ) : (
+                                    <Bot className="h-4 w-4 text-purple-500 inline" />
+                                  )}
+                                </td>
+                              )
+                            )}
                           </tr>
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Target Completion Date (Optional)</Label>
-                    <Input
-                      type="date"
-                      value={targetDate}
-                      onChange={(e) => setTargetDate(e.target.value)}
-                    />
                   </div>
                 </div>
 
