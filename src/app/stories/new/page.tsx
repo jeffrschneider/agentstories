@@ -12,6 +12,7 @@ import { ImportPanel } from "@/components/story-preview";
 import { storyEditorActions, useStoryEditor } from "@/stores";
 import { useCreateStory } from "@/hooks";
 import type { AgentStory } from "@/lib/schemas";
+import { validateStory } from "@/lib/schemas";
 
 export default function NewStoryPage() {
   const router = useRouter();
@@ -29,23 +30,18 @@ export default function NewStoryPage() {
 
   const handleSave = async () => {
     const data = editor.draft.data as Record<string, unknown>;
-    const format = editor.draft.format;
 
-    // Basic validation based on format
-    const hasBaseFields = data.identifier && data.name && data.role;
-
-    if (format === 'light') {
-      // Light format needs action and outcome
-      if (!hasBaseFields || !data.action || !data.outcome) {
-        return;
-      }
-    } else {
-      // Full format needs purpose and at least one skill
-      const skills = data.skills as unknown[];
-      if (!hasBaseFields || !data.purpose || !skills || skills.length === 0) {
-        return;
-      }
+    // Run validation on save
+    const result = validateStory(data);
+    if (!result.valid) {
+      storyEditorActions.setValidationErrors(
+        result.errors.map((e) => ({ path: e.path, message: e.message }))
+      );
+      return;
     }
+
+    // Clear any previous validation errors
+    storyEditorActions.clearValidationErrors();
 
     try {
       storyEditorActions.setSaving(true);
@@ -97,7 +93,7 @@ export default function NewStoryPage() {
           </div>
           <Button
             onClick={handleSave}
-            disabled={editor.isSaving || editor.draft.validationErrors.length > 0}
+            disabled={editor.isSaving}
           >
             {editor.isSaving ? (
               <>

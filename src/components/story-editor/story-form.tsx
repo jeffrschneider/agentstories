@@ -10,7 +10,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { storyEditorStore, storyEditorActions } from "@/stores";
-import { validateStory } from "@/lib/schemas";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -55,19 +54,10 @@ export function StoryForm({ onSave }: StoryFormProps) {
   const isFullFormat = editor.draft.format === "full";
   const [activeConfigSection, setActiveConfigSection] = useState<string | null>(null);
 
-  // Validate on changes
+  // Clear validation errors when format changes (validation runs on save)
   useEffect(() => {
-    if (Object.keys(editor.draft.data).length > 0) {
-      const result = validateStory(editor.draft.data);
-      if (!result.valid) {
-        storyEditorActions.setValidationErrors(
-          result.errors.map((e) => ({ path: e.path, message: e.message }))
-        );
-      } else {
-        storyEditorActions.clearValidationErrors();
-      }
-    }
-  }, [editor.draft.data]);
+    storyEditorActions.clearValidationErrors();
+  }, [editor.draft.format]);
 
   // Check if a config section has content
   const sectionHasContent = (sectionId: string): boolean => {
