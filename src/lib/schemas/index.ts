@@ -1,5 +1,59 @@
 // Re-export all schemas and types
 
+// Organization (Domain & Department)
+export {
+  BusinessDomainSchema,
+  DepartmentSchema,
+  createEmptyDomain,
+  createEmptyDepartment,
+  COMMON_BUSINESS_DOMAINS,
+  type BusinessDomain,
+  type Department
+} from './organization';
+
+// Role
+export {
+  ResponsibilitySchema,
+  RoleSchema,
+  createEmptyRole,
+  createEmptyResponsibility,
+  ROLE_LEVEL_METADATA,
+  type Responsibility,
+  type Role
+} from './role';
+
+// Person
+export {
+  RoleAssignmentSchema,
+  PersonSchema,
+  createEmptyPerson,
+  createRoleAssignment,
+  PERSON_STATUS_METADATA,
+  type RoleAssignment,
+  type Person
+} from './person';
+
+// HAP (Human-Agent Pair)
+export {
+  TaskOwnerEnum,
+  TaskAssignmentSchema,
+  HAPStateSchema,
+  TransitionStatusEnum,
+  HumanAgentPairSchema,
+  createEmptyTaskAssignment,
+  createEmptyHAPState,
+  createEmptyHAP,
+  calculateHAPPercentages,
+  determineTransitionStatus,
+  TASK_OWNER_METADATA,
+  TRANSITION_STATUS_METADATA,
+  type TaskOwner,
+  type TaskAssignment,
+  type HAPState,
+  type TransitionStatus,
+  type HumanAgentPair
+} from './hap';
+
 // Trigger
 export {
   TriggerTypeEnum,

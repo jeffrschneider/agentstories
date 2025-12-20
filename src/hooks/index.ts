@@ -37,3 +37,41 @@ export {
   type FieldError,
   type UseFormValidationReturn,
 } from './use-form-validation';
+
+// HAP (Human-Agent Pairs)
+export {
+  hapKeys,
+  // Domains
+  useDomains,
+  useDomain,
+  useCreateDomain,
+  useUpdateDomain,
+  useDeleteDomain,
+  // Departments
+  useDepartments,
+  useDepartment,
+  useCreateDepartment,
+  useUpdateDepartment,
+  useDeleteDepartment,
+  // Roles
+  useRoles,
+  useRole,
+  useCreateRole,
+  useUpdateRole,
+  useDeleteRole,
+  // People
+  usePeople,
+  usePerson,
+  useCreatePerson,
+  useUpdatePerson,
+  useDeletePerson,
+  // HAPs
+  useHAPs,
+  useHAPDetail,
+  useCreateHAP,
+  useUpdateHAP,
+  useDeleteHAP,
+  // Stats
+  useHAPStats,
+  useDepartmentStats,
+} from './use-hap';
