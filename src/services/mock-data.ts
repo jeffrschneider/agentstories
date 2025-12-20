@@ -24,26 +24,350 @@ const mockStories: AgentStory[] = [
     createdBy: 'user-1',
     identifier: 'customer-support-agent',
     name: 'Customer Support Agent',
-    role: 'A customer support specialist that handles incoming support tickets',
-    purpose: 'Provide fast, accurate customer support while maintaining high satisfaction',
+    role: 'A customer support specialist that handles incoming support tickets, resolves common issues, and escalates complex cases to human agents',
+    purpose: 'Provide fast, accurate customer support while maintaining high satisfaction scores and reducing response times',
     autonomyLevel: 'supervised',
-    tags: ['customer-service', 'support', 'tickets'],
+    tags: ['customer-service', 'support', 'tickets', 'chat'],
+
     skills: [
       {
         id: uuid(),
-        name: 'Ticket Analysis',
-        description: 'Analyze incoming tickets and categorize them',
+        name: 'Ticket Triage',
+        description: 'Analyze incoming tickets, extract key information, categorize by type and urgency, and route to appropriate queues',
         domain: 'Customer Service',
         acquired: 'built_in',
         triggers: [
           {
             type: 'message',
-            description: 'New support ticket created in helpdesk system'
+            description: 'New support ticket created in helpdesk system',
+            conditions: ['Ticket status is NEW', 'No agent assigned'],
+            examples: ['Customer submits form on help.company.com', 'Email received at support@company.com']
           }
         ],
+        tools: [
+          {
+            name: 'Helpdesk API',
+            purpose: 'Read ticket details and update status/assignments',
+            permissions: ['read', 'write'],
+            required: true
+          },
+          {
+            name: 'Customer CRM',
+            purpose: 'Look up customer history and account tier',
+            permissions: ['read'],
+            required: false
+          },
+          {
+            name: 'Sentiment Analysis API',
+            purpose: 'Detect customer sentiment and frustration level',
+            permissions: ['execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Parse ticket content and extract key entities (product, issue type, customer ID)',
+            'Query CRM for customer history and account tier',
+            'Run sentiment analysis to gauge urgency',
+            'Apply categorization rules based on content and history',
+            'Assign priority based on customer tier + sentiment + issue type',
+            'Route to appropriate queue or trigger auto-response skill'
+          ]
+        },
+        reasoning: {
+          strategy: 'hybrid',
+          decisionPoints: [
+            {
+              name: 'Priority Assignment',
+              inputs: ['customer_tier', 'sentiment_score', 'issue_category'],
+              approach: 'VIP customers or negative sentiment automatically get P1/P2',
+              outcomes: ['P1-Critical', 'P2-High', 'P3-Medium', 'P4-Low']
+            },
+            {
+              name: 'Auto-Response Eligibility',
+              inputs: ['issue_category', 'confidence_score'],
+              approach: 'Only auto-respond if category confidence > 0.9 and known solution exists',
+              outcomes: ['auto_respond', 'queue_for_human']
+            }
+          ]
+        },
         acceptance: {
-          successConditions: ['Ticket categorized', 'Priority assigned']
+          successConditions: [
+            'Ticket categorized with confidence > 0.7',
+            'Priority assigned',
+            'Routed to queue within 30 seconds',
+            'Customer notified of receipt'
+          ],
+          qualityMetrics: [
+            { name: 'categorization_accuracy', target: '>= 92%' },
+            { name: 'triage_latency', target: '< 30s p95' }
+          ],
+          timeout: '60 seconds'
+        },
+        failureHandling: {
+          modes: [
+            {
+              condition: 'CRM unavailable',
+              recovery: 'Proceed with default customer tier',
+              escalate: false
+            },
+            {
+              condition: 'Categorization confidence < 0.5',
+              recovery: 'Route to human triage queue',
+              escalate: true
+            }
+          ],
+          defaultFallback: 'Assign to general support queue with human review flag',
+          notifyOnFailure: true
+        },
+        guardrails: [
+          {
+            name: 'PII Protection',
+            constraint: 'Never log raw customer messages to analytics',
+            enforcement: 'hard'
+          }
+        ]
+      },
+      {
+        id: uuid(),
+        name: 'Knowledge Base Search',
+        description: 'Search internal knowledge base and documentation to find relevant solutions for customer issues',
+        domain: 'Information Retrieval',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'Ticket categorized and ready for resolution attempt',
+            conditions: ['Triage complete', 'Category has known solutions']
+          }
+        ],
+        tools: [
+          {
+            name: 'Knowledge Base API',
+            purpose: 'Search and retrieve help articles and solutions',
+            permissions: ['read'],
+            required: true
+          },
+          {
+            name: 'Vector Search',
+            purpose: 'Semantic similarity search on documentation',
+            permissions: ['execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'adaptive',
+          capabilities: [
+            'Keyword search against KB index',
+            'Semantic search using embeddings',
+            'Filter by product and category',
+            'Rank results by relevance and recency',
+            'Extract solution steps from articles'
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'At least one relevant article found',
+            'Relevance score > 0.75',
+            'Solution steps extracted'
+          ],
+          qualityMetrics: [
+            { name: 'search_relevance', target: '>= 85%' }
+          ]
         }
+      },
+      {
+        id: uuid(),
+        name: 'Response Generation',
+        description: 'Generate personalized, empathetic responses to customers based on their issue and available solutions',
+        domain: 'Natural Language Generation',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'Solution found in knowledge base',
+            conditions: ['KB search returned results', 'Confidence threshold met']
+          },
+          {
+            type: 'manual',
+            description: 'Human agent requests draft response'
+          }
+        ],
+        tools: [
+          {
+            name: 'Response Template Engine',
+            purpose: 'Apply brand voice and formatting to responses',
+            permissions: ['read', 'execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Analyze customer tone and adjust response style',
+            'Select appropriate greeting based on context',
+            'Summarize solution in clear, step-by-step format',
+            'Add relevant links and resources',
+            'Include empathetic acknowledgment of frustration if detected',
+            'Apply brand voice guidelines'
+          ]
+        },
+        reasoning: {
+          strategy: 'llm_guided',
+          decisionPoints: [
+            {
+              name: 'Tone Selection',
+              inputs: ['customer_sentiment', 'issue_severity', 'interaction_history'],
+              approach: 'Match formality to customer style, increase empathy for frustrated users',
+              outcomes: ['formal', 'friendly', 'empathetic', 'apologetic']
+            }
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Response addresses customer issue',
+            'Tone appropriate for context',
+            'No hallucinated information',
+            'Grammar and spelling correct'
+          ],
+          qualityMetrics: [
+            { name: 'csat_score', target: '>= 4.2/5' },
+            { name: 'resolution_rate', target: '>= 70%' }
+          ]
+        },
+        guardrails: [
+          {
+            name: 'No Promises',
+            constraint: 'Never promise specific timelines or outcomes not in policy',
+            enforcement: 'hard'
+          },
+          {
+            name: 'Factual Only',
+            constraint: 'Only cite information from verified knowledge base',
+            enforcement: 'hard'
+          }
+        ]
+      },
+      {
+        id: uuid(),
+        name: 'Escalation Handler',
+        description: 'Detect when issues need human intervention and smoothly escalate with full context',
+        domain: 'Workflow Management',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'Auto-resolution failed or complex issue detected',
+            conditions: ['Resolution confidence < 0.6', 'OR customer requests human', 'OR VIP account']
+          },
+          {
+            type: 'message',
+            description: 'Customer explicitly asks for human agent'
+          }
+        ],
+        tools: [
+          {
+            name: 'Agent Availability API',
+            purpose: 'Check human agent availability and queue status',
+            permissions: ['read'],
+            required: true
+          },
+          {
+            name: 'Slack Notifier',
+            purpose: 'Alert on-call team for urgent escalations',
+            permissions: ['execute'],
+            required: false,
+            conditions: 'Only for P1 issues outside business hours'
+          }
+        ],
+        behavior: {
+          model: 'workflow',
+          stages: [
+            {
+              name: 'Context Compilation',
+              purpose: 'Gather all relevant context for handoff',
+              transitions: [{ to: 'Agent Matching', when: 'Context complete' }]
+            },
+            {
+              name: 'Agent Matching',
+              purpose: 'Find best available human agent based on skills and load',
+              transitions: [{ to: 'Handoff Execution', when: 'Agent selected' }]
+            },
+            {
+              name: 'Handoff Execution',
+              purpose: 'Transfer conversation with full context summary'
+            }
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Human agent assigned within SLA',
+            'Full conversation context transferred',
+            'Customer notified of handoff'
+          ],
+          qualityMetrics: [
+            { name: 'handoff_time', target: '< 2 minutes' },
+            { name: 'context_completeness', target: '>= 95%' }
+          ]
+        }
+      }
+    ],
+
+    humanInteraction: {
+      mode: 'on_the_loop',
+      escalation: {
+        conditions: 'Customer requests human, VIP account, or confidence below threshold',
+        channel: 'Helpdesk queue with Slack alert for urgent'
+      }
+    },
+    collaboration: {
+      role: 'worker',
+      reportsTo: 'support-orchestrator',
+      peers: [
+        { agent: 'knowledge-updater-agent', interaction: 'pub_sub' },
+        { agent: 'feedback-analyzer-agent', interaction: 'request_response' }
+      ]
+    },
+    memory: {
+      working: ['Current ticket context', 'Customer sentiment trajectory', 'Solution attempts made'],
+      persistent: [
+        {
+          name: 'Customer Interaction History',
+          type: 'relational',
+          purpose: 'Track past interactions to personalize future support',
+          updates: 'append'
+        },
+        {
+          name: 'Resolution Patterns',
+          type: 'kv',
+          purpose: 'Cache successful resolution patterns by issue type',
+          updates: 'full_crud'
+        }
+      ],
+      learning: [
+        {
+          type: 'feedback_loop',
+          signal: 'CSAT scores and resolution confirmations'
+        },
+        {
+          type: 'fine_tuning',
+          signal: 'Edits made by human agents to generated responses'
+        }
+      ]
+    },
+    guardrails: [
+      {
+        name: 'No Refunds Without Approval',
+        constraint: 'Cannot authorize refunds over $50 without human approval',
+        rationale: 'Financial controls',
+        enforcement: 'hard'
+      },
+      {
+        name: 'Privacy Compliance',
+        constraint: 'Never share customer data across accounts',
+        rationale: 'GDPR and privacy compliance',
+        enforcement: 'hard'
       }
     ]
   },
@@ -57,26 +381,382 @@ const mockStories: AgentStory[] = [
     createdBy: 'user-1',
     identifier: 'code-review-assistant',
     name: 'Code Review Assistant',
-    role: 'A code reviewer that analyzes pull requests for quality and best practices',
-    purpose: 'Improve code quality through automated review and suggestions',
+    role: 'A code reviewer that analyzes pull requests for quality, security vulnerabilities, best practices, and provides actionable feedback',
+    purpose: 'Improve code quality and catch issues early through automated review, reducing review burden on senior engineers',
     autonomyLevel: 'collaborative',
-    tags: ['development', 'code-review', 'automation'],
+    tags: ['development', 'code-review', 'automation', 'security'],
+
     skills: [
       {
         id: uuid(),
-        name: 'Code Analysis',
-        description: 'Review code changes for style, bugs, and security issues',
+        name: 'PR Analysis',
+        description: 'Parse pull request content, identify changed files, and prepare context for detailed review',
         domain: 'Development',
         acquired: 'built_in',
         triggers: [
           {
             type: 'resource_change',
-            description: 'Pull request opened or updated in GitHub repository'
+            description: 'Pull request opened or updated in monitored repository',
+            conditions: ['PR not in draft state', 'PR has code changes (not just docs)'],
+            examples: ['New PR opened on main branch', 'Commits pushed to existing PR']
+          },
+          {
+            type: 'message',
+            description: 'User mentions bot in PR comment requesting review'
           }
         ],
+        tools: [
+          {
+            name: 'GitHub API',
+            purpose: 'Fetch PR details, diffs, and file contents',
+            permissions: ['read'],
+            required: true
+          },
+          {
+            name: 'Git CLI',
+            purpose: 'Clone repo and analyze commit history',
+            permissions: ['read', 'execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Fetch PR metadata (author, branch, description)',
+            'Get list of changed files and diff stats',
+            'Filter out generated/vendored files',
+            'Identify file types and applicable review rules',
+            'Load relevant repo configuration (.eslint, .prettierrc, etc.)',
+            'Queue files for appropriate review skills'
+          ]
+        },
         acceptance: {
-          successConditions: ['Code reviewed', 'Comments posted']
+          successConditions: [
+            'All changed files identified',
+            'Review context prepared',
+            'Appropriate review skills triggered'
+          ],
+          timeout: '2 minutes'
         }
+      },
+      {
+        id: uuid(),
+        name: 'Static Analysis',
+        description: 'Run linters, type checkers, and static analysis tools to catch common issues',
+        domain: 'Code Quality',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'PR analysis complete, files ready for review'
+          }
+        ],
+        tools: [
+          {
+            name: 'ESLint Runner',
+            purpose: 'Run JavaScript/TypeScript linting',
+            permissions: ['execute'],
+            required: false,
+            conditions: 'Only for JS/TS files'
+          },
+          {
+            name: 'TypeScript Compiler',
+            purpose: 'Type checking for TypeScript projects',
+            permissions: ['execute'],
+            required: false,
+            conditions: 'Only for TS projects'
+          },
+          {
+            name: 'Semgrep',
+            purpose: 'Pattern-based code analysis',
+            permissions: ['execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'adaptive',
+          capabilities: [
+            'Run ESLint with project configuration',
+            'Execute TypeScript type checking',
+            'Run Semgrep security rules',
+            'Check for complexity metrics (cyclomatic complexity)',
+            'Detect code duplication',
+            'Aggregate and deduplicate findings'
+          ]
+        },
+        reasoning: {
+          strategy: 'rule_based',
+          decisionPoints: [
+            {
+              name: 'Tool Selection',
+              inputs: ['file_extension', 'project_config'],
+              approach: 'Select appropriate linters based on file types and project setup',
+              outcomes: ['eslint', 'tsc', 'pylint', 'golint', 'none']
+            }
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'All applicable tools executed',
+            'Results parsed and categorized',
+            'No tool crashes or timeouts'
+          ],
+          qualityMetrics: [
+            { name: 'false_positive_rate', target: '< 15%' }
+          ],
+          timeout: '5 minutes'
+        },
+        failureHandling: {
+          modes: [
+            {
+              condition: 'Linter timeout',
+              recovery: 'Skip linter, note in review that static analysis was partial',
+              escalate: false
+            }
+          ],
+          defaultFallback: 'Continue with available results',
+          notifyOnFailure: false
+        }
+      },
+      {
+        id: uuid(),
+        name: 'Security Review',
+        description: 'Scan for security vulnerabilities, secrets, and unsafe patterns',
+        domain: 'Security',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'PR ready for security review'
+          }
+        ],
+        tools: [
+          {
+            name: 'Secret Scanner',
+            purpose: 'Detect accidentally committed secrets and credentials',
+            permissions: ['read', 'execute'],
+            required: true
+          },
+          {
+            name: 'Dependency Checker',
+            purpose: 'Check for vulnerable dependencies',
+            permissions: ['read', 'execute'],
+            required: true
+          },
+          {
+            name: 'SAST Engine',
+            purpose: 'Static application security testing',
+            permissions: ['execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Scan diff for hardcoded secrets (API keys, passwords)',
+            'Check for new dependencies and their vulnerability status',
+            'Analyze code for OWASP Top 10 vulnerabilities',
+            'Check for SQL injection, XSS, command injection patterns',
+            'Verify authentication/authorization patterns',
+            'Generate security finding report'
+          ]
+        },
+        reasoning: {
+          strategy: 'hybrid',
+          decisionPoints: [
+            {
+              name: 'Severity Classification',
+              inputs: ['vulnerability_type', 'exploitability', 'file_location'],
+              approach: 'Apply CVSS-like scoring, consider if code is in critical path',
+              outcomes: ['critical', 'high', 'medium', 'low', 'info']
+            }
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'No critical/high severity issues (or flagged for blocking)',
+            'All secrets patterns checked',
+            'Dependency audit complete'
+          ]
+        },
+        guardrails: [
+          {
+            name: 'Block on Secrets',
+            constraint: 'Must flag any detected secrets as blocking issue',
+            enforcement: 'hard'
+          },
+          {
+            name: 'Block on Critical CVE',
+            constraint: 'Must flag new dependencies with critical CVEs',
+            enforcement: 'hard'
+          }
+        ]
+      },
+      {
+        id: uuid(),
+        name: 'Best Practices Review',
+        description: 'Analyze code for design patterns, maintainability, and adherence to team conventions',
+        domain: 'Code Quality',
+        acquired: 'learned',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'Static analysis complete'
+          }
+        ],
+        tools: [
+          {
+            name: 'LLM Code Analyzer',
+            purpose: 'AI-powered code comprehension and feedback',
+            permissions: ['execute'],
+            required: true
+          },
+          {
+            name: 'Team Guidelines DB',
+            purpose: 'Retrieve team-specific coding conventions',
+            permissions: ['read'],
+            required: false
+          }
+        ],
+        behavior: {
+          model: 'adaptive',
+          capabilities: [
+            'Analyze function complexity and suggest refactoring',
+            'Check naming conventions and consistency',
+            'Evaluate test coverage for changed code',
+            'Suggest documentation improvements',
+            'Identify potential performance issues',
+            'Check for proper error handling'
+          ]
+        },
+        reasoning: {
+          strategy: 'llm_guided',
+          decisionPoints: [
+            {
+              name: 'Suggestion Priority',
+              inputs: ['issue_type', 'code_location', 'change_size'],
+              approach: 'Prioritize actionable feedback, avoid nitpicking small PRs',
+              outcomes: ['must_fix', 'should_fix', 'consider', 'nit']
+            }
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Feedback generated for significant changes',
+            'Suggestions are actionable and specific',
+            'No more than 10 comments per PR (avoid overwhelming)'
+          ],
+          qualityMetrics: [
+            { name: 'feedback_acceptance_rate', target: '>= 60%' }
+          ]
+        },
+        guardrails: [
+          {
+            name: 'Constructive Only',
+            constraint: 'All feedback must be constructive with suggested fix',
+            enforcement: 'soft'
+          },
+          {
+            name: 'Respect Author',
+            constraint: 'Avoid condescending or harsh language',
+            enforcement: 'hard'
+          }
+        ]
+      },
+      {
+        id: uuid(),
+        name: 'Review Summary',
+        description: 'Compile all findings into a coherent review summary and post to PR',
+        domain: 'Communication',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'All review skills complete'
+          }
+        ],
+        tools: [
+          {
+            name: 'GitHub API',
+            purpose: 'Post review comments and summary',
+            permissions: ['write'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Aggregate findings from all review skills',
+            'Deduplicate and prioritize issues',
+            'Generate summary with issue counts by severity',
+            'Format inline comments for specific line feedback',
+            'Determine overall review verdict (approve, request changes, comment)',
+            'Post review to GitHub'
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Review posted to PR',
+            'All blocking issues clearly marked',
+            'Summary provides actionable next steps'
+          ]
+        }
+      }
+    ],
+
+    humanInteraction: {
+      mode: 'in_the_loop',
+      escalation: {
+        conditions: 'Architectural changes, security critical code, or author disputes finding',
+        channel: 'Request senior engineer review via GitHub review request'
+      }
+    },
+    collaboration: {
+      role: 'peer',
+      peers: [
+        { agent: 'ci-pipeline-agent', interaction: 'pub_sub' },
+        { agent: 'deployment-agent', interaction: 'request_response' }
+      ]
+    },
+    memory: {
+      working: ['Current PR context', 'Review findings accumulated'],
+      persistent: [
+        {
+          name: 'Review History',
+          type: 'relational',
+          purpose: 'Track past reviews for learning and consistency',
+          updates: 'append'
+        },
+        {
+          name: 'Team Preferences',
+          type: 'kv',
+          purpose: 'Store team-specific rules and preferences learned over time',
+          updates: 'full_crud'
+        }
+      ],
+      learning: [
+        {
+          type: 'feedback_loop',
+          signal: 'Which suggestions were accepted vs dismissed'
+        },
+        {
+          type: 'fine_tuning',
+          signal: 'Manual reviews by senior engineers'
+        }
+      ]
+    },
+    guardrails: [
+      {
+        name: 'No Auto-Merge',
+        constraint: 'Can approve but never auto-merge PRs',
+        rationale: 'Human must make final merge decision',
+        enforcement: 'hard'
+      },
+      {
+        name: 'Security Blocking',
+        constraint: 'Must request changes if security issues found',
+        rationale: 'Security issues should block merge',
+        enforcement: 'hard'
       }
     ]
   },
