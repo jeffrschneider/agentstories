@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, Loader2, Trash2, Copy, Eye, Download, Pencil, User, Zap } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Trash2, Copy, Eye, Download, User, Zap } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,19 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import type { AgentStory } from "@/lib/schemas";
 
 export default function EditStoryPage() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const [activeTab, setActiveTab] = useState("edit");
 
   const editor = useStoryEditor();
   const { data: story, isLoading } = useStory(id);
@@ -100,32 +106,74 @@ export default function EditStoryPage() {
 
   return (
     <AppShell className="p-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        {/* Header */}
+      <div className="mx-auto max-w-4xl space-y-4">
+        {/* Compact Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/stories">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">
-                {story.name || "Untitled Story"}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Last updated: {new Date(story.updatedAt).toLocaleString()}
-              </p>
-            </div>
+            <h1 className="text-lg font-semibold truncate max-w-[300px]">
+              {story.name || "Untitled Story"}
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handleDuplicate}>
+          <div className="flex items-center gap-1">
+            {/* Preview Sheet */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" title="Preview">
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[600px] sm:max-w-[600px] overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Preview</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4">
+                  {currentStoryData.id ? (
+                    <StoryPreview story={currentStoryData} />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      Loading preview...
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            {/* Export Sheet */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" title="Export">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[600px] sm:max-w-[600px] overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Export</SheetTitle>
+                </SheetHeader>
+                <div className="mt-4">
+                  {currentStoryData.id ? (
+                    <ExportPanel story={currentStoryData} />
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      Loading export...
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+
+            <Button variant="ghost" size="icon" onClick={handleDuplicate} title="Duplicate">
               <Copy className="h-4 w-4" />
             </Button>
 
+            {/* Delete Dialog */}
             <Dialog>
               <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
+                <Button variant="ghost" size="icon" title="Delete">
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </DialogTrigger>
@@ -147,87 +195,48 @@ export default function EditStoryPage() {
 
             <Button
               onClick={handleSave}
+              size="sm"
               disabled={editor.isSaving || editor.draft.validationErrors.length > 0}
             >
               {editor.isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
+                  <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  Saving
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save Changes
+                  <Save className="mr-1 h-4 w-4" />
+                  Save
                 </>
               )}
             </Button>
           </div>
         </div>
 
-        {/* Tabs for Edit/Preview/Export */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="edit" className="flex items-center gap-2">
-              <Pencil className="h-4 w-4" />
-              Edit
+        {/* Validation errors */}
+        {editor.draft.validationErrors.length > 0 && (
+          <ValidationPanel errors={editor.draft.validationErrors} />
+        )}
+
+        {/* Agent/Skills Tabs - Main content */}
+        <Tabs defaultValue="agent" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="agent" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Agent
             </TabsTrigger>
-            <TabsTrigger value="preview" className="flex items-center gap-2">
-              <Eye className="h-4 w-4" />
-              Preview
-            </TabsTrigger>
-            <TabsTrigger value="export" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Export
+            <TabsTrigger value="skills" className="flex items-center gap-2">
+              <Zap className="h-4 w-4" />
+              Skills
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="edit" className="mt-6">
-            {/* Validation errors */}
-            {editor.draft.validationErrors.length > 0 && (
-              <ValidationPanel errors={editor.draft.validationErrors} />
-            )}
-
-            {/* Agent/Skills Tabs */}
-            <Tabs defaultValue="agent" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="agent" className="flex items-center gap-2">
-                  <User className="h-4 w-4" />
-                  Agent
-                </TabsTrigger>
-                <TabsTrigger value="skills" className="flex items-center gap-2">
-                  <Zap className="h-4 w-4" />
-                  Skills
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="agent" className="space-y-6">
-                <AgentSection />
-              </TabsContent>
-
-              <TabsContent value="skills" className="space-y-6">
-                <SkillsSection />
-              </TabsContent>
-            </Tabs>
+          <TabsContent value="agent" className="space-y-4">
+            <AgentSection />
           </TabsContent>
 
-          <TabsContent value="preview" className="mt-6">
-            {currentStoryData.id ? (
-              <StoryPreview story={currentStoryData} />
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                Loading preview...
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="export" className="mt-6">
-            {currentStoryData.id ? (
-              <ExportPanel story={currentStoryData} />
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                Loading export...
-              </div>
-            )}
+          <TabsContent value="skills" className="space-y-4">
+            <SkillsSection />
           </TabsContent>
         </Tabs>
       </div>
