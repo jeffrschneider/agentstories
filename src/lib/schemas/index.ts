@@ -33,25 +33,50 @@ export {
   type Person
 } from './person';
 
-// HAP (Human-Agent Pair)
+// HAP (Human-Agent Pair) - Responsibility Phase Model
 export {
-  TaskOwnerEnum,
-  TaskAssignmentSchema,
-  HAPStateSchema,
-  TransitionStatusEnum,
+  // Enums
+  ResponsibilityPhaseEnum,
+  PhaseOwnerEnum,
+  TaskIntegrationStatusEnum,
+  SkillRequirementStatusEnum,
+  HAPIntegrationStatusEnum,
+  // Schemas
+  PhaseAssignmentSchema,
+  TaskResponsibilitySchema,
+  SkillRequirementSchema,
+  HAPMetricsSchema,
   HumanAgentPairSchema,
-  createEmptyTaskAssignment,
-  createEmptyHAPState,
+  // Helper functions
+  createPhaseAssignment,
+  createEmptyTaskResponsibility,
+  createTaskFromPreset,
+  applyPresetToTask,
   createEmptyHAP,
-  calculateHAPPercentages,
-  determineTransitionStatus,
-  TASK_OWNER_METADATA,
-  TRANSITION_STATUS_METADATA,
-  type TaskOwner,
-  type TaskAssignment,
-  type HAPState,
-  type TransitionStatus,
-  type HumanAgentPair
+  createSkillRequirement,
+  calculateHAPMetrics,
+  determineIntegrationStatus,
+  determineTaskIntegrationStatus,
+  calculatePhaseDistribution,
+  migrateOldTaskOwner,
+  // Constants
+  RESPONSIBILITY_PRESETS,
+  RESPONSIBILITY_PHASE_METADATA,
+  PHASE_OWNER_METADATA,
+  INTEGRATION_STATUS_METADATA,
+  SKILL_REQUIREMENT_STATUS_METADATA,
+  // Types
+  type ResponsibilityPhase,
+  type PhaseOwner,
+  type PhaseAssignment,
+  type TaskIntegrationStatus,
+  type TaskResponsibility,
+  type SkillRequirementStatus,
+  type SkillRequirement,
+  type HAPIntegrationStatus,
+  type HAPMetrics,
+  type HumanAgentPair,
+  type ResponsibilityPreset
 } from './hap';
 
 // Trigger

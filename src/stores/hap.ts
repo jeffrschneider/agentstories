@@ -5,9 +5,21 @@ import type {
   Role,
   Person,
   HumanAgentPair,
-  TaskAssignment,
-  TransitionStatus,
+  TaskResponsibility,
+  HAPIntegrationStatus,
+  SkillRequirement,
+  ResponsibilityPhase,
+  PhaseOwner,
+  ResponsibilityPreset,
 } from '@/lib/schemas';
+import {
+  createEmptyTaskResponsibility,
+  applyPresetToTask,
+  createSkillRequirement,
+  calculateHAPMetrics,
+  determineIntegrationStatus,
+  RESPONSIBILITY_PRESETS,
+} from '@/lib/schemas/hap';
 
 // HAP Editor Draft
 interface HAPDraft {
@@ -15,10 +27,10 @@ interface HAPDraft {
   personId: string | null;
   roleId: string | null;
   agentStoryId: string | null;
-  taskAssignments: TaskAssignment[];
-  transitionStatus: TransitionStatus;
+  tasks: TaskResponsibility[];
+  skillRequirements: SkillRequirement[];
+  integrationStatus: HAPIntegrationStatus;
   notes: string;
-  targetCompletionDate: string | null;
 }
 
 // Filter state for HAP list
@@ -26,7 +38,7 @@ interface HAPFilters {
   domainId: string | null;
   departmentId: string | null;
   personId: string | null;
-  transitionStatus: TransitionStatus | null;
+  integrationStatus: HAPIntegrationStatus | null;
   search: string;
 }
 
@@ -76,10 +88,10 @@ const initialDraft: HAPDraft = {
   personId: null,
   roleId: null,
   agentStoryId: null,
-  taskAssignments: [],
-  transitionStatus: 'not_started',
+  tasks: [],
+  skillRequirements: [],
+  integrationStatus: 'not_started',
   notes: '',
-  targetCompletionDate: null,
 };
 
 export const hapStore = proxy<HAPState>({
@@ -89,7 +101,7 @@ export const hapStore = proxy<HAPState>({
     domainId: null,
     departmentId: null,
     personId: null,
-    transitionStatus: null,
+    integrationStatus: null,
     search: '',
   },
 
@@ -134,7 +146,7 @@ export const hapActions = {
       domainId: null,
       departmentId: null,
       personId: null,
-      transitionStatus: null,
+      integrationStatus: null,
       search: '',
     };
   },
@@ -185,10 +197,10 @@ export const hapActions = {
       personId: hap.personId,
       roleId: hap.roleId,
       agentStoryId: hap.agentStoryId,
-      taskAssignments: [...hap.asIs.taskAssignments],
-      transitionStatus: hap.transitionStatus,
+      tasks: [...hap.tasks],
+      skillRequirements: [...hap.skillRequirements],
+      integrationStatus: hap.integrationStatus,
       notes: hap.notes || '',
-      targetCompletionDate: hap.targetCompletionDate || null,
     };
     hapStore.isEditing = true;
     hapStore.isDirty = false;
@@ -199,24 +211,191 @@ export const hapActions = {
     hapStore.isDirty = true;
   },
 
-  addTaskAssignment: (task: TaskAssignment) => {
-    hapStore.draft.taskAssignments.push(task);
+  // Task Responsibility actions
+  addTask: (taskName: string) => {
+    const task = createEmptyTaskResponsibility(taskName);
+    hapStore.draft.tasks.push(task);
     hapStore.isDirty = true;
   },
 
-  updateTaskAssignment: (index: number, task: Partial<TaskAssignment>) => {
-    if (index >= 0 && index < hapStore.draft.taskAssignments.length) {
-      hapStore.draft.taskAssignments[index] = {
-        ...hapStore.draft.taskAssignments[index],
-        ...task,
+  updateTask: (taskId: string, updates: Partial<TaskResponsibility>) => {
+    const index = hapStore.draft.tasks.findIndex(t => t.id === taskId);
+    if (index >= 0) {
+      hapStore.draft.tasks[index] = {
+        ...hapStore.draft.tasks[index],
+        ...updates,
       };
       hapStore.isDirty = true;
     }
   },
 
-  removeTaskAssignment: (index: number) => {
-    if (index >= 0 && index < hapStore.draft.taskAssignments.length) {
-      hapStore.draft.taskAssignments.splice(index, 1);
+  removeTask: (taskId: string) => {
+    const index = hapStore.draft.tasks.findIndex(t => t.id === taskId);
+    if (index >= 0) {
+      hapStore.draft.tasks.splice(index, 1);
+      // Also remove any skill requirements for this task
+      hapStore.draft.skillRequirements = hapStore.draft.skillRequirements.filter(
+        r => r.taskId !== taskId
+      );
+      hapStore.isDirty = true;
+    }
+  },
+
+  // Phase assignment actions
+  setPhaseOwner: (
+    taskId: string,
+    phase: ResponsibilityPhase,
+    owner: PhaseOwner
+  ) => {
+    const taskIndex = hapStore.draft.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex >= 0) {
+      const task = hapStore.draft.tasks[taskIndex];
+      const previousOwner = task.phases[phase].owner;
+
+      // Update the phase owner
+      task.phases[phase] = {
+        ...task.phases[phase],
+        owner,
+        // Clear skillId if switching from agent to human
+        skillId: owner === 'human' ? null : task.phases[phase].skillId,
+      };
+
+      // If switching to agent and no skill is linked, create a skill requirement
+      if (owner === 'agent' && previousOwner === 'human') {
+        const agentStoryId = hapStore.draft.agentStoryId;
+        if (agentStoryId && !task.phases[phase].skillId) {
+          // Check if requirement already exists
+          const existingReq = hapStore.draft.skillRequirements.find(
+            r => r.taskId === taskId && r.phase === phase
+          );
+          if (!existingReq) {
+            const req = createSkillRequirement(
+              hapStore.draft.id || crypto.randomUUID(),
+              taskId,
+              task.taskName,
+              phase,
+              agentStoryId,
+              task.description
+            );
+            hapStore.draft.skillRequirements.push(req);
+          }
+        }
+      }
+
+      // If switching to human, remove any pending skill requirement for this phase
+      if (owner === 'human' && previousOwner === 'agent') {
+        hapStore.draft.skillRequirements = hapStore.draft.skillRequirements.filter(
+          r => !(r.taskId === taskId && r.phase === phase && r.status === 'pending')
+        );
+      }
+
+      hapStore.isDirty = true;
+    }
+  },
+
+  applyPresetToTask: (taskId: string, preset: ResponsibilityPreset) => {
+    const taskIndex = hapStore.draft.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex >= 0) {
+      const task = hapStore.draft.tasks[taskIndex];
+      const updatedTask = applyPresetToTask(task, preset);
+      hapStore.draft.tasks[taskIndex] = updatedTask;
+
+      // Create skill requirements for any new agent phases
+      const agentStoryId = hapStore.draft.agentStoryId;
+      if (agentStoryId) {
+        const presetConfig = RESPONSIBILITY_PRESETS[preset];
+        const phases: ResponsibilityPhase[] = ['manage', 'define', 'perform', 'review'];
+
+        for (const phase of phases) {
+          if (presetConfig.phases[phase] === 'agent' && !updatedTask.phases[phase].skillId) {
+            // Check if requirement already exists
+            const existingReq = hapStore.draft.skillRequirements.find(
+              r => r.taskId === taskId && r.phase === phase
+            );
+            if (!existingReq) {
+              const req = createSkillRequirement(
+                hapStore.draft.id || crypto.randomUUID(),
+                taskId,
+                updatedTask.taskName,
+                phase,
+                agentStoryId,
+                updatedTask.description
+              );
+              hapStore.draft.skillRequirements.push(req);
+            }
+          }
+        }
+      }
+
+      hapStore.isDirty = true;
+    }
+  },
+
+  applyPresetToAllTasks: (preset: ResponsibilityPreset) => {
+    for (const task of hapStore.draft.tasks) {
+      hapActions.applyPresetToTask(task.id, preset);
+    }
+  },
+
+  // Skill link actions
+  linkSkillToPhase: (taskId: string, phase: ResponsibilityPhase, skillId: string) => {
+    const taskIndex = hapStore.draft.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex >= 0) {
+      hapStore.draft.tasks[taskIndex].phases[phase].skillId = skillId;
+
+      // Update any matching skill requirement to applied
+      const reqIndex = hapStore.draft.skillRequirements.findIndex(
+        r => r.taskId === taskId && r.phase === phase
+      );
+      if (reqIndex >= 0) {
+        hapStore.draft.skillRequirements[reqIndex] = {
+          ...hapStore.draft.skillRequirements[reqIndex],
+          status: 'applied',
+          appliedAt: new Date().toISOString(),
+        };
+      }
+
+      hapStore.isDirty = true;
+    }
+  },
+
+  // Skill requirement actions
+  updateSkillRequirementStatus: (
+    requirementId: string,
+    status: SkillRequirement['status']
+  ) => {
+    const index = hapStore.draft.skillRequirements.findIndex(r => r.id === requirementId);
+    if (index >= 0) {
+      hapStore.draft.skillRequirements[index] = {
+        ...hapStore.draft.skillRequirements[index],
+        status,
+        updatedAt: new Date().toISOString(),
+      };
+      hapStore.isDirty = true;
+    }
+  },
+
+  setGeneratedSkill: (requirementId: string, generatedSkill: unknown) => {
+    const index = hapStore.draft.skillRequirements.findIndex(r => r.id === requirementId);
+    if (index >= 0) {
+      hapStore.draft.skillRequirements[index] = {
+        ...hapStore.draft.skillRequirements[index],
+        generatedSkill,
+        status: 'ready',
+        updatedAt: new Date().toISOString(),
+      };
+      hapStore.isDirty = true;
+    }
+  },
+
+  dismissSkillRequirement: (requirementId: string) => {
+    const index = hapStore.draft.skillRequirements.findIndex(r => r.id === requirementId);
+    if (index >= 0) {
+      hapStore.draft.skillRequirements[index] = {
+        ...hapStore.draft.skillRequirements[index],
+        status: 'rejected',
+        updatedAt: new Date().toISOString(),
+      };
       hapStore.isDirty = true;
     }
   },
@@ -326,8 +505,8 @@ export const hapSelectors = {
       result = result.filter(h => h.personId === hapStore.filters.personId);
     }
 
-    if (hapStore.filters.transitionStatus) {
-      result = result.filter(h => h.transitionStatus === hapStore.filters.transitionStatus);
+    if (hapStore.filters.integrationStatus) {
+      result = result.filter(h => h.integrationStatus === hapStore.filters.integrationStatus);
     }
 
     if (hapStore.filters.search) {
@@ -347,15 +526,100 @@ export const hapSelectors = {
   },
 
   // Get stats for current view
-  getTransitionStats: () => {
+  getIntegrationStats: () => {
     const haps = hapStore.cache.haps;
     return {
       total: haps.length,
-      notStarted: haps.filter(h => h.transitionStatus === 'not_started').length,
-      planned: haps.filter(h => h.transitionStatus === 'planned').length,
-      inProgress: haps.filter(h => h.transitionStatus === 'in_progress').length,
-      blocked: haps.filter(h => h.transitionStatus === 'blocked').length,
-      completed: haps.filter(h => h.transitionStatus === 'completed').length,
+      notStarted: haps.filter(h => h.integrationStatus === 'not_started').length,
+      planning: haps.filter(h => h.integrationStatus === 'planning').length,
+      skillsPending: haps.filter(h => h.integrationStatus === 'skills_pending').length,
+      ready: haps.filter(h => h.integrationStatus === 'ready').length,
+      active: haps.filter(h => h.integrationStatus === 'active').length,
+      paused: haps.filter(h => h.integrationStatus === 'paused').length,
+    };
+  },
+
+  // Get aggregate metrics across all HAPs
+  getAggregateMetrics: () => {
+    const haps = hapStore.cache.haps;
+    let totalTasks = 0;
+    let totalPhases = 0;
+    let humanPhases = 0;
+    let agentPhases = 0;
+    let agentPhasesWithSkills = 0;
+    let pendingSkillRequirements = 0;
+
+    for (const hap of haps) {
+      const metrics = calculateHAPMetrics(hap);
+      totalTasks += metrics.totalTasks;
+      totalPhases += metrics.totalPhases;
+      humanPhases += metrics.humanPhases;
+      agentPhases += metrics.agentPhases;
+      agentPhasesWithSkills += metrics.agentPhasesWithSkills;
+      pendingSkillRequirements += metrics.pendingSkillRequirements;
+    }
+
+    return {
+      totalHAPs: haps.length,
+      totalTasks,
+      totalPhases,
+      humanPhases,
+      agentPhases,
+      agentPhasesWithSkills,
+      agentPhasesPendingSkills: agentPhases - agentPhasesWithSkills,
+      pendingSkillRequirements,
+      humanPercent: totalPhases > 0 ? Math.round((humanPhases / totalPhases) * 100) : 100,
+      agentPercent: totalPhases > 0 ? Math.round((agentPhases / totalPhases) * 100) : 0,
+    };
+  },
+
+  // Get all pending skill requirements across all HAPs
+  getAllPendingSkillRequirements: (): SkillRequirement[] => {
+    const allRequirements: SkillRequirement[] = [];
+    for (const hap of hapStore.cache.haps) {
+      const pending = hap.skillRequirements.filter(
+        r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
+      );
+      allRequirements.push(...pending);
+    }
+    return allRequirements;
+  },
+
+  // Get draft metrics
+  getDraftMetrics: () => {
+    if (hapStore.draft.tasks.length === 0) {
+      return {
+        totalTasks: 0,
+        totalPhases: 0,
+        humanPhases: 0,
+        agentPhases: 0,
+        pendingSkillRequirements: hapStore.draft.skillRequirements.filter(
+          r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
+        ).length,
+      };
+    }
+
+    let humanPhases = 0;
+    let agentPhases = 0;
+
+    for (const task of hapStore.draft.tasks) {
+      for (const phase of Object.values(task.phases)) {
+        if (phase.owner === 'human') {
+          humanPhases++;
+        } else {
+          agentPhases++;
+        }
+      }
+    }
+
+    return {
+      totalTasks: hapStore.draft.tasks.length,
+      totalPhases: hapStore.draft.tasks.length * 4,
+      humanPhases,
+      agentPhases,
+      pendingSkillRequirements: hapStore.draft.skillRequirements.filter(
+        r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
+      ).length,
     };
   },
 };
