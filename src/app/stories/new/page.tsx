@@ -53,35 +53,31 @@ export default function NewStoryPage() {
 
   return (
     <AppShell className="p-6">
-      <div className="mx-auto max-w-4xl space-y-6">
-        {/* Header */}
+      <div className="mx-auto max-w-4xl space-y-4">
+        {/* Compact Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <Button variant="ghost" size="icon" asChild>
               <Link href="/stories">
                 <ArrowLeft className="h-4 w-4" />
               </Link>
             </Button>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">New Agent Story</h1>
-              <p className="text-sm text-muted-foreground">
-                Define your agent and its skills
-              </p>
-            </div>
+            <h1 className="text-lg font-semibold">New Agent Story</h1>
           </div>
           <Button
             onClick={handleSave}
+            size="sm"
             disabled={editor.isSaving}
           >
             {editor.isSaving ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                Saving
               </>
             ) : (
               <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Story
+                <Save className="mr-1 h-4 w-4" />
+                Save
               </>
             )}
           </Button>
@@ -93,7 +89,7 @@ export default function NewStoryPage() {
         )}
 
         {/* Agent/Skills Tabs */}
-        <Tabs defaultValue="agent" className="space-y-6">
+        <Tabs defaultValue="agent" className="space-y-4">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="agent" className="flex items-center gap-2">
               <User className="h-4 w-4" />
@@ -105,11 +101,11 @@ export default function NewStoryPage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="agent" className="space-y-6">
+          <TabsContent value="agent" className="space-y-4">
             <AgentSection />
           </TabsContent>
 
-          <TabsContent value="skills" className="space-y-6">
+          <TabsContent value="skills" className="space-y-4">
             <SkillsSection />
           </TabsContent>
         </Tabs>
