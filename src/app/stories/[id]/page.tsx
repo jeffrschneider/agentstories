@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, Loader2, Trash2, Copy, Eye, Download, Pencil } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Trash2, Copy, Eye, Download, Pencil, User, Zap } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { StoryForm } from "@/components/story-editor";
+import { AgentSection, SkillsSection } from "@/components/story-editor";
+import { ValidationPanel } from "@/components/story-editor/validation-panel";
 import { StoryPreview, ExportPanel } from "@/components/story-preview";
 import { storyEditorActions, useStoryEditor } from "@/stores";
 import { useStory, useUpdateStory, useDeleteStory, useDuplicateStory } from "@/hooks";
@@ -181,7 +182,32 @@ export default function EditStoryPage() {
           </TabsList>
 
           <TabsContent value="edit" className="mt-6">
-            <StoryForm onSave={handleSave} />
+            {/* Validation errors */}
+            {editor.draft.validationErrors.length > 0 && (
+              <ValidationPanel errors={editor.draft.validationErrors} />
+            )}
+
+            {/* Agent/Skills Tabs */}
+            <Tabs defaultValue="agent" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="agent" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Agent
+                </TabsTrigger>
+                <TabsTrigger value="skills" className="flex items-center gap-2">
+                  <Zap className="h-4 w-4" />
+                  Skills
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="agent" className="space-y-6">
+                <AgentSection />
+              </TabsContent>
+
+              <TabsContent value="skills" className="space-y-6">
+                <SkillsSection />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
 
           <TabsContent value="preview" className="mt-6">
