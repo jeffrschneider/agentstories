@@ -3,3 +3,4 @@ export { storyEditorStore, storyEditorActions, useStoryEditor } from './story-ed
 export { favoritesStore, favoritesActions, useFavorites } from './favorites';
 export { activityStore, activityActions, useActivity, type Activity, type ActivityType } from './activity';
 export { tagsStore, tagsActions, useTags, getTagColor, TAG_COLORS, type TagInfo } from './tags';
+export { hapStore, hapActions, useHAP, hapSelectors } from './hap';
