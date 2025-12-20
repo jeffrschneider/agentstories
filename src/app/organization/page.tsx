@@ -117,7 +117,7 @@ export default function OrganizationPage() {
               </Button>
             </div>
             <Button variant="outline" asChild>
-              <Link href="/organization/haps">
+              <Link href="/haps">
                 <Bot className="mr-2 h-4 w-4" />
                 View HAPs
               </Link>
@@ -565,7 +565,7 @@ export default function OrganizationPage() {
                   Human-Agent Pairs in {selectedDept?.name}
                 </h2>
                 <Button size="sm" asChild>
-                  <Link href="/organization/haps/new">
+                  <Link href="/haps/new">
                     <Plus className="mr-2 h-4 w-4" />
                     Create HAP
                   </Link>
@@ -625,7 +625,7 @@ export default function OrganizationPage() {
                                 {hap.tasks.length} tasks
                               </span>
                               <Link
-                                href={`/organization/haps/${hap.id}`}
+                                href={`/haps/${hap.id}`}
                                 className="text-primary hover:underline"
                               >
                                 View details
@@ -645,7 +645,7 @@ export default function OrganizationPage() {
                       Create Human-Agent Pairs to start AI transformation
                     </p>
                     <Button className="mt-4" asChild>
-                      <Link href="/organization/haps/new">
+                      <Link href="/haps/new">
                         <Plus className="mr-2 h-4 w-4" />
                         Create HAP
                       </Link>

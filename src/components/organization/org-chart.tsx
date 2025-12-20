@@ -210,7 +210,7 @@ export function OrgChart({
                                 </div>
                               }
                               label={person?.name || "Unknown"}
-                              href={`/organization/haps/${hap.id}`}
+                              href={`/haps/${hap.id}`}
                               progress={progress}
                               badge={
                                 <StatusBadge

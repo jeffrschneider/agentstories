@@ -2,7 +2,6 @@
 
 import { use, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Bot,
@@ -10,12 +9,7 @@ import {
   Save,
   Loader2,
   Plus,
-  Trash2,
-  CheckCircle,
   ArrowRight,
-  Target,
-  FileText,
-  Play,
   Timer,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
@@ -28,10 +22,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -40,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TaskResponsibilityGrid } from "@/components/hap";
 import {
   useHAPDetail,
   useUpdateHAP,
@@ -50,7 +43,6 @@ import {
 import {
   INTEGRATION_STATUS_METADATA,
   RESPONSIBILITY_PHASE_METADATA,
-  PHASE_OWNER_METADATA,
   RESPONSIBILITY_PRESETS,
   calculatePhaseDistribution,
   createEmptyTaskResponsibility,
@@ -69,7 +61,6 @@ export default function HAPDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const router = useRouter();
 
   const { data: hap, isLoading } = useHAPDetail(id);
   const updateHAP = useUpdateHAP();
@@ -83,7 +74,6 @@ export default function HAPDetailPage({
   const [integrationStatus, setIntegrationStatus] = useState<HAPIntegrationStatus>("not_started");
   const [notes, setNotes] = useState("");
 
-  // Initialize edit state when HAP loads
   const initEditState = () => {
     if (hap) {
       setTasks([...hap.tasks]);
@@ -95,64 +85,37 @@ export default function HAPDetailPage({
 
   const handleSave = async () => {
     if (!hap) return;
-
     await updateHAP.mutateAsync({
       id: hap.id,
-      data: {
-        tasks,
-        integrationStatus,
-        notes,
-      },
+      data: { tasks, integrationStatus, notes },
     });
-
     setEditMode(false);
   };
 
-  const updatePhaseOwner = (
-    taskIndex: number,
-    phase: ResponsibilityPhase,
-    owner: PhaseOwner
-  ) => {
+  const updatePhaseOwner = (index: number, phase: ResponsibilityPhase, owner: PhaseOwner) => {
     const updated = [...tasks];
-    updated[taskIndex] = {
-      ...updated[taskIndex],
+    updated[index] = {
+      ...updated[index],
       phases: {
-        ...updated[taskIndex].phases,
-        [phase]: {
-          ...updated[taskIndex].phases[phase],
-          owner,
-        },
+        ...updated[index].phases,
+        [phase]: { ...updated[index].phases[phase], owner },
       },
     };
     setTasks(updated);
   };
 
-  const applyPresetToTask = (taskIndex: number, preset: ResponsibilityPreset) => {
+  const applyPresetToTask = (index: number, preset: ResponsibilityPreset) => {
     const updated = [...tasks];
     const presetConfig = RESPONSIBILITY_PRESETS[preset];
-    updated[taskIndex] = {
-      ...updated[taskIndex],
+    updated[index] = {
+      ...updated[index],
       phases: {
-        manage: { ...updated[taskIndex].phases.manage, owner: presetConfig.phases.manage },
-        define: { ...updated[taskIndex].phases.define, owner: presetConfig.phases.define },
-        perform: { ...updated[taskIndex].phases.perform, owner: presetConfig.phases.perform },
-        review: { ...updated[taskIndex].phases.review, owner: presetConfig.phases.review },
+        manage: { ...updated[index].phases.manage, owner: presetConfig.phases.manage },
+        define: { ...updated[index].phases.define, owner: presetConfig.phases.define },
+        perform: { ...updated[index].phases.perform, owner: presetConfig.phases.perform },
+        review: { ...updated[index].phases.review, owner: presetConfig.phases.review },
       },
     };
-    setTasks(updated);
-  };
-
-  const addTask = () => {
-    setTasks([...tasks, createEmptyTaskResponsibility("")]);
-  };
-
-  const removeTask = (index: number) => {
-    setTasks(tasks.filter((_, i) => i !== index));
-  };
-
-  const updateTaskName = (index: number, name: string) => {
-    const updated = [...tasks];
-    updated[index] = { ...updated[index], taskName: name };
     setTasks(updated);
   };
 
@@ -179,7 +142,6 @@ export default function HAPDetailPage({
     );
   }
 
-  // Calculate distribution
   const distribution = calculatePhaseDistribution(editMode ? tasks : hap.tasks);
   const pendingSkills = hap.skillRequirements?.filter(
     r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
@@ -187,33 +149,14 @@ export default function HAPDetailPage({
 
   const getStatusColor = (status: HAPIntegrationStatus) => {
     const meta = INTEGRATION_STATUS_METADATA[status];
-    switch (meta.color) {
-      case "green":
-        return "bg-green-500";
-      case "emerald":
-        return "bg-emerald-500";
-      case "yellow":
-        return "bg-yellow-500";
-      case "orange":
-        return "bg-orange-500";
-      case "blue":
-        return "bg-blue-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
-
-  const getPhaseIcon = (phase: ResponsibilityPhase) => {
-    switch (phase) {
-      case "manage":
-        return <Target className="h-4 w-4" />;
-      case "define":
-        return <FileText className="h-4 w-4" />;
-      case "perform":
-        return <Play className="h-4 w-4" />;
-      case "review":
-        return <CheckCircle className="h-4 w-4" />;
-    }
+    const colorMap: Record<string, string> = {
+      green: "bg-green-500",
+      emerald: "bg-emerald-500",
+      yellow: "bg-yellow-500",
+      orange: "bg-orange-500",
+      blue: "bg-blue-500",
+    };
+    return colorMap[meta.color] || "bg-gray-500";
   };
 
   return (
@@ -229,9 +172,7 @@ export default function HAPDetailPage({
             </Button>
             <div>
               <div className="flex items-center gap-2">
-                <div
-                  className={`h-2 w-2 rounded-full ${getStatusColor(hap.integrationStatus)}`}
-                />
+                <div className={`h-2 w-2 rounded-full ${getStatusColor(hap.integrationStatus)}`} />
                 <Badge variant="outline">
                   {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
                 </Badge>
@@ -251,9 +192,7 @@ export default function HAPDetailPage({
             <Button onClick={initEditState}>Edit HAP</Button>
           ) : (
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setEditMode(false)}>
-                Cancel
-              </Button>
+              <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
               <Button onClick={handleSave} disabled={updateHAP.isPending}>
                 {updateHAP.isPending ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -270,9 +209,7 @@ export default function HAPDetailPage({
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Person
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Person</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-3">
@@ -289,9 +226,7 @@ export default function HAPDetailPage({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Agent Story
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Agent Story</CardTitle>
             </CardHeader>
             <CardContent>
               <Link
@@ -302,12 +237,8 @@ export default function HAPDetailPage({
                   <Bot className="h-5 w-5" />
                 </div>
                 <div className="flex-1">
-                  <p className="font-medium">
-                    {agentStory?.name || "Unknown Agent"}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {agentStory?.skills?.length || 0} skills
-                  </p>
+                  <p className="font-medium">{agentStory?.name || "Unknown Agent"}</p>
+                  <p className="text-sm text-muted-foreground">{agentStory?.skills?.length || 0} skills</p>
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </Link>
@@ -316,9 +247,7 @@ export default function HAPDetailPage({
 
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Responsibility Distribution
-              </CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Responsibility Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
@@ -327,14 +256,8 @@ export default function HAPDetailPage({
                   <span>Agent: {distribution.agentPercent}%</span>
                 </div>
                 <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-                  <div
-                    className="bg-blue-500"
-                    style={{ width: `${distribution.humanPercent}%` }}
-                  />
-                  <div
-                    className="bg-purple-500"
-                    style={{ width: `${distribution.agentPercent}%` }}
-                  />
+                  <div className="bg-blue-500" style={{ width: `${distribution.humanPercent}%` }} />
+                  <div className="bg-purple-500" style={{ width: `${distribution.agentPercent}%` }} />
                 </div>
               </div>
             </CardContent>
@@ -360,7 +283,7 @@ export default function HAPDetailPage({
                     </CardDescription>
                   </div>
                   {editMode && (
-                    <Button size="sm" onClick={addTask}>
+                    <Button size="sm" onClick={() => setTasks([...tasks, createEmptyTaskResponsibility("")])}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add Task
                     </Button>
@@ -368,121 +291,19 @@ export default function HAPDetailPage({
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {/* Header */}
-                  <div className="grid grid-cols-12 gap-2 text-sm font-medium text-muted-foreground px-2">
-                    <div className="col-span-3">Task</div>
-                    <div className="col-span-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Target className="h-3 w-3" />
-                        Manage
-                      </div>
-                    </div>
-                    <div className="col-span-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <FileText className="h-3 w-3" />
-                        Define
-                      </div>
-                    </div>
-                    <div className="col-span-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <Play className="h-3 w-3" />
-                        Perform
-                      </div>
-                    </div>
-                    <div className="col-span-2 text-center">
-                      <div className="flex items-center justify-center gap-1">
-                        <CheckCircle className="h-3 w-3" />
-                        Review
-                      </div>
-                    </div>
-                    <div className="col-span-1"></div>
-                  </div>
+                <TaskResponsibilityGrid
+                  tasks={editMode ? tasks : hap.tasks}
+                  editMode={editMode}
+                  onUpdateTask={(index, updates) => {
+                    const updated = [...tasks];
+                    updated[index] = { ...updated[index], ...updates };
+                    setTasks(updated);
+                  }}
+                  onUpdatePhaseOwner={updatePhaseOwner}
+                  onApplyPreset={applyPresetToTask}
+                  onRemoveTask={(index) => setTasks(tasks.filter((_, i) => i !== index))}
+                />
 
-                  {/* Tasks */}
-                  {(editMode ? tasks : hap.tasks).map((task, index) => (
-                    <div
-                      key={task.id}
-                      className="grid grid-cols-12 gap-2 items-center p-2 rounded-lg bg-muted/50"
-                    >
-                      <div className="col-span-3">
-                        {editMode ? (
-                          <Input
-                            value={task.taskName}
-                            onChange={(e) => updateTaskName(index, e.target.value)}
-                            placeholder="Task name"
-                          />
-                        ) : (
-                          <span className="font-medium">{task.taskName}</span>
-                        )}
-                      </div>
-                      {(["manage", "define", "perform", "review"] as ResponsibilityPhase[]).map(
-                        (phase) => (
-                          <div key={phase} className="col-span-2">
-                            {editMode ? (
-                              <Select
-                                value={task.phases[phase].owner}
-                                onValueChange={(v) =>
-                                  updatePhaseOwner(index, phase, v as PhaseOwner)
-                                }
-                              >
-                                <SelectTrigger className="h-8">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="human">
-                                    <div className="flex items-center gap-1">
-                                      <User className="h-3 w-3 text-blue-500" />
-                                      Human
-                                    </div>
-                                  </SelectItem>
-                                  <SelectItem value="agent">
-                                    <div className="flex items-center gap-1">
-                                      <Bot className="h-3 w-3 text-purple-500" />
-                                      Agent
-                                    </div>
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            ) : (
-                              <div className="flex items-center justify-center gap-1">
-                                {task.phases[phase].owner === "human" ? (
-                                  <User className="h-4 w-4 text-blue-500" />
-                                ) : (
-                                  <Bot className="h-4 w-4 text-purple-500" />
-                                )}
-                                <span className="text-xs">
-                                  {PHASE_OWNER_METADATA[task.phases[phase].owner].label}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      )}
-                      <div className="col-span-1 flex justify-end">
-                        {editMode && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => removeTask(index)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-                  {(editMode ? tasks : hap.tasks).length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No tasks defined yet.{" "}
-                      {editMode && "Click 'Add Task' to get started."}
-                    </div>
-                  )}
-                </div>
-
-                {/* Presets (in edit mode) */}
                 {editMode && tasks.length > 0 && (
                   <div className="mt-6 pt-4 border-t">
                     <Label className="text-sm">Quick Apply Preset to All Tasks</Label>
@@ -492,9 +313,7 @@ export default function HAPDetailPage({
                           key={key}
                           variant="outline"
                           size="sm"
-                          onClick={() => {
-                            tasks.forEach((_, i) => applyPresetToTask(i, key as ResponsibilityPreset));
-                          }}
+                          onClick={() => tasks.forEach((_, i) => applyPresetToTask(i, key as ResponsibilityPreset))}
                         >
                           {preset.label} ({preset.pattern})
                         </Button>
@@ -510,18 +329,13 @@ export default function HAPDetailPage({
             <Card>
               <CardHeader>
                 <CardTitle>Skill Requirements</CardTitle>
-                <CardDescription>
-                  Agent phases that need skills to be defined
-                </CardDescription>
+                <CardDescription>Agent phases that need skills to be defined</CardDescription>
               </CardHeader>
               <CardContent>
                 {hap.skillRequirements && hap.skillRequirements.length > 0 ? (
                   <div className="space-y-3">
                     {hap.skillRequirements.map((req) => (
-                      <div
-                        key={req.id}
-                        className="flex items-center justify-between p-3 rounded-lg border"
-                      >
+                      <div key={req.id} className="flex items-center justify-between p-3 rounded-lg border">
                         <div>
                           <p className="font-medium">{req.taskName}</p>
                           <p className="text-sm text-muted-foreground">
@@ -531,15 +345,7 @@ export default function HAPDetailPage({
                             Suggested skill: {req.suggestedSkillName}
                           </p>
                         </div>
-                        <Badge
-                          variant={
-                            req.status === "applied"
-                              ? "default"
-                              : req.status === "ready"
-                              ? "secondary"
-                              : "outline"
-                          }
-                        >
+                        <Badge variant={req.status === "applied" ? "default" : req.status === "ready" ? "secondary" : "outline"}>
                           {req.status}
                         </Badge>
                       </div>
@@ -549,9 +355,7 @@ export default function HAPDetailPage({
                   <div className="text-center py-8 text-muted-foreground">
                     <Timer className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     <p>No pending skill requirements</p>
-                    <p className="text-sm">
-                      Assign phases to the agent to generate skill requirements
-                    </p>
+                    <p className="text-sm">Assign phases to the agent to generate skill requirements</p>
                   </div>
                 )}
               </CardContent>
@@ -568,46 +372,26 @@ export default function HAPDetailPage({
                   <>
                     <div className="space-y-2">
                       <Label>Integration Status</Label>
-                      <Select
-                        value={integrationStatus}
-                        onValueChange={(v) =>
-                          setIntegrationStatus(v as HAPIntegrationStatus)
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                      <Select value={integrationStatus} onValueChange={(v) => setIntegrationStatus(v as HAPIntegrationStatus)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {Object.entries(INTEGRATION_STATUS_METADATA).map(
-                            ([key, meta]) => (
-                              <SelectItem key={key} value={key}>
-                                {meta.label}
-                              </SelectItem>
-                            )
-                          )}
+                          {Object.entries(INTEGRATION_STATUS_METADATA).map(([key, meta]) => (
+                            <SelectItem key={key} value={key}>{meta.label}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>Notes</Label>
-                      <Textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        rows={4}
-                        placeholder="Add notes about this HAP..."
-                      />
+                      <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} placeholder="Add notes..." />
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="grid gap-4 md:grid-cols-2">
                       <div>
-                        <Label className="text-muted-foreground">
-                          Integration Status
-                        </Label>
-                        <p className="font-medium">
-                          {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
-                        </p>
+                        <Label className="text-muted-foreground">Integration Status</Label>
+                        <p className="font-medium">{INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}</p>
                       </div>
                       <div>
                         <Label className="text-muted-foreground">Tasks</Label>
@@ -622,9 +406,7 @@ export default function HAPDetailPage({
                     )}
                     <div>
                       <Label className="text-muted-foreground">Created</Label>
-                      <p className="mt-1">
-                        {new Date(hap.createdAt).toLocaleDateString()}
-                      </p>
+                      <p className="mt-1">{new Date(hap.createdAt).toLocaleDateString()}</p>
                     </div>
                   </>
                 )}

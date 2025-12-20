@@ -64,7 +64,7 @@ export function LinkedHAPsSection({ storyId }: LinkedHAPsSectionProps) {
               Create a HAP to link a person&apos;s role with this agent
             </p>
             <Button className="mt-4" asChild>
-              <Link href="/organization/haps/new">
+              <Link href="/haps/new">
                 <Plus className="h-4 w-4 mr-2" />
                 Create HAP
               </Link>
@@ -103,7 +103,7 @@ export function LinkedHAPsSection({ storyId }: LinkedHAPsSectionProps) {
           return (
             <Link
               key={hap.id}
-              href={`/organization/haps/${hap.id}`}
+              href={`/haps/${hap.id}`}
               className="flex items-center justify-between p-4 rounded-lg border hover:bg-muted transition-colors"
             >
               <div className="flex items-center gap-4">
@@ -140,7 +140,7 @@ export function LinkedHAPsSection({ storyId }: LinkedHAPsSectionProps) {
 
         <div className="pt-2 border-t">
           <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link href="/organization/haps/new">
+            <Link href="/haps/new">
               <Plus className="h-4 w-4 mr-2" />
               Create New HAP
             </Link>
