@@ -1,6 +1,6 @@
 // Storage utility for localStorage persistence
 const STORAGE_KEY = 'agent-stories-data';
-const CURRENT_VERSION = '2.0'; // Bump to force refresh with new sample data
+const CURRENT_VERSION = '2.1'; // Bump to force refresh with new sample data
 
 interface StorageData {
   stories: unknown[];
