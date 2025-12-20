@@ -8,6 +8,7 @@ import {
   Home,
   Settings,
   HelpCircle,
+  Building2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -26,6 +27,7 @@ const mainNavItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: Home },
   { title: "Stories", href: "/stories", icon: FileText },
   { title: "Templates", href: "/templates", icon: LayoutTemplate },
+  { title: "Organization", href: "/organization", icon: Building2 },
   { title: "Projects", href: "/projects", icon: FolderOpen },
 ];
 
