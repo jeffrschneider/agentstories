@@ -65,6 +65,86 @@ export function createEmptyResponsibility(): Responsibility {
 }
 
 // ============================================
+// Skill Coverage Analysis
+// ============================================
+
+export interface SkillCoverageResult {
+  responsibilityId: string;
+  responsibilityName: string;
+  requiredSkills: string[];
+  coveredSkills: string[];
+  missingSkills: string[];
+  coveragePercent: number;
+  isCovered: boolean;
+}
+
+export interface RoleSkillCoverage {
+  roleId: string;
+  totalAiCandidates: number;
+  fullyCovered: number;
+  partiallyCovered: number;
+  notCovered: number;
+  overallCoveragePercent: number;
+  responsibilities: SkillCoverageResult[];
+}
+
+/**
+ * Analyzes skill coverage for a responsibility given available skills
+ */
+export function analyzeResponsibilitySkillCoverage(
+  responsibility: Responsibility,
+  availableSkills: string[]
+): SkillCoverageResult {
+  const requiredSkills = responsibility.requiredSkillDomains || [];
+  const coveredSkills = requiredSkills.filter(skill => availableSkills.includes(skill));
+  const missingSkills = requiredSkills.filter(skill => !availableSkills.includes(skill));
+  const coveragePercent = requiredSkills.length > 0
+    ? Math.round((coveredSkills.length / requiredSkills.length) * 100)
+    : 100;
+
+  return {
+    responsibilityId: responsibility.id,
+    responsibilityName: responsibility.name,
+    requiredSkills,
+    coveredSkills,
+    missingSkills,
+    coveragePercent,
+    isCovered: missingSkills.length === 0
+  };
+}
+
+/**
+ * Analyzes skill coverage for all AI-candidate responsibilities in a role
+ */
+export function analyzeRoleSkillCoverage(
+  role: Role,
+  availableSkills: string[]
+): RoleSkillCoverage {
+  const aiCandidates = role.responsibilities.filter(r => r.aiCandidate);
+  const coverageResults = aiCandidates.map(r =>
+    analyzeResponsibilitySkillCoverage(r, availableSkills)
+  );
+
+  const fullyCovered = coverageResults.filter(r => r.isCovered).length;
+  const partiallyCovered = coverageResults.filter(r => !r.isCovered && r.coveragePercent > 0).length;
+  const notCovered = coverageResults.filter(r => r.coveragePercent === 0 && r.requiredSkills.length > 0).length;
+
+  const overallCoveragePercent = coverageResults.length > 0
+    ? Math.round(coverageResults.reduce((sum, r) => sum + r.coveragePercent, 0) / coverageResults.length)
+    : 100;
+
+  return {
+    roleId: role.id,
+    totalAiCandidates: aiCandidates.length,
+    fullyCovered,
+    partiallyCovered,
+    notCovered,
+    overallCoveragePercent,
+    responsibilities: coverageResults
+  };
+}
+
+// ============================================
 // Metadata for UI
 // ============================================
 

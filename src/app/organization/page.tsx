@@ -16,6 +16,8 @@ import {
   MoreVertical,
   Pencil,
   Trash2,
+  CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -48,7 +50,7 @@ import {
   useDeleteRole,
   useDeletePerson,
 } from "@/hooks";
-import { INTEGRATION_STATUS_METADATA, calculatePhaseDistribution } from "@/lib/schemas";
+import { INTEGRATION_STATUS_METADATA, calculatePhaseDistribution, analyzeRoleSkillCoverage } from "@/lib/schemas";
 import type { HAPIntegrationStatus, BusinessDomain, Department, Role, Person } from "@/lib/schemas";
 import {
   DomainDialog,
@@ -587,7 +589,13 @@ export default function OrganizationPage() {
                 </div>
               ) : roles && roles.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2">
-                  {roles.map((role) => (
+                  {roles.map((role) => {
+                    // Calculate available skills from people in this department
+                    const deptPeople = allPeople?.filter(p => p.departmentId === selectedDeptId) || [];
+                    const availableSkills = [...new Set(deptPeople.flatMap(p => p.skills || []))];
+                    const coverage = analyzeRoleSkillCoverage(role, availableSkills);
+
+                    return (
                     <Card key={role.id}>
                       <CardHeader>
                         <div className="flex items-center justify-between">
@@ -662,9 +670,54 @@ export default function OrganizationPage() {
                             )}
                           </div>
                         </div>
+
+                        {/* Skill Coverage Indicator */}
+                        {coverage.totalAiCandidates > 0 && (
+                          <div className="mt-3 pt-3 border-t">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-muted-foreground">
+                                AI Skill Coverage
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {coverage.overallCoveragePercent === 100 ? (
+                                  <CheckCircle2 className="h-3 w-3 text-green-500" />
+                                ) : coverage.overallCoveragePercent > 0 ? (
+                                  <AlertCircle className="h-3 w-3 text-yellow-500" />
+                                ) : (
+                                  <AlertCircle className="h-3 w-3 text-red-500" />
+                                )}
+                                <span className={
+                                  coverage.overallCoveragePercent === 100
+                                    ? "text-green-600"
+                                    : coverage.overallCoveragePercent > 0
+                                    ? "text-yellow-600"
+                                    : "text-red-600"
+                                }>
+                                  {coverage.overallCoveragePercent}%
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex h-1.5 overflow-hidden rounded-full bg-muted mt-1">
+                              <div
+                                className={
+                                  coverage.overallCoveragePercent === 100
+                                    ? "bg-green-500"
+                                    : coverage.overallCoveragePercent > 0
+                                    ? "bg-yellow-500"
+                                    : "bg-red-500"
+                                }
+                                style={{ width: `${coverage.overallCoveragePercent}%` }}
+                              />
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {coverage.fullyCovered} of {coverage.totalAiCandidates} AI tasks covered by team skills
+                            </p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
-                  ))}
+                  );
+                  })}
                 </div>
               ) : (
                 <Card>
@@ -759,6 +812,23 @@ export default function OrganizationPage() {
                                     {role.name}
                                   </Badge>
                                 ))}
+                              </div>
+                            )}
+                            {person.skills && person.skills.length > 0 && (
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">Skills:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {person.skills.slice(0, 3).map((skill) => (
+                                    <Badge key={skill} variant="outline" className="text-xs">
+                                      {skill}
+                                    </Badge>
+                                  ))}
+                                  {person.skills.length > 3 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      +{person.skills.length - 3}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             )}
                             {personHaps && personHaps.length > 0 && (
