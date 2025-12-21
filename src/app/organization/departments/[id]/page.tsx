@@ -345,7 +345,7 @@ export default function DepartmentDashboardPage({
                               <p className="text-sm text-red-600">{hap.topBlockers[0]}</p>
                             )}
                             <Button variant="outline" size="sm" asChild>
-                              <Link href={`/organization/haps/${hap.id}`}>View</Link>
+                              <Link href={`/haps/${hap.id}`}>View</Link>
                             </Button>
                           </div>
                         </div>
@@ -522,7 +522,7 @@ export default function DepartmentDashboardPage({
                 <div className="text-center py-8 text-muted-foreground">
                   <p>No HAPs found in this department</p>
                   <Button className="mt-4" asChild>
-                    <Link href="/organization/haps/new">Create HAP</Link>
+                    <Link href="/haps/new">Create HAP</Link>
                   </Button>
                 </div>
               ) : (
@@ -542,7 +542,7 @@ export default function DepartmentDashboardPage({
                     return (
                       <Link
                         key={hap.id}
-                        href={`/organization/haps/${hap.id}`}
+                        href={`/haps/${hap.id}`}
                         className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted transition-colors"
                       >
                         <div className="flex items-center gap-3">

@@ -2,53 +2,56 @@
 
 import * as React from "react";
 import {
-  Clock,
-  Target,
-  TrendingUp,
-  AlertTriangle,
+  Circle,
+  Edit,
+  Timer,
   CheckCircle2,
+  PlayCircle,
+  PauseCircle,
   ArrowRight,
   Calendar,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { TransitionStatus } from "@/lib/schemas/hap";
+import type { HAPIntegrationStatus } from "@/lib/schemas/hap";
 
 export interface TimelineEvent {
   id: string;
   date: string;
-  status: TransitionStatus;
+  status: HAPIntegrationStatus;
   title: string;
   description?: string;
   isCurrent?: boolean;
 }
 
-interface TransitionTimelineProps {
+interface IntegrationTimelineProps {
   events: TimelineEvent[];
   orientation?: "vertical" | "horizontal";
   className?: string;
 }
 
-const statusIcons: Record<TransitionStatus, React.ComponentType<{ className?: string }>> = {
-  not_started: Clock,
-  planned: Target,
-  in_progress: TrendingUp,
-  blocked: AlertTriangle,
-  completed: CheckCircle2,
+const statusIcons: Record<HAPIntegrationStatus, React.ComponentType<{ className?: string }>> = {
+  not_started: Circle,
+  planning: Edit,
+  skills_pending: Timer,
+  ready: CheckCircle2,
+  active: PlayCircle,
+  paused: PauseCircle,
 };
 
-const statusColors: Record<TransitionStatus, string> = {
+const statusColors: Record<HAPIntegrationStatus, string> = {
   not_started: "bg-gray-400",
-  planned: "bg-blue-500",
-  in_progress: "bg-yellow-500",
-  blocked: "bg-red-500",
-  completed: "bg-green-500",
+  planning: "bg-blue-500",
+  skills_pending: "bg-yellow-500",
+  ready: "bg-green-500",
+  active: "bg-emerald-500",
+  paused: "bg-orange-500",
 };
 
-export function TransitionTimeline({
+export function IntegrationTimeline({
   events,
   orientation = "vertical",
   className,
-}: TransitionTimelineProps) {
+}: IntegrationTimelineProps) {
   if (events.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -161,22 +164,22 @@ export function TransitionTimeline({
 // Helper to generate timeline from HAP data
 export function generateHAPTimeline(
   hap: {
-    transitionStatus: TransitionStatus;
+    integrationStatus: HAPIntegrationStatus;
     createdAt: string;
     updatedAt: string;
-    targetCompletionDate?: string;
   },
   includeProjected = true
 ): TimelineEvent[] {
   const events: TimelineEvent[] = [];
-  const statusOrder: TransitionStatus[] = [
+  const statusOrder: HAPIntegrationStatus[] = [
     "not_started",
-    "planned",
-    "in_progress",
-    "completed",
+    "planning",
+    "skills_pending",
+    "ready",
+    "active",
   ];
 
-  const currentIndex = statusOrder.indexOf(hap.transitionStatus);
+  const currentIndex = statusOrder.indexOf(hap.integrationStatus);
 
   // Add creation event
   events.push({
@@ -185,64 +188,79 @@ export function generateHAPTimeline(
     status: "not_started",
     title: "HAP Created",
     description: "Human-Agent pair established",
-    isCurrent: hap.transitionStatus === "not_started",
+    isCurrent: hap.integrationStatus === "not_started",
   });
 
   // Add past events based on current status
   if (currentIndex >= 1) {
     events.push({
-      id: "planned",
-      date: hap.createdAt, // Use creation date as placeholder
-      status: "planned",
-      title: "Transition Planned",
-      description: "Tasks and timeline defined",
-      isCurrent: hap.transitionStatus === "planned",
+      id: "planning",
+      date: hap.createdAt,
+      status: "planning",
+      title: "Planning Started",
+      description: "Defining task responsibilities",
+      isCurrent: hap.integrationStatus === "planning",
     });
   }
 
   if (currentIndex >= 2) {
     events.push({
-      id: "in_progress",
+      id: "skills_pending",
       date: hap.updatedAt,
-      status: "in_progress",
-      title: "Transition Started",
-      description: "Active task handover in progress",
-      isCurrent: hap.transitionStatus === "in_progress",
-    });
-  }
-
-  if (hap.transitionStatus === "blocked") {
-    events.push({
-      id: "blocked",
-      date: hap.updatedAt,
-      status: "blocked",
-      title: "Transition Blocked",
-      description: "Awaiting resolution",
-      isCurrent: true,
+      status: "skills_pending",
+      title: "Skills Pending",
+      description: "Waiting for agent skills to be defined",
+      isCurrent: hap.integrationStatus === "skills_pending",
     });
   }
 
   if (currentIndex >= 3) {
     events.push({
-      id: "completed",
+      id: "ready",
       date: hap.updatedAt,
-      status: "completed",
-      title: "Transition Complete",
-      description: "All tasks transitioned",
-      isCurrent: hap.transitionStatus === "completed",
+      status: "ready",
+      title: "Ready",
+      description: "All skills defined, ready for activation",
+      isCurrent: hap.integrationStatus === "ready",
     });
   }
 
-  // Add projected completion if not complete and we have a target date
-  if (includeProjected && hap.targetCompletionDate && currentIndex < 3) {
+  if (currentIndex >= 4) {
+    events.push({
+      id: "active",
+      date: hap.updatedAt,
+      status: "active",
+      title: "Active",
+      description: "In production use",
+      isCurrent: hap.integrationStatus === "active",
+    });
+  }
+
+  // Handle paused status
+  if (hap.integrationStatus === "paused") {
+    events.push({
+      id: "paused",
+      date: hap.updatedAt,
+      status: "paused",
+      title: "Paused",
+      description: "Temporarily paused",
+      isCurrent: true,
+    });
+  }
+
+  // Add projected completion if not active yet
+  if (includeProjected && currentIndex < 4 && currentIndex >= 0) {
     events.push({
       id: "projected",
-      date: hap.targetCompletionDate,
-      status: "completed",
-      title: "Target Completion",
-      description: "Projected completion date",
+      date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      status: "active",
+      title: "Target Activation",
+      description: "Projected activation date",
     });
   }
 
   return events;
 }
+
+// Keep old export name for backwards compatibility during transition
+export const TransitionTimeline = IntegrationTimeline;

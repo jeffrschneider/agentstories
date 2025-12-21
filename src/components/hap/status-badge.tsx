@@ -3,24 +3,26 @@
 import * as React from "react";
 import {
   Clock,
-  Target,
-  TrendingUp,
-  AlertTriangle,
+  Edit,
+  Timer,
   CheckCircle2,
+  PlayCircle,
+  PauseCircle,
+  Circle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { TransitionStatus } from "@/lib/schemas/hap";
+import type { HAPIntegrationStatus } from "@/lib/schemas/hap";
 
 interface StatusBadgeProps {
-  status: TransitionStatus;
+  status: HAPIntegrationStatus;
   size?: "sm" | "md" | "lg";
   showIcon?: boolean;
   className?: string;
 }
 
 const statusConfig: Record<
-  TransitionStatus,
+  HAPIntegrationStatus,
   {
     label: string;
     icon: React.ComponentType<{ className?: string }>;
@@ -30,33 +32,39 @@ const statusConfig: Record<
 > = {
   not_started: {
     label: "Not Started",
-    icon: Clock,
+    icon: Circle,
     bgClass: "bg-gray-100 dark:bg-gray-800",
     textClass: "text-gray-700 dark:text-gray-300",
   },
-  planned: {
-    label: "Planned",
-    icon: Target,
+  planning: {
+    label: "Planning",
+    icon: Edit,
     bgClass: "bg-blue-100 dark:bg-blue-900/30",
     textClass: "text-blue-700 dark:text-blue-300",
   },
-  in_progress: {
-    label: "In Progress",
-    icon: TrendingUp,
+  skills_pending: {
+    label: "Skills Pending",
+    icon: Timer,
     bgClass: "bg-yellow-100 dark:bg-yellow-900/30",
     textClass: "text-yellow-700 dark:text-yellow-300",
   },
-  blocked: {
-    label: "Blocked",
-    icon: AlertTriangle,
-    bgClass: "bg-red-100 dark:bg-red-900/30",
-    textClass: "text-red-700 dark:text-red-300",
-  },
-  completed: {
-    label: "Completed",
+  ready: {
+    label: "Ready",
     icon: CheckCircle2,
     bgClass: "bg-green-100 dark:bg-green-900/30",
     textClass: "text-green-700 dark:text-green-300",
+  },
+  active: {
+    label: "Active",
+    icon: PlayCircle,
+    bgClass: "bg-emerald-100 dark:bg-emerald-900/30",
+    textClass: "text-emerald-700 dark:text-emerald-300",
+  },
+  paused: {
+    label: "Paused",
+    icon: PauseCircle,
+    bgClass: "bg-orange-100 dark:bg-orange-900/30",
+    textClass: "text-orange-700 dark:text-orange-300",
   },
 };
 

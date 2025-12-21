@@ -4,7 +4,14 @@ import type {
   Role,
   Person,
   HumanAgentPair,
+  TaskResponsibility,
+  HAPIntegrationStatus,
 } from '@/lib/schemas';
+import {
+  createPhaseAssignment,
+  calculateHAPMetrics,
+  calculatePhaseDistribution,
+} from '@/lib/schemas/hap';
 
 // Simulated delay for realistic async behavior
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -20,7 +27,7 @@ function uuid(): string {
 
 // Storage keys
 const STORAGE_KEY_HAP = 'agent-stories-hap-data';
-const CURRENT_VERSION = '1.0';
+const CURRENT_VERSION = '2.0'; // Bumped for responsibility phase model
 
 interface HAPStorageData {
   domains: BusinessDomain[];
@@ -401,100 +408,85 @@ const mockPeople: Person[] = [
   },
 ];
 
-// Sample HAPs showing As-Is/To-Be transformation
+// Helper to create a task with responsibility phases
+function createTask(
+  taskName: string,
+  description: string,
+  preset: 'human-only' | 'agent-only' | 'human-controlled' | 'supervised-execution'
+): TaskResponsibility {
+  const presets = {
+    'human-only': { manage: 'human', define: 'human', perform: 'human', review: 'human' },
+    'agent-only': { manage: 'agent', define: 'agent', perform: 'agent', review: 'agent' },
+    'human-controlled': { manage: 'human', define: 'human', perform: 'agent', review: 'human' },
+    'supervised-execution': { manage: 'human', define: 'agent', perform: 'agent', review: 'human' },
+  } as const;
+
+  const p = presets[preset];
+
+  return {
+    id: uuid(),
+    taskName,
+    description,
+    phases: {
+      manage: createPhaseAssignment('manage', p.manage),
+      define: createPhaseAssignment('define', p.define),
+      perform: createPhaseAssignment('perform', p.perform),
+      review: createPhaseAssignment('review', p.review),
+    },
+    integrationStatus: preset === 'human-only' ? 'not_started' : 'partially_defined',
+  };
+}
+
+// Sample HAPs using the new Responsibility Phase Model
 const mockHAPs: HumanAgentPair[] = [
   {
     id: uuid(),
     personId: PERSON_IDS.sarah,
     roleId: ROLE_IDS.supportSpecialist,
-    agentStoryId: AGENT_STORY_PLACEHOLDER, // Will be resolved at runtime
-    asIs: {
-      taskAssignments: [
-        {
-          id: uuid(),
-          taskName: 'Ticket Triage',
-          description: 'Categorize and prioritize incoming tickets',
-          currentOwner: 'human',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Common Issue Resolution',
-          description: 'Resolve FAQs and known issues',
-          currentOwner: 'human',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Customer Response Drafting',
-          description: 'Write responses to customer inquiries',
-          currentOwner: 'human',
-          targetOwner: 'shared',
-        },
-        {
-          id: uuid(),
-          taskName: 'Escalation Decision',
-          description: 'Decide when to escalate to Tier 2',
-          currentOwner: 'human',
-          targetOwner: 'shared',
-        },
-        {
-          id: uuid(),
-          taskName: 'Customer Relationship Building',
-          description: 'Build rapport with customers',
-          currentOwner: 'human',
-          targetOwner: 'human',
-        },
-      ],
-      humanPercent: 100,
-      agentPercent: 0,
-      effectiveDate: weekAgo,
-    },
-    toBe: {
-      taskAssignments: [
-        {
-          id: uuid(),
-          taskName: 'Ticket Triage',
-          description: 'Categorize and prioritize incoming tickets',
-          currentOwner: 'human',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Common Issue Resolution',
-          description: 'Resolve FAQs and known issues',
-          currentOwner: 'human',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Customer Response Drafting',
-          description: 'Write responses to customer inquiries',
-          currentOwner: 'human',
-          targetOwner: 'shared',
-        },
-        {
-          id: uuid(),
-          taskName: 'Escalation Decision',
-          description: 'Decide when to escalate to Tier 2',
-          currentOwner: 'human',
-          targetOwner: 'shared',
-        },
-        {
-          id: uuid(),
-          taskName: 'Customer Relationship Building',
-          description: 'Build rapport with customers',
-          currentOwner: 'human',
-          targetOwner: 'human',
-        },
-      ],
-      humanPercent: 40,
-      agentPercent: 60,
-      effectiveDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(), // 90 days target
-    },
-    transitionStatus: 'in_progress',
-    topBlockers: ['Knowledge base needs expansion', 'Agent training on product updates'],
-    targetCompletionDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+    agentStoryId: AGENT_STORY_PLACEHOLDER,
+    tasks: [
+      createTask(
+        'Ticket Triage',
+        'Categorize and prioritize incoming tickets',
+        'human-controlled' // Human manages/defines/reviews, agent performs
+      ),
+      createTask(
+        'Common Issue Resolution',
+        'Resolve FAQs and known issues',
+        'supervised-execution' // Human manages/reviews, agent defines/performs
+      ),
+      createTask(
+        'Customer Response Drafting',
+        'Write responses to customer inquiries',
+        'human-controlled'
+      ),
+      createTask(
+        'Escalation Decision',
+        'Decide when to escalate to Tier 2',
+        'human-controlled'
+      ),
+      createTask(
+        'Customer Relationship Building',
+        'Build rapport with customers',
+        'human-only' // Fully human
+      ),
+    ],
+    skillRequirements: [
+      {
+        id: uuid(),
+        hapId: '', // Will be set
+        taskId: '', // Will be set
+        phase: 'perform',
+        taskName: 'Ticket Triage',
+        suggestedSkillName: 'Execute Ticket Triage',
+        suggestedSkillDescription: 'Skill to perform the "Ticket Triage" task',
+        status: 'pending',
+        agentStoryId: AGENT_STORY_PLACEHOLDER,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ],
+    integrationStatus: 'skills_pending',
     notes: 'Pilot program for AI-assisted support. Sarah is training the agent.',
     createdAt: weekAgo,
     updatedAt: now,
@@ -503,94 +495,36 @@ const mockHAPs: HumanAgentPair[] = [
     id: uuid(),
     personId: PERSON_IDS.alex,
     roleId: ROLE_IDS.codeReviewer,
-    agentStoryId: 'code-review-assistant', // Will be resolved at runtime
-    asIs: {
-      taskAssignments: [
-        {
-          id: uuid(),
-          taskName: 'Initial PR Scan',
-          description: 'First pass review of PR changes',
-          currentOwner: 'shared',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Security Check',
-          description: 'Check for security vulnerabilities',
-          currentOwner: 'shared',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Style/Lint Enforcement',
-          description: 'Enforce coding standards',
-          currentOwner: 'agent',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Architecture Review',
-          description: 'Evaluate architectural decisions',
-          currentOwner: 'human',
-          targetOwner: 'human',
-        },
-        {
-          id: uuid(),
-          taskName: 'Final Approval',
-          description: 'Give final approval on PRs',
-          currentOwner: 'human',
-          targetOwner: 'human',
-        },
-      ],
-      humanPercent: 50,
-      agentPercent: 50,
-      effectiveDate: weekAgo,
-    },
-    toBe: {
-      taskAssignments: [
-        {
-          id: uuid(),
-          taskName: 'Initial PR Scan',
-          description: 'First pass review of PR changes',
-          currentOwner: 'shared',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Security Check',
-          description: 'Check for security vulnerabilities',
-          currentOwner: 'shared',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Style/Lint Enforcement',
-          description: 'Enforce coding standards',
-          currentOwner: 'agent',
-          targetOwner: 'agent',
-        },
-        {
-          id: uuid(),
-          taskName: 'Architecture Review',
-          description: 'Evaluate architectural decisions',
-          currentOwner: 'human',
-          targetOwner: 'human',
-        },
-        {
-          id: uuid(),
-          taskName: 'Final Approval',
-          description: 'Give final approval on PRs',
-          currentOwner: 'human',
-          targetOwner: 'human',
-        },
-      ],
-      humanPercent: 40,
-      agentPercent: 60,
-      effectiveDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days target
-    },
-    transitionStatus: 'in_progress',
-    topBlockers: [],
-    targetCompletionDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    agentStoryId: 'code-review-assistant',
+    tasks: [
+      createTask(
+        'Initial PR Scan',
+        'First pass review of PR changes',
+        'supervised-execution'
+      ),
+      createTask(
+        'Security Check',
+        'Check for security vulnerabilities',
+        'human-controlled'
+      ),
+      createTask(
+        'Style/Lint Enforcement',
+        'Enforce coding standards',
+        'agent-only' // Fully automated
+      ),
+      createTask(
+        'Architecture Review',
+        'Evaluate architectural decisions',
+        'human-only'
+      ),
+      createTask(
+        'Final Approval',
+        'Give final approval on PRs',
+        'human-only'
+      ),
+    ],
+    skillRequirements: [],
+    integrationStatus: 'ready',
     notes: 'Code review agent is well-established. Focusing on improving security detection.',
     createdAt: weekAgo,
     updatedAt: now,
@@ -615,6 +549,7 @@ function loadHAPData(): HAPStorageData | null {
 
     const data: HAPStorageData = JSON.parse(stored);
     if (data.version !== CURRENT_VERSION) {
+      // Version mismatch - clear old data and use fresh mock data
       localStorage.removeItem(STORAGE_KEY_HAP);
       return null;
     }
@@ -975,35 +910,33 @@ export const hapDataService = {
       const deptHaps = haps.filter(h => deptRoleIds.includes(h.roleId));
       const deptPeople = people.filter(p => p.departmentId === departmentId);
 
-      // Calculate aggregate As-Is/To-Be
-      let totalAsIsHuman = 0;
-      let totalAsIsAgent = 0;
-      let totalToBeHuman = 0;
-      let totalToBeAgent = 0;
+      // Calculate aggregate phase distribution
+      let totalHumanPhases = 0;
+      let totalAgentPhases = 0;
+      let totalPendingSkills = 0;
 
       for (const hap of deptHaps) {
-        totalAsIsHuman += hap.asIs.humanPercent;
-        totalAsIsAgent += hap.asIs.agentPercent;
-        totalToBeHuman += hap.toBe.humanPercent;
-        totalToBeAgent += hap.toBe.agentPercent;
+        const metrics = calculateHAPMetrics(hap);
+        totalHumanPhases += metrics.humanPhases;
+        totalAgentPhases += metrics.agentPhases;
+        totalPendingSkills += metrics.pendingSkillRequirements;
       }
 
-      const hapCount = deptHaps.length || 1;
+      const totalPhases = totalHumanPhases + totalAgentPhases;
 
       return {
         departmentId,
         roleCount: deptRoles.length,
         peopleCount: deptPeople.length,
         hapCount: deptHaps.length,
-        asIs: {
-          humanPercent: Math.round(totalAsIsHuman / hapCount),
-          agentPercent: Math.round(totalAsIsAgent / hapCount),
+        phaseDistribution: {
+          humanPhases: totalHumanPhases,
+          agentPhases: totalAgentPhases,
+          humanPercent: totalPhases > 0 ? Math.round((totalHumanPhases / totalPhases) * 100) : 100,
+          agentPercent: totalPhases > 0 ? Math.round((totalAgentPhases / totalPhases) * 100) : 0,
         },
-        toBe: {
-          humanPercent: Math.round(totalToBeHuman / hapCount),
-          agentPercent: Math.round(totalToBeAgent / hapCount),
-        },
-        transitionProgress: deptHaps.filter(h => h.transitionStatus === 'completed').length / hapCount * 100,
+        pendingSkillRequirements: totalPendingSkills,
+        integrationProgress: deptHaps.filter(h => h.integrationStatus === 'ready' || h.integrationStatus === 'active').length / (deptHaps.length || 1) * 100,
       };
     },
 
@@ -1011,18 +944,45 @@ export const hapDataService = {
       initializeHAPData();
       await delay(200);
 
+      // Calculate aggregate metrics
+      let totalTasks = 0;
+      let totalHumanPhases = 0;
+      let totalAgentPhases = 0;
+      let pendingSkillRequirements = 0;
+
+      for (const hap of haps) {
+        const metrics = calculateHAPMetrics(hap);
+        totalTasks += metrics.totalTasks;
+        totalHumanPhases += metrics.humanPhases;
+        totalAgentPhases += metrics.agentPhases;
+        pendingSkillRequirements += metrics.pendingSkillRequirements;
+      }
+
       return {
         domainCount: domains.length,
         departmentCount: departments.length,
         roleCount: roles.length,
         peopleCount: people.length,
         hapCount: haps.length,
+        totalTasks,
+        phaseDistribution: {
+          humanPhases: totalHumanPhases,
+          agentPhases: totalAgentPhases,
+          humanPercent: (totalHumanPhases + totalAgentPhases) > 0
+            ? Math.round((totalHumanPhases / (totalHumanPhases + totalAgentPhases)) * 100)
+            : 100,
+          agentPercent: (totalHumanPhases + totalAgentPhases) > 0
+            ? Math.round((totalAgentPhases / (totalHumanPhases + totalAgentPhases)) * 100)
+            : 0,
+        },
+        pendingSkillRequirements,
         hapsByStatus: {
-          not_started: haps.filter(h => h.transitionStatus === 'not_started').length,
-          planned: haps.filter(h => h.transitionStatus === 'planned').length,
-          in_progress: haps.filter(h => h.transitionStatus === 'in_progress').length,
-          blocked: haps.filter(h => h.transitionStatus === 'blocked').length,
-          completed: haps.filter(h => h.transitionStatus === 'completed').length,
+          not_started: haps.filter(h => h.integrationStatus === 'not_started').length,
+          planning: haps.filter(h => h.integrationStatus === 'planning').length,
+          skills_pending: haps.filter(h => h.integrationStatus === 'skills_pending').length,
+          ready: haps.filter(h => h.integrationStatus === 'ready').length,
+          active: haps.filter(h => h.integrationStatus === 'active').length,
+          paused: haps.filter(h => h.integrationStatus === 'paused').length,
         },
       };
     },

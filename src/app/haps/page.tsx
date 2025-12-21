@@ -7,12 +7,14 @@ import {
   Plus,
   Loader2,
   Filter,
-  ArrowLeft,
-  TrendingUp,
-  AlertCircle,
+  Timer,
   CheckCircle,
   Clock,
   Download,
+  PlayCircle,
+  Edit,
+  User,
+  Cpu,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -47,12 +49,12 @@ import {
   useDepartments,
   useDomains,
 } from "@/hooks";
-import { TRANSITION_STATUS_METADATA } from "@/lib/schemas";
-import type { TransitionStatus } from "@/lib/schemas";
+import { INTEGRATION_STATUS_METADATA, calculatePhaseDistribution } from "@/lib/schemas";
+import type { HAPIntegrationStatus } from "@/lib/schemas";
 import { HAPExportPanel } from "@/components/hap";
 
 export default function HAPsPage() {
-  const [statusFilter, setStatusFilter] = useState<TransitionStatus | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<HAPIntegrationStatus | "all">("all");
   const [deptFilter, setDeptFilter] = useState<string | "all">("all");
 
   const { data: haps, isLoading } = useHAPs(
@@ -67,21 +69,23 @@ export default function HAPsPage() {
 
   const filteredHAPs =
     haps?.filter((h) => {
-      if (statusFilter !== "all" && h.transitionStatus !== statusFilter) {
+      if (statusFilter !== "all" && h.integrationStatus !== statusFilter) {
         return false;
       }
       return true;
     }) || [];
 
-  const getStatusColor = (status: TransitionStatus) => {
-    const meta = TRANSITION_STATUS_METADATA[status];
+  const getStatusColor = (status: HAPIntegrationStatus) => {
+    const meta = INTEGRATION_STATUS_METADATA[status];
     switch (meta.color) {
       case "green":
         return "bg-green-500";
+      case "emerald":
+        return "bg-emerald-500";
       case "yellow":
         return "bg-yellow-500";
-      case "red":
-        return "bg-red-500";
+      case "orange":
+        return "bg-orange-500";
       case "blue":
         return "bg-blue-500";
       default:
@@ -89,16 +93,16 @@ export default function HAPsPage() {
     }
   };
 
-  const getStatusIcon = (status: TransitionStatus) => {
+  const getStatusIcon = (status: HAPIntegrationStatus) => {
     switch (status) {
-      case "completed":
+      case "active":
+        return <PlayCircle className="h-4 w-4 text-emerald-500" />;
+      case "ready":
         return <CheckCircle className="h-4 w-4 text-green-500" />;
-      case "in_progress":
-        return <TrendingUp className="h-4 w-4 text-yellow-500" />;
-      case "blocked":
-        return <AlertCircle className="h-4 w-4 text-red-500" />;
-      case "planned":
-        return <Clock className="h-4 w-4 text-blue-500" />;
+      case "skills_pending":
+        return <Timer className="h-4 w-4 text-yellow-500" />;
+      case "planning":
+        return <Edit className="h-4 w-4 text-blue-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
@@ -109,20 +113,13 @@ export default function HAPsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/organization">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">
-                Human-Agent Pairs
-              </h1>
-              <p className="text-muted-foreground">
-                Track AI transformation across your organization
-              </p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Human-Agent Pairs
+            </h1>
+            <p className="text-muted-foreground">
+              Track AI integration across your organization
+            </p>
           </div>
           <div className="flex gap-2">
             <Sheet>
@@ -150,7 +147,7 @@ export default function HAPsPage() {
               </SheetContent>
             </Sheet>
             <Button asChild>
-              <Link href="/organization/haps/new">
+              <Link href="/haps/new">
                 <Plus className="mr-2 h-4 w-4" />
                 Create HAP
               </Link>
@@ -160,7 +157,7 @@ export default function HAPsPage() {
 
         {/* Stats Overview */}
         {stats && (
-          <div className="grid gap-4 md:grid-cols-5">
+          <div className="grid gap-4 md:grid-cols-6">
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2">
@@ -175,7 +172,7 @@ export default function HAPsPage() {
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-gray-500" />
                   <span className="text-2xl font-bold">
-                    {stats.hapsByStatus.not_started + stats.hapsByStatus.planned}
+                    {stats.hapsByStatus.not_started}
                   </span>
                 </div>
                 <p className="text-xs text-muted-foreground">Not Started</p>
@@ -184,23 +181,23 @@ export default function HAPsPage() {
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-yellow-500" />
+                  <Edit className="h-4 w-4 text-blue-500" />
                   <span className="text-2xl font-bold">
-                    {stats.hapsByStatus.in_progress}
+                    {stats.hapsByStatus.planning}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">In Progress</p>
+                <p className="text-xs text-muted-foreground">Planning</p>
               </CardContent>
             </Card>
             <Card>
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  <Timer className="h-4 w-4 text-yellow-500" />
                   <span className="text-2xl font-bold">
-                    {stats.hapsByStatus.blocked}
+                    {stats.hapsByStatus.skills_pending}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">Blocked</p>
+                <p className="text-xs text-muted-foreground">Skills Pending</p>
               </CardContent>
             </Card>
             <Card>
@@ -208,10 +205,21 @@ export default function HAPsPage() {
                 <div className="flex items-center gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500" />
                   <span className="text-2xl font-bold">
-                    {stats.hapsByStatus.completed}
+                    {stats.hapsByStatus.ready}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">Completed</p>
+                <p className="text-xs text-muted-foreground">Ready</p>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-2">
+                  <PlayCircle className="h-4 w-4 text-emerald-500" />
+                  <span className="text-2xl font-bold">
+                    {stats.hapsByStatus.active}
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Active</p>
               </CardContent>
             </Card>
           </div>
@@ -224,7 +232,7 @@ export default function HAPsPage() {
               <Select
                 value={statusFilter}
                 onValueChange={(v) =>
-                  setStatusFilter(v as TransitionStatus | "all")
+                  setStatusFilter(v as HAPIntegrationStatus | "all")
                 }
               >
                 <SelectTrigger className="w-[180px]">
@@ -234,10 +242,11 @@ export default function HAPsPage() {
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="not_started">Not Started</SelectItem>
-                  <SelectItem value="planned">Planned</SelectItem>
-                  <SelectItem value="in_progress">In Progress</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="planning">Planning</SelectItem>
+                  <SelectItem value="skills_pending">Skills Pending</SelectItem>
+                  <SelectItem value="ready">Ready</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="paused">Paused</SelectItem>
                 </SelectContent>
               </Select>
               <Select
@@ -272,35 +281,37 @@ export default function HAPsPage() {
               const role = roles?.find((r) => r.id === hap.roleId);
               const dept = departments?.find((d) => d.id === role?.departmentId);
 
-              // Calculate transformation progress
-              const tasksDone = hap.asIs.taskAssignments.filter(
-                (t) => t.currentOwner === t.targetOwner
-              ).length;
-              const totalTasks = hap.asIs.taskAssignments.length;
-              const progressPercent =
-                totalTasks > 0 ? Math.round((tasksDone / totalTasks) * 100) : 0;
+              // Calculate phase distribution
+              const distribution = calculatePhaseDistribution(hap.tasks);
+
+              // Count pending skill requirements
+              const pendingSkills = hap.skillRequirements?.filter(
+                r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
+              ).length || 0;
 
               return (
                 <Card key={hap.id} className="overflow-hidden">
                   <div className="flex">
                     {/* Status indicator */}
                     <div
-                      className={`w-1 ${getStatusColor(hap.transitionStatus)}`}
+                      className={`w-1 ${getStatusColor(hap.integrationStatus)}`}
                     />
                     <div className="flex-1">
                       <CardHeader>
                         <div className="flex items-start justify-between">
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              {getStatusIcon(hap.transitionStatus)}
+                              {getStatusIcon(hap.integrationStatus)}
                               <Badge variant="outline">
-                                {
-                                  TRANSITION_STATUS_METADATA[hap.transitionStatus]
-                                    .label
-                                }
+                                {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
                               </Badge>
                               {dept && (
                                 <Badge variant="secondary">{dept.name}</Badge>
+                              )}
+                              {pendingSkills > 0 && (
+                                <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+                                  {pendingSkills} skills pending
+                                </Badge>
                               )}
                             </div>
                             <CardTitle className="text-lg">
@@ -311,7 +322,7 @@ export default function HAPsPage() {
                             </CardDescription>
                           </div>
                           <Button variant="outline" size="sm" asChild>
-                            <Link href={`/organization/haps/${hap.id}`}>
+                            <Link href={`/haps/${hap.id}`}>
                               View Details
                             </Link>
                           </Button>
@@ -319,96 +330,78 @@ export default function HAPsPage() {
                       </CardHeader>
                       <CardContent>
                         <div className="grid gap-6 md:grid-cols-3">
-                          {/* As-Is / To-Be */}
+                          {/* Phase Distribution */}
                           <div className="space-y-3">
                             <h4 className="text-sm font-medium">
-                              Responsibility Split
+                              Responsibility Distribution
                             </h4>
                             <div className="space-y-2">
                               <div className="flex justify-between text-xs">
-                                <span>As-Is</span>
-                                <span>
-                                  {hap.asIs.humanPercent}% Human /{" "}
-                                  {hap.asIs.agentPercent}% Agent
+                                <span className="flex items-center gap-1">
+                                  <User className="h-3 w-3" /> Human
                                 </span>
+                                <span>{distribution.humanPercent}%</span>
                               </div>
                               <div className="flex h-2 overflow-hidden rounded-full bg-muted">
                                 <div
                                   className="bg-blue-500"
-                                  style={{ width: `${hap.asIs.humanPercent}%` }}
+                                  style={{ width: `${distribution.humanPercent}%` }}
                                 />
                                 <div
                                   className="bg-purple-500"
-                                  style={{ width: `${hap.asIs.agentPercent}%` }}
+                                  style={{ width: `${distribution.agentPercent}%` }}
                                 />
                               </div>
                               <div className="flex justify-between text-xs">
-                                <span>To-Be</span>
-                                <span>
-                                  {hap.toBe.humanPercent}% Human /{" "}
-                                  {hap.toBe.agentPercent}% Agent
+                                <span className="flex items-center gap-1">
+                                  <Cpu className="h-3 w-3" /> Agent
                                 </span>
-                              </div>
-                              <div className="flex h-2 overflow-hidden rounded-full bg-muted">
-                                <div
-                                  className="bg-blue-500"
-                                  style={{ width: `${hap.toBe.humanPercent}%` }}
-                                />
-                                <div
-                                  className="bg-purple-500"
-                                  style={{ width: `${hap.toBe.agentPercent}%` }}
-                                />
+                                <span>{distribution.agentPercent}%</span>
                               </div>
                             </div>
                           </div>
 
-                          {/* Progress */}
+                          {/* Tasks Summary */}
                           <div className="space-y-3">
                             <h4 className="text-sm font-medium">
-                              Transformation Progress
+                              Tasks Overview
                             </h4>
                             <div className="space-y-2">
                               <div className="flex justify-between text-xs">
-                                <span>
-                                  {tasksDone} of {totalTasks} tasks complete
-                                </span>
-                                <span>{progressPercent}%</span>
+                                <span>{hap.tasks.length} tasks defined</span>
+                                <span>{distribution.agent} agent phases</span>
                               </div>
-                              <Progress value={progressPercent} />
-                            </div>
-                            {hap.targetCompletionDate && (
+                              <Progress
+                                value={distribution.agentPercent}
+                                className="h-2"
+                              />
                               <p className="text-xs text-muted-foreground">
-                                Target:{" "}
-                                {new Date(
-                                  hap.targetCompletionDate
-                                ).toLocaleDateString()}
+                                {distribution.human} human phases / {distribution.agent} agent phases
                               </p>
-                            )}
+                            </div>
                           </div>
 
-                          {/* Blockers */}
+                          {/* Skill Requirements */}
                           <div className="space-y-3">
-                            <h4 className="text-sm font-medium">Blockers</h4>
-                            {hap.topBlockers && hap.topBlockers.length > 0 ? (
-                              <ul className="space-y-1 text-xs">
-                                {hap.topBlockers.slice(0, 2).map((blocker, i) => (
-                                  <li
-                                    key={i}
-                                    className="flex items-start gap-2 text-red-600"
-                                  >
-                                    <AlertCircle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                                    {blocker}
-                                  </li>
-                                ))}
-                                {hap.topBlockers.length > 2 && (
-                                  <li className="text-muted-foreground">
-                                    +{hap.topBlockers.length - 2} more
-                                  </li>
-                                )}
-                              </ul>
+                            <h4 className="text-sm font-medium">Skill Requirements</h4>
+                            {pendingSkills > 0 ? (
+                              <div className="space-y-1">
+                                <p className="text-sm text-yellow-600">
+                                  {pendingSkills} skill{pendingSkills !== 1 ? 's' : ''} need to be defined
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  Agent phases without linked skills
+                                </p>
+                              </div>
+                            ) : hap.tasks.some(t =>
+                                Object.values(t.phases).some(p => p.owner === 'agent')
+                              ) ? (
+                              <p className="text-xs text-green-600">
+                                All agent skills defined
+                              </p>
                             ) : (
                               <p className="text-xs text-muted-foreground">
-                                No blockers
+                                No agent phases assigned
                               </p>
                             )}
                           </div>
@@ -428,10 +421,10 @@ export default function HAPsPage() {
               <p className="text-muted-foreground mt-1">
                 {statusFilter !== "all" || deptFilter !== "all"
                   ? "Try adjusting your filters"
-                  : "Create your first Human-Agent Pair to start AI transformation"}
+                  : "Create your first Human-Agent Pair to start AI integration"}
               </p>
               <Button className="mt-4" asChild>
-                <Link href="/organization/haps/new">
+                <Link href="/haps/new">
                   <Plus className="mr-2 h-4 w-4" />
                   Create HAP
                 </Link>

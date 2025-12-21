@@ -13,6 +13,8 @@ import {
   Bot,
   LayoutGrid,
   GitBranch,
+  User,
+  Cpu,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -33,8 +35,8 @@ import {
   useHAPs,
   useHAPStats,
 } from "@/hooks";
-import { TRANSITION_STATUS_METADATA } from "@/lib/schemas";
-import type { TransitionStatus } from "@/lib/schemas";
+import { INTEGRATION_STATUS_METADATA, calculatePhaseDistribution } from "@/lib/schemas";
+import type { HAPIntegrationStatus } from "@/lib/schemas";
 import { OrgChart, OrgSummary } from "@/components/organization";
 
 export default function OrganizationPage() {
@@ -64,15 +66,17 @@ export default function OrganizationPage() {
   const selectedDomain = domains?.find((d) => d.id === selectedDomainId);
   const selectedDept = departments?.find((d) => d.id === selectedDeptId);
 
-  const getStatusColor = (status: TransitionStatus) => {
-    const meta = TRANSITION_STATUS_METADATA[status];
+  const getStatusColor = (status: HAPIntegrationStatus) => {
+    const meta = INTEGRATION_STATUS_METADATA[status];
     switch (meta.color) {
       case "green":
         return "bg-green-500";
+      case "emerald":
+        return "bg-emerald-500";
       case "yellow":
         return "bg-yellow-500";
-      case "red":
-        return "bg-red-500";
+      case "orange":
+        return "bg-orange-500";
       case "blue":
         return "bg-blue-500";
       default:
@@ -113,7 +117,7 @@ export default function OrganizationPage() {
               </Button>
             </div>
             <Button variant="outline" asChild>
-              <Link href="/organization/haps">
+              <Link href="/haps">
                 <Bot className="mr-2 h-4 w-4" />
                 View HAPs
               </Link>
@@ -561,7 +565,7 @@ export default function OrganizationPage() {
                   Human-Agent Pairs in {selectedDept?.name}
                 </h2>
                 <Button size="sm" asChild>
-                  <Link href="/organization/haps/new">
+                  <Link href="/haps/new">
                     <Plus className="mr-2 h-4 w-4" />
                     Create HAP
                   </Link>
@@ -572,6 +576,7 @@ export default function OrganizationPage() {
                   {haps.map((hap) => {
                     const person = people?.find((p) => p.id === hap.personId);
                     const role = roles?.find((r) => r.id === hap.roleId);
+                    const distribution = calculatePhaseDistribution(hap.tasks);
                     return (
                       <Card key={hap.id}>
                         <CardHeader>
@@ -579,11 +584,11 @@ export default function OrganizationPage() {
                             <div className="flex items-center gap-2">
                               <div
                                 className={`h-2 w-2 rounded-full ${getStatusColor(
-                                  hap.transitionStatus
+                                  hap.integrationStatus
                                 )}`}
                               />
                               <Badge variant="outline">
-                                {TRANSITION_STATUS_METADATA[hap.transitionStatus].label}
+                                {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
                               </Badge>
                             </div>
                           </div>
@@ -594,35 +599,37 @@ export default function OrganizationPage() {
                         </CardHeader>
                         <CardContent>
                           <div className="space-y-3">
-                            {/* As-Is / To-Be Progress */}
+                            {/* Responsibility Distribution */}
                             <div className="space-y-1">
                               <div className="flex justify-between text-xs">
-                                <span>As-Is: {hap.asIs.humanPercent}% Human</span>
-                                <span>To-Be: {hap.toBe.humanPercent}% Human</span>
+                                <span className="flex items-center gap-1">
+                                  <User className="h-3 w-3" /> Human: {distribution.humanPercent}%
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Cpu className="h-3 w-3" /> Agent: {distribution.agentPercent}%
+                                </span>
                               </div>
                               <div className="flex h-2 overflow-hidden rounded-full bg-muted">
                                 <div
                                   className="bg-blue-500"
-                                  style={{ width: `${hap.asIs.humanPercent}%` }}
+                                  style={{ width: `${distribution.humanPercent}%` }}
                                 />
                                 <div
                                   className="bg-purple-500"
-                                  style={{ width: `${hap.asIs.agentPercent}%` }}
+                                  style={{ width: `${distribution.agentPercent}%` }}
                                 />
                               </div>
                             </div>
                             <div className="flex items-center justify-between text-xs text-muted-foreground">
                               <span>
-                                {hap.asIs.taskAssignments.length} tasks
+                                {hap.tasks.length} tasks
                               </span>
-                              {hap.targetCompletionDate && (
-                                <span>
-                                  Target:{" "}
-                                  {new Date(
-                                    hap.targetCompletionDate
-                                  ).toLocaleDateString()}
-                                </span>
-                              )}
+                              <Link
+                                href={`/haps/${hap.id}`}
+                                className="text-primary hover:underline"
+                              >
+                                View details
+                              </Link>
                             </div>
                           </div>
                         </CardContent>
@@ -638,7 +645,7 @@ export default function OrganizationPage() {
                       Create Human-Agent Pairs to start AI transformation
                     </p>
                     <Button className="mt-4" asChild>
-                      <Link href="/organization/haps/new">
+                      <Link href="/haps/new">
                         <Plus className="mr-2 h-4 w-4" />
                         Create HAP
                       </Link>

@@ -8,3 +8,6 @@ export {
   type TimelineEvent,
 } from "./transition-timeline";
 export { HAPExportPanel } from "./export-panel";
+export { TaskResponsibilityGrid, TaskResponsibilityTable } from "./task-responsibility-grid";
+export { PersonCard, RoleCard, AgentCard, SelectionGrid } from "./selection-cards";
+export { WizardSteps, type WizardStep } from "./wizard-steps";
