@@ -3,7 +3,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   FileText,
-  FolderOpen,
   LayoutTemplate,
   Home,
   Settings,
@@ -27,12 +26,11 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: Home },
-  { title: "Stories", href: "/stories", icon: FileText },
+  { title: "Organization", href: "/organization", icon: Building2 },
   { title: "HAPs", href: "/haps", icon: Users },
+  { title: "Stories", href: "/stories", icon: FileText },
   { title: "Skills Queue", href: "/skills-queue", icon: Lightbulb },
   { title: "Templates", href: "/templates", icon: LayoutTemplate },
-  { title: "Organization", href: "/organization", icon: Building2 },
-  { title: "Projects", href: "/projects", icon: FolderOpen },
 ];
 
 const bottomNavItems: NavItem[] = [
