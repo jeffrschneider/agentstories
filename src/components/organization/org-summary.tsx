@@ -35,57 +35,73 @@ export function OrgSummary({
   people,
   haps,
 }: OrgSummaryProps) {
-  // Calculate overall metrics
+  // Calculate overall metrics using new Responsibility Phase Model
   const metrics = React.useMemo(() => {
     const totalTasks = haps.reduce(
-      (sum, h) => sum + h.asIs.taskAssignments.length,
+      (sum, h) => sum + (h.tasks?.length ?? 0),
       0
     );
 
-    let asIsHuman = 0, asIsAgent = 0, asIsShared = 0;
-    let toBeHuman = 0, toBeAgent = 0, toBeShared = 0;
+    let humanPhases = 0;
+    let agentPhases = 0;
 
     haps.forEach((hap) => {
-      hap.asIs.taskAssignments.forEach((task) => {
-        if (task.currentOwner === "human") asIsHuman++;
-        else if (task.currentOwner === "agent") asIsAgent++;
-        else asIsShared++;
-
-        if (task.targetOwner === "human") toBeHuman++;
-        else if (task.targetOwner === "agent") toBeAgent++;
-        else toBeShared++;
+      (hap.tasks ?? []).forEach((task) => {
+        // Count phases by owner
+        Object.values(task.phases).forEach((phase) => {
+          if (phase.owner === "human") humanPhases++;
+          else agentPhases++;
+        });
       });
     });
 
-    const total = asIsHuman + asIsAgent + asIsShared;
+    const totalPhases = humanPhases + agentPhases;
 
+    // In new model, there's no "shared" - phases are either human or agent
+    // We keep the structure for backward compatibility with OwnershipChart
     return {
       totalTasks,
       asIs: {
-        human: total > 0 ? Math.round((asIsHuman / total) * 100) : 0,
-        agent: total > 0 ? Math.round((asIsAgent / total) * 100) : 0,
-        shared: total > 0 ? Math.round((asIsShared / total) * 100) : 0,
+        human: totalPhases > 0 ? Math.round((humanPhases / totalPhases) * 100) : 100,
+        agent: totalPhases > 0 ? Math.round((agentPhases / totalPhases) * 100) : 0,
+        shared: 0, // No shared in new model
       },
       toBe: {
-        human: total > 0 ? Math.round((toBeHuman / total) * 100) : 0,
-        agent: total > 0 ? Math.round((toBeAgent / total) * 100) : 0,
-        shared: total > 0 ? Math.round((toBeShared / total) * 100) : 0,
+        human: totalPhases > 0 ? Math.round((humanPhases / totalPhases) * 100) : 100,
+        agent: totalPhases > 0 ? Math.round((agentPhases / totalPhases) * 100) : 0,
+        shared: 0, // No shared in new model
       },
-      completedHaps: haps.filter((h) => h.transitionStatus === "completed").length,
-      inProgressHaps: haps.filter((h) => h.transitionStatus === "in_progress").length,
-      blockedHaps: haps.filter((h) => h.transitionStatus === "blocked").length,
+      // Map new integration statuses to legacy status counts
+      completedHaps: haps.filter((h) => h.integrationStatus === "ready" || h.integrationStatus === "active").length,
+      inProgressHaps: haps.filter((h) => h.integrationStatus === "planning" || h.integrationStatus === "skills_pending").length,
+      blockedHaps: haps.filter((h) => h.integrationStatus === "paused").length,
     };
   }, [haps]);
 
   const overallProgress = React.useMemo(() => {
     if (haps.length === 0) return 0;
-    const totalTasks = haps.reduce((sum, h) => sum + h.asIs.taskAssignments.length, 0);
-    const completedTasks = haps.reduce(
-      (sum, h) =>
-        sum + h.asIs.taskAssignments.filter((t) => t.currentOwner === t.targetOwner).length,
-      0
-    );
-    return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    // Calculate progress based on agent phases that have skills assigned
+    let totalAgentPhases = 0;
+    let agentPhasesWithSkills = 0;
+
+    haps.forEach((hap) => {
+      (hap.tasks ?? []).forEach((task) => {
+        Object.values(task.phases).forEach((phase) => {
+          if (phase.owner === "agent") {
+            totalAgentPhases++;
+            if (phase.skillId) {
+              agentPhasesWithSkills++;
+            }
+          }
+        });
+      });
+    });
+
+    // If no agent phases, consider it 100% complete (all human work)
+    if (totalAgentPhases === 0) return 100;
+
+    return Math.round((agentPhasesWithSkills / totalAgentPhases) * 100);
   }, [haps]);
 
   return (

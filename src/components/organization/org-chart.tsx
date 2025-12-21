@@ -110,7 +110,7 @@ export function OrgChart({
   haps,
   className,
 }: OrgChartProps) {
-  // Calculate progress for department
+  // Calculate progress for department (based on agent phases with skills)
   const getDeptProgress = (deptId: string) => {
     const deptRoles = roles.filter((r) => r.departmentId === deptId);
     const deptHaps = haps.filter((h) =>
@@ -118,26 +118,39 @@ export function OrgChart({
     );
     if (deptHaps.length === 0) return 0;
 
-    const totalTasks = deptHaps.reduce(
-      (sum, h) => sum + h.asIs.taskAssignments.length,
-      0
-    );
-    const completedTasks = deptHaps.reduce(
-      (sum, h) =>
-        sum +
-        h.asIs.taskAssignments.filter((t) => t.currentOwner === t.targetOwner)
-          .length,
-      0
-    );
-    return totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    let totalAgentPhases = 0;
+    let agentPhasesWithSkills = 0;
+
+    deptHaps.forEach((hap) => {
+      (hap.tasks ?? []).forEach((task) => {
+        Object.values(task.phases).forEach((phase) => {
+          if (phase.owner === "agent") {
+            totalAgentPhases++;
+            if (phase.skillId) agentPhasesWithSkills++;
+          }
+        });
+      });
+    });
+
+    return totalAgentPhases > 0 ? Math.round((agentPhasesWithSkills / totalAgentPhases) * 100) : 100;
   };
 
-  // Calculate progress for HAP
+  // Calculate progress for HAP (based on agent phases with skills)
   const getHAPProgress = (hap: HumanAgentPair) => {
-    const tasks = hap.asIs.taskAssignments;
-    if (tasks.length === 0) return 0;
-    const completed = tasks.filter((t) => t.currentOwner === t.targetOwner).length;
-    return Math.round((completed / tasks.length) * 100);
+    const tasks = hap.tasks ?? [];
+    let agentPhases = 0;
+    let agentPhasesWithSkills = 0;
+
+    tasks.forEach((task) => {
+      Object.values(task.phases).forEach((phase) => {
+        if (phase.owner === "agent") {
+          agentPhases++;
+          if (phase.skillId) agentPhasesWithSkills++;
+        }
+      });
+    });
+
+    return agentPhases > 0 ? Math.round((agentPhasesWithSkills / agentPhases) * 100) : 100;
   };
 
   return (
@@ -214,7 +227,7 @@ export function OrgChart({
                               progress={progress}
                               badge={
                                 <StatusBadge
-                                  status={hap.transitionStatus}
+                                  status={hap.integrationStatus}
                                   size="sm"
                                   showIcon={false}
                                 />

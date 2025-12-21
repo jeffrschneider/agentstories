@@ -58,35 +58,63 @@ export function HAPExportPanel({
     return departments.find((d) => d.id === role.departmentId)?.name || "Unknown";
   };
 
+  // Helper to calculate phase distribution for a HAP
+  const getPhaseDistribution = (hap: HumanAgentPair) => {
+    const tasks = hap.tasks ?? [];
+    let humanPhases = 0;
+    let agentPhases = 0;
+    let agentPhasesWithSkills = 0;
+
+    tasks.forEach((task) => {
+      Object.values(task.phases).forEach((phase) => {
+        if (phase.owner === "human") {
+          humanPhases++;
+        } else {
+          agentPhases++;
+          if (phase.skillId) agentPhasesWithSkills++;
+        }
+      });
+    });
+
+    const totalPhases = humanPhases + agentPhases;
+    return {
+      humanPercent: totalPhases > 0 ? Math.round((humanPhases / totalPhases) * 100) : 100,
+      agentPercent: totalPhases > 0 ? Math.round((agentPhases / totalPhases) * 100) : 0,
+      progress: agentPhases > 0 ? Math.round((agentPhasesWithSkills / agentPhases) * 100) : 100,
+    };
+  };
+
   // Generate JSON export
   const generateJSON = () => {
     const data = haps.map((hap) => {
+      const distribution = getPhaseDistribution(hap);
       const base = {
         id: hap.id,
         person: getPersonName(hap.personId),
         role: getRoleName(hap.roleId),
         department: getDeptName(hap.roleId),
-        status: hap.transitionStatus,
-        asIs: {
-          humanPercent: hap.asIs.humanPercent,
-          agentPercent: hap.asIs.agentPercent,
+        status: hap.integrationStatus,
+        phaseDistribution: {
+          humanPercent: distribution.humanPercent,
+          agentPercent: distribution.agentPercent,
         },
-        toBe: {
-          humanPercent: hap.toBe.humanPercent,
-          agentPercent: hap.toBe.agentPercent,
-        },
-        targetCompletionDate: hap.targetCompletionDate || null,
+        progress: distribution.progress,
       };
 
       if (includeTasks) {
+        const tasks = hap.tasks ?? [];
         return {
           ...base,
-          taskCount: hap.asIs.taskAssignments.length,
-          tasks: hap.asIs.taskAssignments.map((t) => ({
+          taskCount: tasks.length,
+          tasks: tasks.map((t) => ({
             name: t.taskName,
-            currentOwner: t.currentOwner,
-            targetOwner: t.targetOwner,
-            completed: t.currentOwner === t.targetOwner,
+            phases: {
+              manage: t.phases.manage.owner,
+              define: t.phases.define.owner,
+              perform: t.phases.perform.owner,
+              review: t.phases.review.owner,
+            },
+            integrationStatus: t.integrationStatus,
           })),
         };
       }
@@ -105,37 +133,31 @@ export function HAPExportPanel({
       "Role",
       "Department",
       "Status",
-      "As-Is Human %",
-      "As-Is Agent %",
-      "To-Be Human %",
-      "To-Be Agent %",
-      "Target Date",
+      "Human Phases %",
+      "Agent Phases %",
+      "Progress %",
     ];
 
     if (includeTasks) {
-      headers.push("Task Count", "Tasks Completed");
+      headers.push("Task Count");
     }
 
     const rows = haps.map((hap) => {
-      const completedTasks = hap.asIs.taskAssignments.filter(
-        (t) => t.currentOwner === t.targetOwner
-      ).length;
+      const distribution = getPhaseDistribution(hap);
 
-      const row = [
+      const row: (string | number)[] = [
         hap.id,
         getPersonName(hap.personId),
         getRoleName(hap.roleId),
         getDeptName(hap.roleId),
-        hap.transitionStatus,
-        hap.asIs.humanPercent,
-        hap.asIs.agentPercent,
-        hap.toBe.humanPercent,
-        hap.toBe.agentPercent,
-        hap.targetCompletionDate || "",
+        hap.integrationStatus,
+        distribution.humanPercent,
+        distribution.agentPercent,
+        distribution.progress,
       ];
 
       if (includeTasks) {
-        row.push(hap.asIs.taskAssignments.length, completedTasks);
+        row.push((hap.tasks ?? []).length);
       }
 
       return row;
@@ -155,23 +177,25 @@ export function HAPExportPanel({
   const generateMarkdown = () => {
     const lines: string[] = [];
 
-    lines.push("# HAP Transformation Report");
+    lines.push("# HAP Integration Report");
     lines.push("");
     lines.push(`**Generated:** ${new Date().toLocaleString()}`);
     lines.push(`**Total HAPs:** ${haps.length}`);
     lines.push("");
 
     // Summary stats
-    const completed = haps.filter((h) => h.transitionStatus === "completed").length;
-    const inProgress = haps.filter((h) => h.transitionStatus === "in_progress").length;
-    const blocked = haps.filter((h) => h.transitionStatus === "blocked").length;
+    const ready = haps.filter((h) => h.integrationStatus === "ready" || h.integrationStatus === "active").length;
+    const skillsPending = haps.filter((h) => h.integrationStatus === "skills_pending").length;
+    const planning = haps.filter((h) => h.integrationStatus === "planning").length;
+    const paused = haps.filter((h) => h.integrationStatus === "paused").length;
 
     lines.push("## Summary");
     lines.push("");
-    lines.push(`- ✅ Completed: ${completed}`);
-    lines.push(`- 🔄 In Progress: ${inProgress}`);
-    lines.push(`- ⛔ Blocked: ${blocked}`);
-    lines.push(`- 📋 Not Started/Planned: ${haps.length - completed - inProgress - blocked}`);
+    lines.push(`- ✅ Ready/Active: ${ready}`);
+    lines.push(`- ⏳ Skills Pending: ${skillsPending}`);
+    lines.push(`- 📝 Planning: ${planning}`);
+    lines.push(`- ⏸️ Paused: ${paused}`);
+    lines.push(`- 📋 Not Started: ${haps.length - ready - skillsPending - planning - paused}`);
     lines.push("");
 
     if (includeDetails) {
@@ -179,42 +203,39 @@ export function HAPExportPanel({
       lines.push("");
 
       haps.forEach((hap) => {
-        const progress =
-          hap.asIs.taskAssignments.length > 0
-            ? Math.round(
-                (hap.asIs.taskAssignments.filter((t) => t.currentOwner === t.targetOwner).length /
-                  hap.asIs.taskAssignments.length) *
-                  100
-              )
-            : 0;
+        const distribution = getPhaseDistribution(hap);
 
         lines.push(`### ${getPersonName(hap.personId)} - ${getRoleName(hap.roleId)}`);
         lines.push("");
         lines.push(`**Department:** ${getDeptName(hap.roleId)}`);
-        lines.push(`**Status:** ${hap.transitionStatus.replace("_", " ")}`);
-        lines.push(`**Progress:** ${progress}%`);
+        lines.push(`**Status:** ${hap.integrationStatus.replace("_", " ")}`);
+        lines.push(`**Progress:** ${distribution.progress}%`);
         lines.push("");
-        lines.push("| Metric | As-Is | To-Be |");
-        lines.push("|--------|-------|-------|");
-        lines.push(`| Human | ${hap.asIs.humanPercent}% | ${hap.toBe.humanPercent}% |`);
-        lines.push(`| Agent | ${hap.asIs.agentPercent}% | ${hap.toBe.agentPercent}% |`);
+        lines.push("| Phase Type | Percentage |");
+        lines.push("|------------|------------|");
+        lines.push(`| Human | ${distribution.humanPercent}% |`);
+        lines.push(`| Agent | ${distribution.agentPercent}% |`);
         lines.push("");
 
-        if (includeTasks && hap.asIs.taskAssignments.length > 0) {
+        const tasks = hap.tasks ?? [];
+        if (includeTasks && tasks.length > 0) {
           lines.push("**Tasks:**");
           lines.push("");
-          hap.asIs.taskAssignments.forEach((task) => {
-            const status = task.currentOwner === task.targetOwner ? "✅" : "⏳";
-            lines.push(`- ${status} ${task.taskName}: ${task.currentOwner} → ${task.targetOwner}`);
+          lines.push("| Task | Manage | Define | Perform | Review |");
+          lines.push("|------|--------|--------|---------|--------|");
+          tasks.forEach((task) => {
+            const m = task.phases.manage.owner === "human" ? "👤" : "🤖";
+            const d = task.phases.define.owner === "human" ? "👤" : "🤖";
+            const p = task.phases.perform.owner === "human" ? "👤" : "🤖";
+            const r = task.phases.review.owner === "human" ? "👤" : "🤖";
+            lines.push(`| ${task.taskName} | ${m} | ${d} | ${p} | ${r} |`);
           });
           lines.push("");
         }
 
-        if (hap.topBlockers && hap.topBlockers.length > 0) {
-          lines.push("**Blockers:**");
-          hap.topBlockers.forEach((blocker) => {
-            lines.push(`- ⚠️ ${blocker}`);
-          });
+        if (hap.notes) {
+          lines.push("**Notes:**");
+          lines.push(hap.notes);
           lines.push("");
         }
       });

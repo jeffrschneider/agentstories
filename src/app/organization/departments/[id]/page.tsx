@@ -33,99 +33,103 @@ import {
   useRoles,
   useDepartmentStats,
 } from "@/hooks";
-import type { HumanAgentPair, TransitionStatus } from "@/lib/schemas/hap";
+import type { HumanAgentPair, HAPIntegrationStatus } from "@/lib/schemas/hap";
 
-// Helper to calculate department-wide metrics
+// Helper to calculate department-wide metrics using new Responsibility Phase Model
 function calculateDepartmentMetrics(haps: HumanAgentPair[]) {
   if (haps.length === 0) {
     return {
       totalHAPs: 0,
       totalTasks: 0,
-      asIsHumanPercent: 0,
-      asIsAgentPercent: 0,
-      asIsSharedPercent: 0,
-      toBeHumanPercent: 0,
-      toBeAgentPercent: 0,
-      toBeSharedPercent: 0,
+      humanPhasesPercent: 100,
+      agentPhasesPercent: 0,
       avgProgress: 0,
       statusBreakdown: {
         not_started: 0,
-        planned: 0,
-        in_progress: 0,
-        blocked: 0,
-        completed: 0,
+        planning: 0,
+        skills_pending: 0,
+        ready: 0,
+        active: 0,
+        paused: 0,
       },
     };
   }
 
   let totalTasks = 0;
-  let asIsHuman = 0,
-    asIsAgent = 0,
-    asIsShared = 0;
-  let toBeHuman = 0,
-    toBeAgent = 0,
-    toBeShared = 0;
-  const statusBreakdown: Record<TransitionStatus, number> = {
+  let humanPhases = 0;
+  let agentPhases = 0;
+  let agentPhasesWithSkills = 0;
+
+  const statusBreakdown: Record<HAPIntegrationStatus, number> = {
     not_started: 0,
-    planned: 0,
-    in_progress: 0,
-    blocked: 0,
-    completed: 0,
+    planning: 0,
+    skills_pending: 0,
+    ready: 0,
+    active: 0,
+    paused: 0,
   };
 
   haps.forEach((hap) => {
-    statusBreakdown[hap.transitionStatus]++;
+    statusBreakdown[hap.integrationStatus]++;
 
-    // Task assignments are inside asIs state
-    hap.asIs.taskAssignments.forEach((task) => {
+    // Tasks use new Responsibility Phase Model
+    (hap.tasks ?? []).forEach((task) => {
       totalTasks++;
-      // As-Is counts
-      if (task.currentOwner === "human") asIsHuman++;
-      else if (task.currentOwner === "agent") asIsAgent++;
-      else asIsShared++;
-      // To-Be counts
-      if (task.targetOwner === "human") toBeHuman++;
-      else if (task.targetOwner === "agent") toBeAgent++;
-      else toBeShared++;
+      Object.values(task.phases).forEach((phase) => {
+        if (phase.owner === "human") {
+          humanPhases++;
+        } else {
+          agentPhases++;
+          if (phase.skillId) {
+            agentPhasesWithSkills++;
+          }
+        }
+      });
     });
   });
 
-  const asIsTotal = asIsHuman + asIsAgent + asIsShared;
-  const toBeTotal = toBeHuman + toBeAgent + toBeShared;
+  const totalPhases = humanPhases + agentPhases;
 
-  // Calculate average progress across HAPs
+  // Calculate average progress (based on agent phases that have skills assigned)
   const avgProgress =
-    haps.reduce((sum, hap) => {
-      const completed = hap.asIs.taskAssignments.filter(
-        (t) => t.currentOwner === t.targetOwner
-      ).length;
-      const total = hap.asIs.taskAssignments.length;
-      return sum + (total > 0 ? (completed / total) * 100 : 0);
-    }, 0) / haps.length;
+    haps.length > 0
+      ? haps.reduce((sum, hap) => {
+          const tasks = hap.tasks ?? [];
+          let hapAgentPhases = 0;
+          let hapAgentPhasesWithSkills = 0;
+          tasks.forEach((task) => {
+            Object.values(task.phases).forEach((phase) => {
+              if (phase.owner === "agent") {
+                hapAgentPhases++;
+                if (phase.skillId) hapAgentPhasesWithSkills++;
+              }
+            });
+          });
+          // If no agent phases, consider it 100% complete
+          return sum + (hapAgentPhases > 0 ? (hapAgentPhasesWithSkills / hapAgentPhases) * 100 : 100);
+        }, 0) / haps.length
+      : 0;
 
   return {
     totalHAPs: haps.length,
     totalTasks,
-    asIsHumanPercent: asIsTotal > 0 ? Math.round((asIsHuman / asIsTotal) * 100) : 0,
-    asIsAgentPercent: asIsTotal > 0 ? Math.round((asIsAgent / asIsTotal) * 100) : 0,
-    asIsSharedPercent: asIsTotal > 0 ? Math.round((asIsShared / asIsTotal) * 100) : 0,
-    toBeHumanPercent: toBeTotal > 0 ? Math.round((toBeHuman / toBeTotal) * 100) : 0,
-    toBeAgentPercent: toBeTotal > 0 ? Math.round((toBeAgent / toBeTotal) * 100) : 0,
-    toBeSharedPercent: toBeTotal > 0 ? Math.round((toBeShared / toBeTotal) * 100) : 0,
+    humanPhasesPercent: totalPhases > 0 ? Math.round((humanPhases / totalPhases) * 100) : 100,
+    agentPhasesPercent: totalPhases > 0 ? Math.round((agentPhases / totalPhases) * 100) : 0,
     avgProgress: Math.round(avgProgress),
     statusBreakdown,
   };
 }
 
 const statusConfig: Record<
-  TransitionStatus,
+  HAPIntegrationStatus,
   { label: string; color: string; icon: React.ComponentType<{ className?: string }> }
 > = {
   not_started: { label: "Not Started", color: "bg-gray-500", icon: Clock },
-  planned: { label: "Planned", color: "bg-blue-500", icon: Target },
-  in_progress: { label: "In Progress", color: "bg-yellow-500", icon: TrendingUp },
-  blocked: { label: "Blocked", color: "bg-red-500", icon: AlertTriangle },
-  completed: { label: "Completed", color: "bg-green-500", icon: CheckCircle2 },
+  planning: { label: "Planning", color: "bg-blue-500", icon: Target },
+  skills_pending: { label: "Skills Pending", color: "bg-yellow-500", icon: TrendingUp },
+  ready: { label: "Ready", color: "bg-green-500", icon: CheckCircle2 },
+  active: { label: "Active", color: "bg-emerald-500", icon: CheckCircle2 },
+  paused: { label: "Paused", color: "bg-orange-500", icon: AlertTriangle },
 };
 
 export default function DepartmentDashboardPage({
@@ -258,13 +262,13 @@ export default function DepartmentDashboardPage({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              AI Adoption Target
+              Agent Phases
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2">
               <Bot className="h-5 w-5 text-orange-500" />
-              <span className="text-2xl font-bold">{metrics.toBeAgentPercent}%</span>
+              <span className="text-2xl font-bold">{metrics.agentPhasesPercent}%</span>
             </div>
           </CardContent>
         </Card>
@@ -289,8 +293,8 @@ export default function DepartmentDashboardPage({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-5">
-                {(Object.keys(statusConfig) as TransitionStatus[]).map((status) => {
+              <div className="grid gap-4 md:grid-cols-6">
+                {(Object.keys(statusConfig) as HAPIntegrationStatus[]).map((status) => {
                   const config = statusConfig[status];
                   const count = metrics.statusBreakdown[status];
                   const Icon = config.icon;
@@ -313,19 +317,19 @@ export default function DepartmentDashboardPage({
             </CardContent>
           </Card>
 
-          {/* Blockers Alert */}
-          {metrics.statusBreakdown.blocked > 0 && (
-            <Card className="border-red-200 bg-red-50 dark:bg-red-950/20">
+          {/* Paused HAPs Alert */}
+          {metrics.statusBreakdown.paused > 0 && (
+            <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950/20">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <CardTitle className="flex items-center gap-2 text-orange-700 dark:text-orange-400">
                   <AlertTriangle className="h-5 w-5" />
-                  Blocked Transitions
+                  Paused HAPs
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
                   {departmentHAPs
-                    .filter((hap) => hap.transitionStatus === "blocked")
+                    .filter((hap) => hap.integrationStatus === "paused")
                     .map((hap) => {
                       const person = people.find((p) => p.id === hap.personId);
                       const role = roles.find((r) => r.id === hap.roleId);
@@ -341,8 +345,8 @@ export default function DepartmentDashboardPage({
                             </p>
                           </div>
                           <div className="text-right">
-                            {hap.topBlockers && hap.topBlockers.length > 0 && (
-                              <p className="text-sm text-red-600">{hap.topBlockers[0]}</p>
+                            {hap.notes && (
+                              <p className="text-sm text-orange-600">{hap.notes}</p>
                             )}
                             <Button variant="outline" size="sm" asChild>
                               <Link href={`/haps/${hap.id}`}>View</Link>
@@ -359,148 +363,58 @@ export default function DepartmentDashboardPage({
 
         {/* Transformation Tab */}
         <TabsContent value="transformation" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {/* As-Is State */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Current State (As-Is)</CardTitle>
-                <CardDescription>
-                  How tasks are currently distributed
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4" /> Human
-                    </span>
-                    <span>{metrics.asIsHumanPercent}%</span>
-                  </div>
-                  <Progress value={metrics.asIsHumanPercent} className="h-2" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <Bot className="h-4 w-4" /> Agent
-                    </span>
-                    <span>{metrics.asIsAgentPercent}%</span>
-                  </div>
-                  <Progress value={metrics.asIsAgentPercent} className="h-2 [&>div]:bg-orange-500" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <Bot className="h-4 w-4 -ml-2" /> Shared
-                    </span>
-                    <span>{metrics.asIsSharedPercent}%</span>
-                  </div>
-                  <Progress value={metrics.asIsSharedPercent} className="h-2 [&>div]:bg-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* To-Be State */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Target State (To-Be)</CardTitle>
-                <CardDescription>
-                  How tasks will be distributed after transition
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4" /> Human
-                    </span>
-                    <span>{metrics.toBeHumanPercent}%</span>
-                  </div>
-                  <Progress value={metrics.toBeHumanPercent} className="h-2" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <Bot className="h-4 w-4" /> Agent
-                    </span>
-                    <span>{metrics.toBeAgentPercent}%</span>
-                  </div>
-                  <Progress value={metrics.toBeAgentPercent} className="h-2 [&>div]:bg-orange-500" />
-                </div>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="flex items-center gap-2">
-                      <Users className="h-4 w-4" />
-                      <Bot className="h-4 w-4 -ml-2" /> Shared
-                    </span>
-                    <span>{metrics.toBeSharedPercent}%</span>
-                  </div>
-                  <Progress value={metrics.toBeSharedPercent} className="h-2 [&>div]:bg-purple-500" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Transformation Delta */}
+          {/* Phase Distribution */}
           <Card>
             <CardHeader>
-              <CardTitle>Transformation Delta</CardTitle>
+              <CardTitle>Phase Responsibility Distribution</CardTitle>
               <CardDescription>
-                Change in task ownership from As-Is to To-Be
+                How task phases are distributed between humans and agents
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <Users className="h-4 w-4" /> Human Phases
+                  </span>
+                  <span>{metrics.humanPhasesPercent}%</span>
+                </div>
+                <Progress value={metrics.humanPhasesPercent} className="h-2" />
+              </div>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <Bot className="h-4 w-4" /> Agent Phases
+                  </span>
+                  <span>{metrics.agentPhasesPercent}%</span>
+                </div>
+                <Progress value={metrics.agentPhasesPercent} className="h-2 [&>div]:bg-orange-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Integration Progress */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Integration Progress</CardTitle>
+              <CardDescription>
+                Overall progress of agent skill integration
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="text-center p-4 rounded-lg bg-muted">
-                  <p className="text-sm text-muted-foreground mb-1">Human Tasks</p>
-                  <p className="text-2xl font-bold">
-                    {metrics.asIsHumanPercent}% → {metrics.toBeHumanPercent}%
-                  </p>
-                  <p
-                    className={`text-sm ${
-                      metrics.toBeHumanPercent < metrics.asIsHumanPercent
-                        ? "text-red-500"
-                        : metrics.toBeHumanPercent > metrics.asIsHumanPercent
-                        ? "text-green-500"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {metrics.toBeHumanPercent - metrics.asIsHumanPercent > 0 ? "+" : ""}
-                    {metrics.toBeHumanPercent - metrics.asIsHumanPercent}%
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-1">Average Progress</p>
+                  <p className="text-2xl font-bold">{metrics.avgProgress}%</p>
+                  <Progress value={metrics.avgProgress} className="h-2 mt-2" />
                 </div>
                 <div className="text-center p-4 rounded-lg bg-muted">
-                  <p className="text-sm text-muted-foreground mb-1">Agent Tasks</p>
+                  <p className="text-sm text-muted-foreground mb-1">Ready HAPs</p>
                   <p className="text-2xl font-bold">
-                    {metrics.asIsAgentPercent}% → {metrics.toBeAgentPercent}%
+                    {metrics.statusBreakdown.ready + metrics.statusBreakdown.active} / {metrics.totalHAPs}
                   </p>
-                  <p
-                    className={`text-sm ${
-                      metrics.toBeAgentPercent > metrics.asIsAgentPercent
-                        ? "text-green-500"
-                        : metrics.toBeAgentPercent < metrics.asIsAgentPercent
-                        ? "text-red-500"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {metrics.toBeAgentPercent - metrics.asIsAgentPercent > 0 ? "+" : ""}
-                    {metrics.toBeAgentPercent - metrics.asIsAgentPercent}%
-                  </p>
-                </div>
-                <div className="text-center p-4 rounded-lg bg-muted">
-                  <p className="text-sm text-muted-foreground mb-1">Shared Tasks</p>
-                  <p className="text-2xl font-bold">
-                    {metrics.asIsSharedPercent}% → {metrics.toBeSharedPercent}%
-                  </p>
-                  <p
-                    className={`text-sm ${
-                      metrics.toBeSharedPercent !== metrics.asIsSharedPercent
-                        ? "text-blue-500"
-                        : "text-muted-foreground"
-                    }`}
-                  >
-                    {metrics.toBeSharedPercent - metrics.asIsSharedPercent > 0 ? "+" : ""}
-                    {metrics.toBeSharedPercent - metrics.asIsSharedPercent}%
+                  <p className="text-sm text-muted-foreground">
+                    Fully integrated
                   </p>
                 </div>
               </div>
@@ -530,14 +444,24 @@ export default function DepartmentDashboardPage({
                   {departmentHAPs.map((hap) => {
                     const person = people.find((p) => p.id === hap.personId);
                     const role = roles.find((r) => r.id === hap.roleId);
-                    const status = statusConfig[hap.transitionStatus];
+                    const status = statusConfig[hap.integrationStatus];
                     const StatusIcon = status.icon;
-                    const completedTasks = hap.asIs.taskAssignments.filter(
-                      (t) => t.currentOwner === t.targetOwner
-                    ).length;
-                    const totalTasks = hap.asIs.taskAssignments.length;
-                    const progress =
-                      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+                    // Calculate progress based on agent phases with skills
+                    const tasks = hap.tasks ?? [];
+                    let agentPhases = 0;
+                    let agentPhasesWithSkills = 0;
+                    tasks.forEach((task) => {
+                      Object.values(task.phases).forEach((phase) => {
+                        if (phase.owner === "agent") {
+                          agentPhases++;
+                          if (phase.skillId) agentPhasesWithSkills++;
+                        }
+                      });
+                    });
+                    const progress = agentPhases > 0
+                      ? Math.round((agentPhasesWithSkills / agentPhases) * 100)
+                      : 100;
 
                     return (
                       <Link

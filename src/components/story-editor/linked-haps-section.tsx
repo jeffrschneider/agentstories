@@ -92,13 +92,21 @@ export function LinkedHAPsSection({ storyId }: LinkedHAPsSectionProps) {
           const role = roles.find((r) => r.id === hap.roleId);
           const department = departments.find((d) => d.id === role?.departmentId);
 
-          const completedTasks = hap.asIs.taskAssignments.filter(
-            (t) => t.currentOwner === t.targetOwner
-          ).length;
-          const totalTasks = hap.asIs.taskAssignments.length;
-          const progress = totalTasks > 0
-            ? Math.round((completedTasks / totalTasks) * 100)
-            : 0;
+          // Calculate progress based on agent phases with skills
+          const tasks = hap.tasks ?? [];
+          let agentPhases = 0;
+          let agentPhasesWithSkills = 0;
+          tasks.forEach((task) => {
+            Object.values(task.phases).forEach((phase) => {
+              if (phase.owner === "agent") {
+                agentPhases++;
+                if (phase.skillId) agentPhasesWithSkills++;
+              }
+            });
+          });
+          const progress = agentPhases > 0
+            ? Math.round((agentPhasesWithSkills / agentPhases) * 100)
+            : 100;
 
           return (
             <Link
@@ -131,7 +139,7 @@ export function LinkedHAPsSection({ storyId }: LinkedHAPsSectionProps) {
                   <p className="text-sm font-medium">{progress}% complete</p>
                   <Progress value={progress} className="h-1.5 w-24" />
                 </div>
-                <StatusBadge status={hap.transitionStatus} size="sm" />
+                <StatusBadge status={hap.integrationStatus} size="sm" />
                 <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
             </Link>
