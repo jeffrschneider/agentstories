@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Briefcase, Plus, Trash2, Bot } from "lucide-react";
+import { Briefcase, Plus, Trash2, Bot, X, ChevronDown } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -22,6 +23,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FormField } from "@/components/ui/form-field";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -30,7 +37,7 @@ import {
   useDomains,
   useDepartments,
 } from "@/hooks";
-import { ROLE_LEVEL_METADATA, createEmptyResponsibility } from "@/lib/schemas";
+import { ROLE_LEVEL_METADATA, SKILL_DOMAINS, createEmptyResponsibility } from "@/lib/schemas";
 import type { Role, Responsibility } from "@/lib/schemas";
 
 interface RoleDialogProps {
@@ -115,6 +122,21 @@ export function RoleDialog({
 
   const removeResponsibility = (index: number) => {
     setResponsibilities(responsibilities.filter((_, i) => i !== index));
+  };
+
+  const toggleSkillDomain = (index: number, domain: string) => {
+    const resp = responsibilities[index];
+    const currentDomains = resp.requiredSkillDomains || [];
+    const newDomains = currentDomains.includes(domain)
+      ? currentDomains.filter((d) => d !== domain)
+      : [...currentDomains, domain];
+    updateResponsibility(index, { requiredSkillDomains: newDomains });
+  };
+
+  const removeSkillDomain = (index: number, domain: string) => {
+    const resp = responsibilities[index];
+    const newDomains = (resp.requiredSkillDomains || []).filter((d) => d !== domain);
+    updateResponsibility(index, { requiredSkillDomains: newDomains });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -286,6 +308,66 @@ export function RoleDialog({
                             AI Candidate
                           </Label>
                         </div>
+
+                        {/* Skill Domains - shown when AI Candidate is checked */}
+                        {resp.aiCandidate && (
+                          <div className="space-y-2 pt-2 border-t mt-2">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs text-muted-foreground">
+                                Required Skills
+                              </Label>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    disabled={isLoading}
+                                  >
+                                    Add Skill
+                                    <ChevronDown className="ml-1 h-3 w-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-56 max-h-64 overflow-auto">
+                                  {SKILL_DOMAINS.map((domain) => (
+                                    <DropdownMenuCheckboxItem
+                                      key={domain}
+                                      checked={(resp.requiredSkillDomains || []).includes(domain)}
+                                      onCheckedChange={() => toggleSkillDomain(index, domain)}
+                                    >
+                                      {domain}
+                                    </DropdownMenuCheckboxItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                            {(resp.requiredSkillDomains || []).length > 0 ? (
+                              <div className="flex flex-wrap gap-1">
+                                {resp.requiredSkillDomains?.map((domain) => (
+                                  <Badge
+                                    key={domain}
+                                    variant="secondary"
+                                    className="text-xs pr-1"
+                                  >
+                                    {domain}
+                                    <button
+                                      type="button"
+                                      onClick={() => removeSkillDomain(index, domain)}
+                                      className="ml-1 hover:text-destructive"
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </button>
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-muted-foreground italic">
+                                No skills specified yet
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <Button
                         type="button"

@@ -621,22 +621,38 @@ export default function OrganizationPage() {
                           <p className="text-sm font-medium">
                             Responsibilities ({role.responsibilities.length})
                           </p>
-                          <div className="space-y-1">
+                          <div className="space-y-2">
                             {role.responsibilities.slice(0, 3).map((resp) => (
                               <div
                                 key={resp.id}
-                                className="flex items-center gap-2 text-sm"
+                                className="space-y-1"
                               >
-                                {resp.aiCandidate && (
-                                  <Bot className="h-3 w-3 text-purple-500" />
+                                <div className="flex items-center gap-2 text-sm">
+                                  {resp.aiCandidate && (
+                                    <Bot className="h-3 w-3 text-purple-500" />
+                                  )}
+                                  <span
+                                    className={
+                                      resp.aiCandidate ? "text-purple-600" : ""
+                                    }
+                                  >
+                                    {resp.name}
+                                  </span>
+                                </div>
+                                {resp.aiCandidate && resp.requiredSkillDomains && resp.requiredSkillDomains.length > 0 && (
+                                  <div className="flex flex-wrap gap-1 ml-5">
+                                    {resp.requiredSkillDomains.slice(0, 2).map((skill) => (
+                                      <Badge key={skill} variant="outline" className="text-[10px] px-1.5 py-0">
+                                        {skill}
+                                      </Badge>
+                                    ))}
+                                    {resp.requiredSkillDomains.length > 2 && (
+                                      <span className="text-[10px] text-muted-foreground">
+                                        +{resp.requiredSkillDomains.length - 2}
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
-                                <span
-                                  className={
-                                    resp.aiCandidate ? "text-purple-600" : ""
-                                  }
-                                >
-                                  {resp.name}
-                                </span>
                               </div>
                             ))}
                             {role.responsibilities.length > 3 && (

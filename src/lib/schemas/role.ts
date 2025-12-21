@@ -10,7 +10,9 @@ export const ResponsibilitySchema = z.object({
   name: z.string().min(1).max(200),
   description: z.string().max(500).optional(),
   // Indicates if this responsibility is a good candidate for AI assistance
-  aiCandidate: z.boolean().default(false)
+  aiCandidate: z.boolean().default(false),
+  // Skill domains required to perform this responsibility (when AI-assisted)
+  requiredSkillDomains: z.array(z.string()).default([])
 });
 
 export type Responsibility = z.infer<typeof ResponsibilitySchema>;
@@ -57,7 +59,8 @@ export function createEmptyResponsibility(): Responsibility {
   return {
     id: crypto.randomUUID(),
     name: '',
-    aiCandidate: false
+    aiCandidate: false,
+    requiredSkillDomains: []
   };
 }
 
