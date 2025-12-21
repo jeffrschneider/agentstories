@@ -51,13 +51,14 @@ import {
   useDeletePerson,
 } from "@/hooks";
 import { INTEGRATION_STATUS_METADATA, calculatePhaseDistribution, analyzeRoleSkillCoverage } from "@/lib/schemas";
-import type { HAPIntegrationStatus, BusinessDomain, Department, Role, Person } from "@/lib/schemas";
+import type { HAPIntegrationStatus, BusinessDomain, Department, Role, Person, Responsibility } from "@/lib/schemas";
 import {
   DomainDialog,
   DepartmentDialog,
   RoleDialog,
   PersonDialog,
   DeleteConfirmationDialog,
+  ResponsibilityDetailDialog,
 } from "@/components/organization";
 
 type EntityType = "domain" | "department" | "role" | "person";
@@ -78,6 +79,7 @@ export default function OrganizationPage() {
   const [roleDialogOpen, setRoleDialogOpen] = useState(false);
   const [personDialogOpen, setPersonDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [responsibilityDialogOpen, setResponsibilityDialogOpen] = useState(false);
 
   // Edit states
   const [editingDomain, setEditingDomain] = useState<BusinessDomain | null>(null);
@@ -85,6 +87,8 @@ export default function OrganizationPage() {
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
+  const [selectedResponsibility, setSelectedResponsibility] = useState<Responsibility | null>(null);
+  const [selectedResponsibilityRoleName, setSelectedResponsibilityRoleName] = useState<string>("");
 
   const { data: domains, isLoading: domainsLoading } = useDomains();
   const { data: allDepartments } = useDepartments();
@@ -631,9 +635,14 @@ export default function OrganizationPage() {
                           </p>
                           <div className="space-y-2">
                             {role.responsibilities.slice(0, 3).map((resp) => (
-                              <div
+                              <button
                                 key={resp.id}
-                                className="space-y-1"
+                                className="w-full text-left space-y-1 p-1.5 -ml-1.5 rounded hover:bg-accent transition-colors"
+                                onClick={() => {
+                                  setSelectedResponsibility(resp);
+                                  setSelectedResponsibilityRoleName(role.name);
+                                  setResponsibilityDialogOpen(true);
+                                }}
                               >
                                 <div className="flex items-center gap-2 text-sm">
                                   {resp.aiCandidate && (
@@ -641,7 +650,7 @@ export default function OrganizationPage() {
                                   )}
                                   <span
                                     className={
-                                      resp.aiCandidate ? "text-purple-600" : ""
+                                      resp.aiCandidate ? "text-purple-600 hover:underline" : "hover:underline"
                                     }
                                   >
                                     {resp.name}
@@ -661,7 +670,7 @@ export default function OrganizationPage() {
                                     )}
                                   </div>
                                 )}
-                              </div>
+                              </button>
                             ))}
                             {role.responsibilities.length > 3 && (
                               <p className="text-xs text-muted-foreground">
@@ -997,6 +1006,14 @@ export default function OrganizationPage() {
         itemName={deleteState?.name || ""}
         onConfirm={handleDelete}
         isLoading={isDeleting}
+      />
+
+      <ResponsibilityDetailDialog
+        open={responsibilityDialogOpen}
+        onOpenChange={setResponsibilityDialogOpen}
+        responsibility={selectedResponsibility}
+        people={allPeople || []}
+        roleName={selectedResponsibilityRoleName}
       />
     </AppShell>
   );
