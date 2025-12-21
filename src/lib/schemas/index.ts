@@ -17,9 +17,13 @@ export {
   RoleSchema,
   createEmptyRole,
   createEmptyResponsibility,
+  analyzeResponsibilitySkillCoverage,
+  analyzeRoleSkillCoverage,
   ROLE_LEVEL_METADATA,
   type Responsibility,
-  type Role
+  type Role,
+  type SkillCoverageResult,
+  type RoleSkillCoverage
 } from './role';
 
 // Person

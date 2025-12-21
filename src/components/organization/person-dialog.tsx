@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserCircle } from "lucide-react";
+import { UserCircle, ChevronDown, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,6 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { FormField } from "@/components/ui/form-field";
 import {
   useCreatePerson,
@@ -26,7 +34,7 @@ import {
   useDomains,
   useDepartments,
 } from "@/hooks";
-import { PERSON_STATUS_METADATA } from "@/lib/schemas";
+import { PERSON_STATUS_METADATA, SKILL_DOMAINS } from "@/lib/schemas";
 import type { Person } from "@/lib/schemas";
 
 interface PersonDialogProps {
@@ -47,6 +55,7 @@ export function PersonDialog({
   const [title, setTitle] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [status, setStatus] = useState<Person["status"]>("active");
+  const [skills, setSkills] = useState<string[]>([]);
   const [errors, setErrors] = useState<{
     name?: string;
     email?: string;
@@ -78,16 +87,28 @@ export function PersonDialog({
         setTitle(person.title || "");
         setDepartmentId(person.departmentId);
         setStatus(person.status);
+        setSkills(person.skills || []);
       } else {
         setName("");
         setEmail("");
         setTitle("");
         setDepartmentId(defaultDepartmentId || "");
         setStatus("active");
+        setSkills([]);
       }
       setErrors({});
     }
   }, [open, person, defaultDepartmentId]);
+
+  const toggleSkill = (skill: string) => {
+    setSkills((prev) =>
+      prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
+    );
+  };
+
+  const removeSkill = (skill: string) => {
+    setSkills((prev) => prev.filter((s) => s !== skill));
+  };
 
   const validate = () => {
     const newErrors: { name?: string; email?: string; departmentId?: string } = {};
@@ -122,6 +143,7 @@ export function PersonDialog({
             title: title.trim() || undefined,
             departmentId,
             status,
+            skills,
           },
         });
       } else {
@@ -131,6 +153,7 @@ export function PersonDialog({
           title: title.trim() || undefined,
           departmentId,
           status,
+          skills,
           roleAssignments: [],
         });
       }
@@ -234,6 +257,57 @@ export function PersonDialog({
                 </SelectContent>
               </Select>
             </FormField>
+          </div>
+
+          {/* Skills Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label>Skills</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoading}
+                  >
+                    Add Skill
+                    <ChevronDown className="ml-1 h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 max-h-64 overflow-auto">
+                  {SKILL_DOMAINS.map((skill) => (
+                    <DropdownMenuCheckboxItem
+                      key={skill}
+                      checked={skills.includes(skill)}
+                      onCheckedChange={() => toggleSkill(skill)}
+                    >
+                      {skill}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            {skills.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {skills.map((skill) => (
+                  <Badge key={skill} variant="secondary" className="pr-1">
+                    {skill}
+                    <button
+                      type="button"
+                      onClick={() => removeSkill(skill)}
+                      className="ml-1 hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No skills assigned yet
+              </p>
+            )}
           </div>
 
           <DialogFooter>
