@@ -302,6 +302,7 @@ const mockRoles: Role[] = [
         name: 'Ticket Triage',
         description: 'Categorize and prioritize incoming support tickets',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Content Classification', 'Natural Language Understanding'],
       },
       {
@@ -309,6 +310,7 @@ const mockRoles: Role[] = [
         name: 'Common Issue Resolution',
         description: 'Resolve frequently asked questions and known issues',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Information Retrieval', 'Natural Language Generation'],
       },
       {
@@ -316,6 +318,7 @@ const mockRoles: Role[] = [
         name: 'Customer Communication',
         description: 'Respond to customers with clear, empathetic messages',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Natural Language Generation', 'Customer Service'],
       },
       {
@@ -323,6 +326,7 @@ const mockRoles: Role[] = [
         name: 'Escalation Handling',
         description: 'Identify and escalate complex issues to Tier 2',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Decision Making', 'Content Classification'],
       },
       {
@@ -330,6 +334,7 @@ const mockRoles: Role[] = [
         name: 'Customer Relationship Building',
         description: 'Build rapport and maintain positive customer relationships',
         aiCandidate: false,
+        requiredCapabilityIds: [],
         requiredSkillDomains: [],
       },
     ],
@@ -349,6 +354,7 @@ const mockRoles: Role[] = [
         name: 'Complex Issue Resolution',
         description: 'Diagnose and resolve complex technical problems',
         aiCandidate: false,
+        requiredCapabilityIds: [],
         requiredSkillDomains: [],
       },
       {
@@ -356,6 +362,7 @@ const mockRoles: Role[] = [
         name: 'Root Cause Analysis',
         description: 'Investigate and document root causes of recurring issues',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Document Analysis', 'Data Processing'],
       },
       {
@@ -363,6 +370,7 @@ const mockRoles: Role[] = [
         name: 'Knowledge Base Updates',
         description: 'Create and maintain support documentation',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Natural Language Generation', 'Document Analysis'],
       },
       {
@@ -370,6 +378,7 @@ const mockRoles: Role[] = [
         name: 'Team Mentoring',
         description: 'Train and mentor Tier 1 support staff',
         aiCandidate: false,
+        requiredCapabilityIds: [],
         requiredSkillDomains: [],
       },
     ],
@@ -389,6 +398,7 @@ const mockRoles: Role[] = [
         name: 'PR Review',
         description: 'Review code changes for correctness and style',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Code Generation', 'Testing & QA'],
       },
       {
@@ -396,6 +406,7 @@ const mockRoles: Role[] = [
         name: 'Security Analysis',
         description: 'Check for security vulnerabilities in code',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Code Generation', 'Document Analysis'],
       },
       {
@@ -403,6 +414,7 @@ const mockRoles: Role[] = [
         name: 'Architecture Guidance',
         description: 'Provide guidance on architectural decisions',
         aiCandidate: false,
+        requiredCapabilityIds: [],
         requiredSkillDomains: [],
       },
       {
@@ -410,6 +422,7 @@ const mockRoles: Role[] = [
         name: 'Best Practices Enforcement',
         description: 'Ensure code follows team standards and patterns',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Code Generation', 'Testing & QA'],
       },
     ],
@@ -429,6 +442,7 @@ const mockRoles: Role[] = [
         name: 'Feature Development',
         description: 'Implement new platform features and capabilities',
         aiCandidate: false,
+        requiredCapabilityIds: [],
         requiredSkillDomains: [],
       },
       {
@@ -436,6 +450,7 @@ const mockRoles: Role[] = [
         name: 'Bug Fixing',
         description: 'Investigate and fix reported bugs',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Code Generation', 'Testing & QA'],
       },
       {
@@ -443,6 +458,7 @@ const mockRoles: Role[] = [
         name: 'Code Review Participation',
         description: 'Participate in code reviews as reviewer and author',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Code Generation'],
       },
       {
@@ -450,6 +466,7 @@ const mockRoles: Role[] = [
         name: 'Documentation',
         description: 'Write technical documentation for features',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Natural Language Generation', 'Document Analysis'],
       },
     ],
@@ -469,6 +486,7 @@ const mockRoles: Role[] = [
         name: 'Lead Scoring',
         description: 'Score leads based on fit and intent signals',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Data Processing', 'Decision Making'],
       },
       {
@@ -476,6 +494,7 @@ const mockRoles: Role[] = [
         name: 'Initial Outreach',
         description: 'Send initial outreach emails and messages',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Natural Language Generation', 'Customer Service'],
       },
       {
@@ -483,6 +502,7 @@ const mockRoles: Role[] = [
         name: 'Qualification Calls',
         description: 'Conduct discovery calls to qualify leads',
         aiCandidate: false,
+        requiredCapabilityIds: [],
         requiredSkillDomains: [],
       },
       {
@@ -490,6 +510,7 @@ const mockRoles: Role[] = [
         name: 'CRM Updates',
         description: 'Keep CRM records accurate and up to date',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Data Processing', 'API Integration'],
       },
       {
@@ -497,6 +518,7 @@ const mockRoles: Role[] = [
         name: 'Meeting Scheduling',
         description: 'Schedule meetings between qualified leads and AEs',
         aiCandidate: true,
+        requiredCapabilityIds: [],
         requiredSkillDomains: ['Workflow Management', 'API Integration'],
       },
     ],
@@ -516,6 +538,7 @@ const mockPeople: Person[] = [
     roleAssignments: [
       { roleId: ROLE_IDS.supportSpecialist, allocation: 100, isPrimary: true },
     ],
+    capabilityIds: [],
     skills: ['Natural Language Understanding', 'Content Classification', 'Customer Service'],
     status: 'active',
     createdAt: weekAgo,
@@ -531,6 +554,7 @@ const mockPeople: Person[] = [
       { roleId: ROLE_IDS.seniorSupport, allocation: 80, isPrimary: true },
       { roleId: ROLE_IDS.supportSpecialist, allocation: 20, isPrimary: false },
     ],
+    capabilityIds: [],
     skills: ['Document Analysis', 'Data Processing', 'Natural Language Generation'],
     status: 'active',
     createdAt: weekAgo,
@@ -546,6 +570,7 @@ const mockPeople: Person[] = [
       { roleId: ROLE_IDS.platformEngineer, allocation: 70, isPrimary: true },
       { roleId: ROLE_IDS.codeReviewer, allocation: 30, isPrimary: false },
     ],
+    capabilityIds: [],
     skills: ['Code Generation', 'Testing & QA', 'Document Analysis'],
     status: 'active',
     createdAt: weekAgo,
@@ -560,6 +585,7 @@ const mockPeople: Person[] = [
     roleAssignments: [
       { roleId: ROLE_IDS.leadQualifier, allocation: 100, isPrimary: true },
     ],
+    capabilityIds: [],
     skills: ['Data Processing', 'Natural Language Generation', 'Workflow Management'],
     status: 'active',
     createdAt: weekAgo,
@@ -574,6 +600,7 @@ const mockPeople: Person[] = [
     roleAssignments: [
       { roleId: ROLE_IDS.supportSpecialist, allocation: 100, isPrimary: true },
     ],
+    capabilityIds: [],
     skills: ['Natural Language Generation', 'Information Retrieval', 'Decision Making'],
     status: 'active',
     createdAt: weekAgo,

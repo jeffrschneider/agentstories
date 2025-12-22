@@ -153,6 +153,7 @@ export function PersonDialog({
           title: title.trim() || undefined,
           departmentId,
           status,
+          capabilityIds: [],
           skills,
           roleAssignments: [],
         });

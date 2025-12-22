@@ -63,6 +63,9 @@ export const SkillSchema = z.object({
   domain: z.string().min(1).describe('Knowledge domain (e.g., "NLP", "Workflow Management")'),
   acquired: SkillAcquisitionEnum,
 
+  // Capability this skill provides (links to the lingua franca)
+  capabilityId: z.string().uuid().optional().describe('The capability this skill implements'),
+
   // Interface (when this skill activates and what it produces)
   triggers: z.array(SkillTriggerSchema).min(1).describe('When this skill activates'),
   inputs: z.array(SkillInputSchema).optional(),
