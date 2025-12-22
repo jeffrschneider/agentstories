@@ -7,7 +7,7 @@ import type {
   HumanAgentPair,
   TaskResponsibility,
   HAPIntegrationStatus,
-  SkillRequirement,
+  CapabilityRequirement,
   ResponsibilityPhase,
   PhaseOwner,
   ResponsibilityPreset,
@@ -15,7 +15,7 @@ import type {
 import {
   createEmptyTaskResponsibility,
   applyPresetToTask,
-  createSkillRequirement,
+  createCapabilityRequirement,
   calculateHAPMetrics,
   determineIntegrationStatus,
   RESPONSIBILITY_PRESETS,
@@ -28,7 +28,7 @@ interface HAPDraft {
   roleId: string | null;
   agentStoryId: string | null;
   tasks: TaskResponsibility[];
-  skillRequirements: SkillRequirement[];
+  capabilityRequirements: CapabilityRequirement[];
   integrationStatus: HAPIntegrationStatus;
   notes: string;
 }
@@ -89,7 +89,7 @@ const initialDraft: HAPDraft = {
   roleId: null,
   agentStoryId: null,
   tasks: [],
-  skillRequirements: [],
+  capabilityRequirements: [],
   integrationStatus: 'not_started',
   notes: '',
 };
@@ -198,7 +198,7 @@ export const hapActions = {
       roleId: hap.roleId,
       agentStoryId: hap.agentStoryId,
       tasks: [...hap.tasks],
-      skillRequirements: [...hap.skillRequirements],
+      capabilityRequirements: [...hap.capabilityRequirements],
       integrationStatus: hap.integrationStatus,
       notes: hap.notes || '',
     };
@@ -233,8 +233,8 @@ export const hapActions = {
     const index = hapStore.draft.tasks.findIndex(t => t.id === taskId);
     if (index >= 0) {
       hapStore.draft.tasks.splice(index, 1);
-      // Also remove any skill requirements for this task
-      hapStore.draft.skillRequirements = hapStore.draft.skillRequirements.filter(
+      // Also remove any capability requirements for this task
+      hapStore.draft.capabilityRequirements = hapStore.draft.capabilityRequirements.filter(
         r => r.taskId !== taskId
       );
       hapStore.isDirty = true;
@@ -260,16 +260,16 @@ export const hapActions = {
         skillId: owner === 'human' ? null : task.phases[phase].skillId,
       };
 
-      // If switching to agent and no skill is linked, create a skill requirement
+      // If switching to agent and no skill is linked, create a capability requirement
       if (owner === 'agent' && previousOwner === 'human') {
         const agentStoryId = hapStore.draft.agentStoryId;
         if (agentStoryId && !task.phases[phase].skillId) {
           // Check if requirement already exists
-          const existingReq = hapStore.draft.skillRequirements.find(
+          const existingReq = hapStore.draft.capabilityRequirements.find(
             r => r.taskId === taskId && r.phase === phase
           );
           if (!existingReq) {
-            const req = createSkillRequirement(
+            const req = createCapabilityRequirement(
               hapStore.draft.id || crypto.randomUUID(),
               taskId,
               task.taskName,
@@ -277,14 +277,14 @@ export const hapActions = {
               agentStoryId,
               task.description
             );
-            hapStore.draft.skillRequirements.push(req);
+            hapStore.draft.capabilityRequirements.push(req);
           }
         }
       }
 
-      // If switching to human, remove any pending skill requirement for this phase
+      // If switching to human, remove any pending capability requirement for this phase
       if (owner === 'human' && previousOwner === 'agent') {
-        hapStore.draft.skillRequirements = hapStore.draft.skillRequirements.filter(
+        hapStore.draft.capabilityRequirements = hapStore.draft.capabilityRequirements.filter(
           r => !(r.taskId === taskId && r.phase === phase && r.status === 'pending')
         );
       }
@@ -300,7 +300,7 @@ export const hapActions = {
       const updatedTask = applyPresetToTask(task, preset);
       hapStore.draft.tasks[taskIndex] = updatedTask;
 
-      // Create skill requirements for any new agent phases
+      // Create capability requirements for any new agent phases
       const agentStoryId = hapStore.draft.agentStoryId;
       if (agentStoryId) {
         const presetConfig = RESPONSIBILITY_PRESETS[preset];
@@ -309,11 +309,11 @@ export const hapActions = {
         for (const phase of phases) {
           if (presetConfig.phases[phase] === 'agent' && !updatedTask.phases[phase].skillId) {
             // Check if requirement already exists
-            const existingReq = hapStore.draft.skillRequirements.find(
+            const existingReq = hapStore.draft.capabilityRequirements.find(
               r => r.taskId === taskId && r.phase === phase
             );
             if (!existingReq) {
-              const req = createSkillRequirement(
+              const req = createCapabilityRequirement(
                 hapStore.draft.id || crypto.randomUUID(),
                 taskId,
                 updatedTask.taskName,
@@ -321,7 +321,7 @@ export const hapActions = {
                 agentStoryId,
                 updatedTask.description
               );
-              hapStore.draft.skillRequirements.push(req);
+              hapStore.draft.capabilityRequirements.push(req);
             }
           }
         }
@@ -343,13 +343,13 @@ export const hapActions = {
     if (taskIndex >= 0) {
       hapStore.draft.tasks[taskIndex].phases[phase].skillId = skillId;
 
-      // Update any matching skill requirement to applied
-      const reqIndex = hapStore.draft.skillRequirements.findIndex(
+      // Update any matching capability requirement to applied
+      const reqIndex = hapStore.draft.capabilityRequirements.findIndex(
         r => r.taskId === taskId && r.phase === phase
       );
       if (reqIndex >= 0) {
-        hapStore.draft.skillRequirements[reqIndex] = {
-          ...hapStore.draft.skillRequirements[reqIndex],
+        hapStore.draft.capabilityRequirements[reqIndex] = {
+          ...hapStore.draft.capabilityRequirements[reqIndex],
           status: 'applied',
           appliedAt: new Date().toISOString(),
         };
@@ -359,15 +359,15 @@ export const hapActions = {
     }
   },
 
-  // Skill requirement actions
-  updateSkillRequirementStatus: (
+  // Capability requirement actions
+  updateCapabilityRequirementStatus: (
     requirementId: string,
-    status: SkillRequirement['status']
+    status: CapabilityRequirement['status']
   ) => {
-    const index = hapStore.draft.skillRequirements.findIndex(r => r.id === requirementId);
+    const index = hapStore.draft.capabilityRequirements.findIndex(r => r.id === requirementId);
     if (index >= 0) {
-      hapStore.draft.skillRequirements[index] = {
-        ...hapStore.draft.skillRequirements[index],
+      hapStore.draft.capabilityRequirements[index] = {
+        ...hapStore.draft.capabilityRequirements[index],
         status,
         updatedAt: new Date().toISOString(),
       };
@@ -375,12 +375,12 @@ export const hapActions = {
     }
   },
 
-  setGeneratedSkill: (requirementId: string, generatedSkill: unknown) => {
-    const index = hapStore.draft.skillRequirements.findIndex(r => r.id === requirementId);
+  setGeneratedCapability: (requirementId: string, generatedCapability: unknown) => {
+    const index = hapStore.draft.capabilityRequirements.findIndex(r => r.id === requirementId);
     if (index >= 0) {
-      hapStore.draft.skillRequirements[index] = {
-        ...hapStore.draft.skillRequirements[index],
-        generatedSkill,
+      hapStore.draft.capabilityRequirements[index] = {
+        ...hapStore.draft.capabilityRequirements[index],
+        generatedCapability,
         status: 'ready',
         updatedAt: new Date().toISOString(),
       };
@@ -388,11 +388,11 @@ export const hapActions = {
     }
   },
 
-  dismissSkillRequirement: (requirementId: string) => {
-    const index = hapStore.draft.skillRequirements.findIndex(r => r.id === requirementId);
+  dismissCapabilityRequirement: (requirementId: string) => {
+    const index = hapStore.draft.capabilityRequirements.findIndex(r => r.id === requirementId);
     if (index >= 0) {
-      hapStore.draft.skillRequirements[index] = {
-        ...hapStore.draft.skillRequirements[index],
+      hapStore.draft.capabilityRequirements[index] = {
+        ...hapStore.draft.capabilityRequirements[index],
         status: 'rejected',
         updatedAt: new Date().toISOString(),
       };
@@ -547,7 +547,7 @@ export const hapSelectors = {
     let humanPhases = 0;
     let agentPhases = 0;
     let agentPhasesWithSkills = 0;
-    let pendingSkillRequirements = 0;
+    let pendingCapabilityRequirements = 0;
 
     for (const hap of haps) {
       const metrics = calculateHAPMetrics(hap);
@@ -556,7 +556,7 @@ export const hapSelectors = {
       humanPhases += metrics.humanPhases;
       agentPhases += metrics.agentPhases;
       agentPhasesWithSkills += metrics.agentPhasesWithSkills;
-      pendingSkillRequirements += metrics.pendingSkillRequirements;
+      pendingCapabilityRequirements += metrics.pendingCapabilityRequirements;
     }
 
     return {
@@ -567,17 +567,17 @@ export const hapSelectors = {
       agentPhases,
       agentPhasesWithSkills,
       agentPhasesPendingSkills: agentPhases - agentPhasesWithSkills,
-      pendingSkillRequirements,
+      pendingCapabilityRequirements,
       humanPercent: totalPhases > 0 ? Math.round((humanPhases / totalPhases) * 100) : 100,
       agentPercent: totalPhases > 0 ? Math.round((agentPhases / totalPhases) * 100) : 0,
     };
   },
 
-  // Get all pending skill requirements across all HAPs
-  getAllPendingSkillRequirements: (): SkillRequirement[] => {
-    const allRequirements: SkillRequirement[] = [];
+  // Get all pending capability requirements across all HAPs
+  getAllPendingCapabilityRequirements: (): CapabilityRequirement[] => {
+    const allRequirements: CapabilityRequirement[] = [];
     for (const hap of hapStore.cache.haps) {
-      const pending = hap.skillRequirements.filter(
+      const pending = hap.capabilityRequirements.filter(
         r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
       );
       allRequirements.push(...pending);
@@ -593,7 +593,7 @@ export const hapSelectors = {
         totalPhases: 0,
         humanPhases: 0,
         agentPhases: 0,
-        pendingSkillRequirements: hapStore.draft.skillRequirements.filter(
+        pendingCapabilityRequirements: hapStore.draft.capabilityRequirements.filter(
           r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
         ).length,
       };
@@ -617,7 +617,7 @@ export const hapSelectors = {
       totalPhases: hapStore.draft.tasks.length * 4,
       humanPhases,
       agentPhases,
-      pendingSkillRequirements: hapStore.draft.skillRequirements.filter(
+      pendingCapabilityRequirements: hapStore.draft.capabilityRequirements.filter(
         r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
       ).length,
     };

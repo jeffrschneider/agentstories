@@ -37,13 +37,13 @@ import {
 } from "@/components/ui/select";
 import { useHAPs, usePeople, useRoles, useStories } from "@/hooks";
 import {
-  SKILL_REQUIREMENT_STATUS_METADATA,
+  CAPABILITY_REQUIREMENT_STATUS_METADATA,
   RESPONSIBILITY_PHASE_METADATA,
 } from "@/lib/schemas";
-import type { SkillRequirement, SkillRequirementStatus, ResponsibilityPhase } from "@/lib/schemas";
+import type { CapabilityRequirement, CapabilityRequirementStatus, ResponsibilityPhase } from "@/lib/schemas";
 
-export default function SkillsQueuePage() {
-  const [statusFilter, setStatusFilter] = useState<SkillRequirementStatus | "all">("all");
+export default function CapabilityQueuePage() {
+  const [statusFilter, setStatusFilter] = useState<CapabilityRequirementStatus | "all">("all");
   const [phaseFilter, setPhaseFilter] = useState<ResponsibilityPhase | "all">("all");
 
   const { data: haps, isLoading } = useHAPs();
@@ -51,15 +51,15 @@ export default function SkillsQueuePage() {
   const { data: roles } = useRoles();
   const { data: stories } = useStories();
 
-  // Aggregate all skill requirements from all HAPs
-  const allRequirements: (SkillRequirement & { hapId: string; personName?: string; roleName?: string; agentName?: string })[] = [];
+  // Aggregate all capability requirements from all HAPs
+  const allRequirements: (CapabilityRequirement & { hapId: string; personName?: string; roleName?: string; agentName?: string })[] = [];
 
   haps?.forEach((hap) => {
     const person = people?.find((p) => p.id === hap.personId);
     const role = roles?.find((r) => r.id === hap.roleId);
     const agent = stories?.find((s) => s.id === hap.agentStoryId);
 
-    hap.skillRequirements?.forEach((req) => {
+    hap.capabilityRequirements?.forEach((req) => {
       allRequirements.push({
         ...req,
         hapId: hap.id,
@@ -90,7 +90,7 @@ export default function SkillsQueuePage() {
     rejected: allRequirements.filter((r) => r.status === "rejected").length,
   };
 
-  const getStatusIcon = (status: SkillRequirementStatus) => {
+  const getStatusIcon = (status: CapabilityRequirementStatus) => {
     switch (status) {
       case "pending":
         return <Clock className="h-4 w-4 text-gray-500" />;
@@ -105,7 +105,7 @@ export default function SkillsQueuePage() {
     }
   };
 
-  const getStatusColor = (status: SkillRequirementStatus) => {
+  const getStatusColor = (status: CapabilityRequirementStatus) => {
     switch (status) {
       case "pending":
         return "bg-gray-100 text-gray-700";
@@ -139,9 +139,9 @@ export default function SkillsQueuePage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Skills Queue</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Capability Queue</h1>
             <p className="text-muted-foreground">
-              Manage pending skill requirements from HAP assignments
+              Manage pending capability requirements from HAP assignments
             </p>
           </div>
         </div>
@@ -201,7 +201,7 @@ export default function SkillsQueuePage() {
             <div className="flex flex-col gap-4 md:flex-row">
               <Select
                 value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as SkillRequirementStatus | "all")}
+                onValueChange={(v) => setStatusFilter(v as CapabilityRequirementStatus | "all")}
               >
                 <SelectTrigger className="w-[180px]">
                   <Filter className="mr-2 h-4 w-4" />
@@ -251,7 +251,7 @@ export default function SkillsQueuePage() {
                       <div className="flex items-center gap-2">
                         {getStatusIcon(req.status)}
                         <Badge className={getStatusColor(req.status)}>
-                          {SKILL_REQUIREMENT_STATUS_METADATA[req.status].label}
+                          {CAPABILITY_REQUIREMENT_STATUS_METADATA[req.status].label}
                         </Badge>
                         <Badge variant="outline" className="flex items-center gap-1">
                           {getPhaseIcon(req.phase)}
@@ -259,14 +259,14 @@ export default function SkillsQueuePage() {
                         </Badge>
                       </div>
 
-                      {/* Task and Skill Info */}
+                      {/* Task and Capability Info */}
                       <div>
-                        <h3 className="font-semibold">{req.suggestedSkillName}</h3>
+                        <h3 className="font-semibold">{req.suggestedCapabilityName}</h3>
                         <p className="text-sm text-muted-foreground">
                           Task: {req.taskName}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          {req.suggestedSkillDescription}
+                          {req.suggestedCapabilityDescription}
                         </p>
                       </div>
 
@@ -288,7 +288,7 @@ export default function SkillsQueuePage() {
                       {req.status === "pending" && (
                         <Button size="sm">
                           <Sparkles className="mr-2 h-4 w-4" />
-                          Generate Skill
+                          Generate Capability
                         </Button>
                       )}
                       {req.status === "ready" && (
@@ -319,11 +319,11 @@ export default function SkillsQueuePage() {
           <Card>
             <CardContent className="py-12 text-center">
               <Lightbulb className="mx-auto h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">No skill requirements</h3>
+              <h3 className="mt-4 text-lg font-semibold">No capability requirements</h3>
               <p className="text-muted-foreground mt-1">
                 {statusFilter !== "all" || phaseFilter !== "all"
                   ? "Try adjusting your filters"
-                  : "Skill requirements are created when you assign phases to agents in HAPs"}
+                  : "Capability requirements are created when you assign phases to agents in HAPs"}
               </p>
               <Button className="mt-4" variant="outline" asChild>
                 <Link href="/haps">
@@ -338,7 +338,7 @@ export default function SkillsQueuePage() {
         {/* Help Section */}
         <Card className="bg-muted/50">
           <CardHeader>
-            <CardTitle className="text-sm">How Skills Queue Works</CardTitle>
+            <CardTitle className="text-sm">How Capability Queue Works</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4 text-sm">
@@ -352,22 +352,22 @@ export default function SkillsQueuePage() {
               <div className="flex items-start gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-200 text-blue-600 text-xs font-bold">2</div>
                 <div>
-                  <p className="font-medium">Skill Generation</p>
-                  <p className="text-muted-foreground">AI generates a draft skill definition</p>
+                  <p className="font-medium">Capability Generation</p>
+                  <p className="text-muted-foreground">AI generates a draft capability definition</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-yellow-200 text-yellow-600 text-xs font-bold">3</div>
                 <div>
                   <p className="font-medium">Review</p>
-                  <p className="text-muted-foreground">Review and refine the generated skill</p>
+                  <p className="text-muted-foreground">Review and refine the generated capability</p>
                 </div>
               </div>
               <div className="flex items-start gap-2">
                 <div className="flex h-6 w-6 items-center justify-center rounded-full bg-green-200 text-green-600 text-xs font-bold">4</div>
                 <div>
                   <p className="font-medium">Apply</p>
-                  <p className="text-muted-foreground">Add skill to Agent Story</p>
+                  <p className="text-muted-foreground">Add capability to Agent Story</p>
                 </div>
               </div>
             </div>

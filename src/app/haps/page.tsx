@@ -284,8 +284,8 @@ export default function HAPsPage() {
               // Calculate phase distribution
               const distribution = calculatePhaseDistribution(hap.tasks);
 
-              // Count pending skill requirements
-              const pendingSkills = hap.skillRequirements?.filter(
+              // Count pending capability requirements
+              const pendingCapabilities = hap.capabilityRequirements?.filter(
                 r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
               ).length || 0;
 
@@ -308,9 +308,9 @@ export default function HAPsPage() {
                               {dept && (
                                 <Badge variant="secondary">{dept.name}</Badge>
                               )}
-                              {pendingSkills > 0 && (
+                              {pendingCapabilities > 0 && (
                                 <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                                  {pendingSkills} skills pending
+                                  {pendingCapabilities} capabilities pending
                                 </Badge>
                               )}
                             </div>
@@ -381,23 +381,23 @@ export default function HAPsPage() {
                             </div>
                           </div>
 
-                          {/* Skill Requirements */}
+                          {/* Capability Requirements */}
                           <div className="space-y-3">
-                            <h4 className="text-sm font-medium">Skill Requirements</h4>
-                            {pendingSkills > 0 ? (
+                            <h4 className="text-sm font-medium">Capability Requirements</h4>
+                            {pendingCapabilities > 0 ? (
                               <div className="space-y-1">
                                 <p className="text-sm text-yellow-600">
-                                  {pendingSkills} skill{pendingSkills !== 1 ? 's' : ''} need to be defined
+                                  {pendingCapabilities} {pendingCapabilities !== 1 ? 'capabilities' : 'capability'} need to be defined
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  Agent phases without linked skills
+                                  Agent phases without linked capabilities
                                 </p>
                               </div>
                             ) : hap.tasks.some(t =>
                                 Object.values(t.phases).some(p => p.owner === 'agent')
                               ) ? (
                               <p className="text-xs text-green-600">
-                                All agent skills defined
+                                All agent capabilities defined
                               </p>
                             ) : (
                               <p className="text-xs text-muted-foreground">

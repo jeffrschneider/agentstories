@@ -143,7 +143,7 @@ export default function HAPDetailPage({
   }
 
   const distribution = calculatePhaseDistribution(editMode ? tasks : hap.tasks);
-  const pendingSkills = hap.skillRequirements?.filter(
+  const pendingCapabilities = hap.capabilityRequirements?.filter(
     r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
   ).length || 0;
 
@@ -176,9 +176,9 @@ export default function HAPDetailPage({
                 <Badge variant="outline">
                   {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
                 </Badge>
-                {pendingSkills > 0 && (
+                {pendingCapabilities > 0 && (
                   <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                    {pendingSkills} skills pending
+                    {pendingCapabilities} capabilities pending
                   </Badge>
                 )}
               </div>
@@ -268,7 +268,7 @@ export default function HAPDetailPage({
         <Tabs defaultValue="tasks" className="space-y-4">
           <TabsList>
             <TabsTrigger value="tasks">Task Responsibilities</TabsTrigger>
-            <TabsTrigger value="skills">Skill Requirements</TabsTrigger>
+            <TabsTrigger value="capabilities">Capability Requirements</TabsTrigger>
             <TabsTrigger value="details">Details</TabsTrigger>
           </TabsList>
 
@@ -325,16 +325,16 @@ export default function HAPDetailPage({
             </Card>
           </TabsContent>
 
-          <TabsContent value="skills" className="space-y-4">
+          <TabsContent value="capabilities" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Skill Requirements</CardTitle>
-                <CardDescription>Agent phases that need skills to be defined</CardDescription>
+                <CardTitle>Capability Requirements</CardTitle>
+                <CardDescription>Agent phases that need capabilities to be defined</CardDescription>
               </CardHeader>
               <CardContent>
-                {hap.skillRequirements && hap.skillRequirements.length > 0 ? (
+                {hap.capabilityRequirements && hap.capabilityRequirements.length > 0 ? (
                   <div className="space-y-3">
-                    {hap.skillRequirements.map((req) => (
+                    {hap.capabilityRequirements.map((req) => (
                       <div key={req.id} className="flex items-center justify-between p-3 rounded-lg border">
                         <div>
                           <p className="font-medium">{req.taskName}</p>
@@ -342,7 +342,7 @@ export default function HAPDetailPage({
                             Phase: {RESPONSIBILITY_PHASE_METADATA[req.phase].label}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Suggested skill: {req.suggestedSkillName}
+                            Suggested capability: {req.suggestedCapabilityName}
                           </p>
                         </div>
                         <Badge variant={req.status === "applied" ? "default" : req.status === "ready" ? "secondary" : "outline"}>
@@ -354,8 +354,8 @@ export default function HAPDetailPage({
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Timer className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    <p>No pending skill requirements</p>
-                    <p className="text-sm">Assign phases to the agent to generate skill requirements</p>
+                    <p>No pending capability requirements</p>
+                    <p className="text-sm">Assign phases to the agent to generate capability requirements</p>
                   </div>
                 )}
               </CardContent>
