@@ -38,6 +38,19 @@ export {
   type UseFormValidationReturn,
 } from './use-form-validation';
 
+// Agents (Catalog)
+export {
+  agentKeys,
+  useAgents,
+  useAgent,
+  useAgentStats,
+  useAgentTags,
+  useCreateAgent,
+  useUpdateAgent,
+  useDeleteAgent,
+  useUpdateAgentLifecycle,
+} from './use-agents';
+
 // HAP (Human-Agent Pairs)
 export {
   hapKeys,

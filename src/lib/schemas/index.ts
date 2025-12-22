@@ -1,5 +1,27 @@
 // Re-export all schemas and types
 
+// Agent (Catalog Entry)
+export {
+  AgentLifecycleEnum,
+  ExternalLinkTypeEnum,
+  CapabilityPriorityEnum,
+  ExternalLinkSchema,
+  PlannedCapabilitySchema,
+  AgentSchema,
+  createEmptyAgent,
+  createPlannedCapability,
+  createExternalLink,
+  LIFECYCLE_STATE_METADATA,
+  EXTERNAL_LINK_TYPE_METADATA,
+  CAPABILITY_PRIORITY_METADATA,
+  type AgentLifecycle,
+  type ExternalLinkType,
+  type ExternalLink,
+  type CapabilityPriority,
+  type PlannedCapability,
+  type Agent
+} from './agent';
+
 // Organization (Domain & Department)
 export {
   BusinessDomainSchema,
