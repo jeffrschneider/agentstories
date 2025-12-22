@@ -11,6 +11,7 @@ import {
   Users,
   Lightbulb,
   Bot,
+  Kanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,6 +30,7 @@ const mainNavItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: Home },
   { title: "Organization", href: "/organization", icon: Building2 },
   { title: "Agent Catalog", href: "/agents", icon: Bot },
+  { title: "Pipeline", href: "/pipeline", icon: Kanban },
   { title: "HAPs", href: "/haps", icon: Users },
   { title: "Agent Stories", href: "/stories", icon: FileText },
   { title: "Capability Queue", href: "/capability-queue", icon: Lightbulb },

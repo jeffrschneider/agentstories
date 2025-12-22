@@ -132,20 +132,6 @@ function AgentCard({ agent }: { agent: Agent }) {
             </div>
           </div>
 
-          {agent.tags && agent.tags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1">
-              {agent.tags.slice(0, 3).map((tag, i) => (
-                <Badge key={i} variant="outline" className="text-xs">
-                  {tag}
-                </Badge>
-              ))}
-              {agent.tags.length > 3 && (
-                <Badge variant="outline" className="text-xs">
-                  +{agent.tags.length - 3}
-                </Badge>
-              )}
-            </div>
-          )}
         </CardContent>
       </Card>
     </Link>
