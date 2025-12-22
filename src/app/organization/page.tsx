@@ -7,9 +7,10 @@ import {
   Users,
   Briefcase,
   UserCircle,
-  ChevronDown,
   Plus,
   Bot,
+  User,
+  ArrowRight,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,15 +30,18 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import {
-  useRoles,
-  useHAPs,
   useDeleteDomain,
   useDeleteDepartment,
   useDeleteRole,
   useDeletePerson,
   useStories,
+  useHAPDetail,
+  usePerson,
+  useRole,
 } from "@/hooks";
-import type { BusinessDomain, Department, Role, Person, AgentStory } from "@/lib/schemas";
+import { TaskResponsibilityGrid } from "@/components/hap";
+import { calculatePhaseDistribution } from "@/lib/schemas";
+import type { BusinessDomain, Department, Role, Person } from "@/lib/schemas";
 import {
   DomainDialog,
   DepartmentDialog,
@@ -56,140 +59,128 @@ interface DeleteState {
   name: string;
 }
 
-// Agents Panel Component for Tree View
-interface AgentsPanelProps {
+// Task Responsibilities Panel Component
+interface TaskResponsibilitiesPanelProps {
+  selectedPersonId: string | null;
   selectedRoleId: string | null;
-  roles?: Role[];
-  haps?: { id: string; roleId: string; agentStoryId: string }[];
-  stories?: AgentStory[];
+  selectedHapId?: string | null;
 }
 
-function AgentsPanel({ selectedRoleId, roles, haps, stories }: AgentsPanelProps) {
-  const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
+function TaskResponsibilitiesPanel({
+  selectedPersonId,
+  selectedRoleId,
+  selectedHapId,
+}: TaskResponsibilitiesPanelProps) {
+  const { data: person } = usePerson(selectedPersonId || "");
+  const { data: role } = useRole(selectedRoleId || "");
+  const { data: hap } = useHAPDetail(selectedHapId || "");
+  const { data: stories } = useStories();
 
-  // Get the selected role
-  const selectedRole = roles?.find((r) => r.id === selectedRoleId);
+  const agentStory = hap ? stories?.find((s) => s.id === hap.agentStoryId) : undefined;
 
-  // Get HAPs for the selected role
-  const roleHaps = haps?.filter((h) => h.roleId === selectedRoleId) || [];
-
-  // Get unique agent stories for the role
-  const roleAgents = roleHaps
-    .map((hap) => stories?.find((s) => s.id === hap.agentStoryId))
-    .filter((story): story is AgentStory => !!story)
-    .filter((story, index, arr) => arr.findIndex((s) => s.id === story.id) === index);
-
-  const toggleAgent = (agentId: string) => {
-    setExpandedAgents((prev) => {
-      const next = new Set(prev);
-      if (next.has(agentId)) {
-        next.delete(agentId);
-      } else {
-        next.add(agentId);
-      }
-      return next;
-    });
-  };
-
-  if (!selectedRoleId) {
+  if (!selectedPersonId) {
     return (
       <Card className="h-full">
         <CardContent className="py-12 text-center">
-          <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold">Select a Role</h3>
+          <UserCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold">Select an Employee</h3>
           <p className="text-muted-foreground mt-1 text-sm">
-            Click on a role in the tree to see associated agents
+            Click on an employee in the tree to see their task responsibilities
           </p>
         </CardContent>
       </Card>
     );
   }
 
-  if (roleAgents.length === 0) {
+  if (!hap) {
     return (
       <Card className="h-full">
         <CardHeader className="pb-2">
-          <CardTitle className="text-base">{selectedRole?.name}</CardTitle>
-          <CardDescription>Associated Agents</CardDescription>
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+              <User className="h-5 w-5" />
+            </div>
+            <div>
+              <CardTitle className="text-base">{person?.name || "Unknown"}</CardTitle>
+              <CardDescription>{role?.name || "Unknown Role"}</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="py-8 text-center">
           <Bot className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
           <p className="text-sm text-muted-foreground">
-            No agents assigned to this role
+            No Human-Agent Pair configured for this employee
           </p>
+          <Button className="mt-4" asChild variant="outline" size="sm">
+            <Link href="/haps/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Create HAP
+            </Link>
+          </Button>
         </CardContent>
       </Card>
     );
   }
 
+  const distribution = calculatePhaseDistribution(hap.tasks);
+
   return (
     <Card className="h-full">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">{selectedRole?.name}</CardTitle>
-        <CardDescription>{roleAgents.length} agent{roleAgents.length !== 1 ? "s" : ""}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        {roleAgents.map((agent) => {
-          const isExpanded = expandedAgents.has(agent.id);
-          const capabilities = agent.skills || [];
-
-          return (
-            <div key={agent.id} className="border rounded-lg overflow-hidden">
-              <button
-                type="button"
-                onClick={() => toggleAgent(agent.id)}
-                className="flex w-full items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
-                    <Bot className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-sm">{agent.name}</div>
-                    {agent.role && (
-                      <div className="text-xs text-muted-foreground">{agent.role}</div>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="text-[10px]">
-                    {capabilities.length} skill{capabilities.length !== 1 ? "s" : ""}
-                  </Badge>
-                  <ChevronDown
-                    className={`h-4 w-4 text-muted-foreground transition-transform ${
-                      isExpanded ? "rotate-180" : ""
-                    }`}
-                  />
-                </div>
-              </button>
-              {isExpanded && capabilities.length > 0 && (
-                <div className="border-t px-3 py-2 bg-muted/20">
-                  <div className="space-y-1.5">
-                    {capabilities.map((skill, idx) => (
-                      <div key={skill.id || idx} className="text-xs">
-                        <div className="font-medium text-muted-foreground">
-                          {skill.name}
-                        </div>
-                        {skill.description && (
-                          <div className="text-[11px] text-muted-foreground/70 line-clamp-2">
-                            {skill.description}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {isExpanded && capabilities.length === 0 && (
-                <div className="border-t px-3 py-2 bg-muted/20">
-                  <p className="text-xs text-muted-foreground italic">
-                    No skills defined yet
-                  </p>
-                </div>
-              )}
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+              <User className="h-5 w-5" />
             </div>
-          );
-        })}
+            <div>
+              <CardTitle className="text-base">{person?.name || "Unknown"}</CardTitle>
+              <CardDescription>{role?.name || "Unknown Role"}</CardDescription>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/haps/${hap.id}`}>
+              View HAP Details
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+        </div>
+
+        {/* Agent Story Info */}
+        {agentStory && (
+          <div className="mt-3 flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-600">
+              <Bot className="h-4 w-4" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">{agentStory.name}</p>
+              <p className="text-xs text-muted-foreground">{agentStory.skills?.length || 0} skills</p>
+            </div>
+          </div>
+        )}
+
+        {/* Distribution Summary */}
+        <div className="mt-3 space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Human: {distribution.humanPercent}%</span>
+            <span>Agent: {distribution.agentPercent}%</span>
+          </div>
+          <div className="flex h-2 overflow-hidden rounded-full bg-muted">
+            <div className="bg-blue-500" style={{ width: `${distribution.humanPercent}%` }} />
+            <div className="bg-purple-500" style={{ width: `${distribution.agentPercent}%` }} />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="mb-3">
+          <h4 className="text-sm font-medium text-muted-foreground mb-2">Task Responsibilities</h4>
+        </div>
+        {hap.tasks.length > 0 ? (
+          <TaskResponsibilityGrid tasks={hap.tasks} compact />
+        ) : (
+          <div className="text-center py-6 text-muted-foreground text-sm">
+            No tasks defined yet
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -197,6 +188,8 @@ function AgentsPanel({ selectedRoleId, roles, haps, stories }: AgentsPanelProps)
 
 export default function OrganizationPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
+  const [selectedHapId, setSelectedHapId] = useState<string | null>(null);
 
   // Dialog states
   const [domainDialogOpen, setDomainDialogOpen] = useState(false);
@@ -212,9 +205,6 @@ export default function OrganizationPage() {
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
 
-  const { data: allRoles } = useRoles();
-  const { data: allHaps } = useHAPs();
-  const { data: stories } = useStories();
 
   // Delete mutations
   const deleteDomain = useDeleteDomain();
@@ -366,25 +356,32 @@ export default function OrganizationPage() {
           </div>
         </div>
 
-        {/* Tree View with Agents Panel */}
+        {/* Tree View with Task Responsibilities Panel */}
         <div className="flex gap-4">
-          {/* Tree Panel - 50% width */}
-          <div className="w-1/2">
+          {/* Tree Panel - 35% width */}
+          <div className="w-[35%]">
             <OrgTreeView
               onSelectRole={(roleId) => {
                 setSelectedRoleId(roleId);
+                setSelectedPersonId(null);
+                setSelectedHapId(null);
+              }}
+              onSelectPerson={(personId, roleId, hapId) => {
+                setSelectedPersonId(personId);
+                setSelectedRoleId(roleId);
+                setSelectedHapId(hapId || null);
               }}
               selectedRoleId={selectedRoleId}
+              selectedPersonId={selectedPersonId}
             />
           </div>
 
-          {/* Agents Panel - 50% width */}
-          <div className="w-1/2">
-            <AgentsPanel
+          {/* Task Responsibilities Panel - 65% width */}
+          <div className="w-[65%]">
+            <TaskResponsibilitiesPanel
+              selectedPersonId={selectedPersonId}
               selectedRoleId={selectedRoleId}
-              roles={allRoles}
-              haps={allHaps}
-              stories={stories}
+              selectedHapId={selectedHapId}
             />
           </div>
         </div>
