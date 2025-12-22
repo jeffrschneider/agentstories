@@ -13,10 +13,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatusBadge } from "@/components/hap";
 import {
   useDomains,
   useDepartments,
@@ -30,7 +27,6 @@ import type {
   Department,
   Role,
   Person,
-  HumanAgentPair,
 } from "@/lib/schemas";
 
 interface TreeNodeProps {
@@ -41,9 +37,8 @@ interface TreeNodeProps {
   href?: string;
   children?: React.ReactNode;
   defaultExpanded?: boolean;
-  badge?: React.ReactNode;
-  progress?: number;
   onClick?: () => void;
+  isSelected?: boolean;
 }
 
 function TreeNode({
@@ -54,9 +49,8 @@ function TreeNode({
   href,
   children,
   defaultExpanded = false,
-  badge,
-  progress,
   onClick,
+  isSelected,
 }: TreeNodeProps) {
   const [expanded, setExpanded] = React.useState(defaultExpanded);
   const hasChildren = React.Children.count(children) > 0;
@@ -65,7 +59,8 @@ function TreeNode({
     <div
       className={cn(
         "flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted transition-colors",
-        (href || onClick) && "cursor-pointer"
+        (href || onClick) && "cursor-pointer",
+        isSelected && "bg-primary/10 ring-1 ring-primary/20"
       )}
       onClick={() => {
         if (onClick) {
@@ -100,15 +95,6 @@ function TreeNode({
           <p className="text-xs text-muted-foreground truncate">{sublabel}</p>
         )}
       </div>
-      {progress !== undefined && (
-        <div className="w-20 flex-shrink-0">
-          <Progress value={progress} className="h-1.5" />
-          <p className="text-[10px] text-muted-foreground text-right mt-0.5">
-            {progress}% coverage
-          </p>
-        </div>
-      )}
-      {badge}
     </div>
   );
 
@@ -126,12 +112,16 @@ interface OrgTreeViewProps {
   className?: string;
   onSelectDomain?: (domainId: string) => void;
   onSelectDepartment?: (deptId: string, domainId: string) => void;
+  onSelectRole?: (roleId: string) => void;
+  selectedRoleId?: string | null;
 }
 
 export function OrgTreeView({
   className,
   onSelectDomain,
   onSelectDepartment,
+  onSelectRole,
+  selectedRoleId,
 }: OrgTreeViewProps) {
   const { data: domains, isLoading: domainsLoading } = useDomains();
   const { data: departments } = useDepartments();
@@ -139,54 +129,6 @@ export function OrgTreeView({
   const { data: people } = usePeople();
   const { data: haps } = useHAPs();
   const { data: stories } = useStories();
-
-  // Calculate progress for department (based on agent phases with skills)
-  const getDeptProgress = (deptId: string) => {
-    if (!roles || !haps) return 0;
-    const deptRoles = roles.filter((r) => r.departmentId === deptId);
-    const deptHaps = haps.filter((h) =>
-      deptRoles.some((r) => r.id === h.roleId)
-    );
-    if (deptHaps.length === 0) return 0;
-
-    let totalAgentPhases = 0;
-    let agentPhasesWithSkills = 0;
-
-    deptHaps.forEach((hap) => {
-      (hap.tasks ?? []).forEach((task) => {
-        Object.values(task.phases).forEach((phase) => {
-          if (phase.owner === "agent") {
-            totalAgentPhases++;
-            if (phase.skillId) agentPhasesWithSkills++;
-          }
-        });
-      });
-    });
-
-    return totalAgentPhases > 0
-      ? Math.round((agentPhasesWithSkills / totalAgentPhases) * 100)
-      : 100;
-  };
-
-  // Calculate progress for HAP (based on agent phases with skills)
-  const getHAPProgress = (hap: HumanAgentPair) => {
-    const tasks = hap.tasks ?? [];
-    let agentPhases = 0;
-    let agentPhasesWithSkills = 0;
-
-    tasks.forEach((task) => {
-      Object.values(task.phases).forEach((phase) => {
-        if (phase.owner === "agent") {
-          agentPhases++;
-          if (phase.skillId) agentPhasesWithSkills++;
-        }
-      });
-    });
-
-    return agentPhases > 0
-      ? Math.round((agentPhasesWithSkills / agentPhases) * 100)
-      : 100;
-  };
 
   if (domainsLoading) {
     return (
@@ -244,11 +186,6 @@ export function OrgTreeView({
                     roles?.filter((r) => r.departmentId === dept.id) || [];
                   const deptPeople =
                     people?.filter((p) => p.departmentId === dept.id) || [];
-                  const deptHaps =
-                    haps?.filter((h) =>
-                      deptRoles.some((r) => r.id === h.roleId)
-                    ) || [];
-                  const progress = getDeptProgress(dept.id);
 
                   return (
                     <TreeNode
@@ -261,7 +198,6 @@ export function OrgTreeView({
                       }
                       label={dept.name}
                       sublabel={`${deptRoles.length} roles • ${deptPeople.length} people`}
-                      progress={deptHaps.length > 0 ? progress : undefined}
                       defaultExpanded={false}
                       onClick={
                         onSelectDepartment
@@ -287,20 +223,16 @@ export function OrgTreeView({
                               </div>
                             }
                             label={role.name}
-                            sublabel={`${role.responsibilities?.length || 0} responsibilities`}
-                            badge={
-                              role.level && (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] px-1.5"
-                                >
-                                  {role.level}
-                                </Badge>
-                              )
-                            }
+                            sublabel={role.level ? `${role.level} • ${role.responsibilities?.length || 0} responsibilities` : `${role.responsibilities?.length || 0} responsibilities`}
                             defaultExpanded={
                               roleHaps.length > 0 || rolePeople.length > 0
                             }
+                            onClick={
+                              onSelectRole
+                                ? () => onSelectRole(role.id)
+                                : undefined
+                            }
+                            isSelected={selectedRoleId === role.id}
                           >
                             {/* People in this role */}
                             {rolePeople.map((person) => {
@@ -337,27 +269,6 @@ export function OrgTreeView({
                                   href={
                                     personHap ? `/haps/${personHap.id}` : undefined
                                   }
-                                  progress={
-                                    personHap
-                                      ? getHAPProgress(personHap)
-                                      : undefined
-                                  }
-                                  badge={
-                                    personHap ? (
-                                      <StatusBadge
-                                        status={personHap.integrationStatus}
-                                        size="sm"
-                                        showIcon={false}
-                                      />
-                                    ) : (
-                                      <Badge
-                                        variant="secondary"
-                                        className="text-[10px] px-1.5"
-                                      >
-                                        No HAP
-                                      </Badge>
-                                    )
-                                  }
                                 />
                               );
                             })}
@@ -387,14 +298,6 @@ export function OrgTreeView({
                                     label={person?.name || "Unknown Person"}
                                     sublabel={`+ ${hapAgentStory?.name || "Unassigned Agent"}`}
                                     href={`/haps/${hap.id}`}
-                                    progress={getHAPProgress(hap)}
-                                    badge={
-                                      <StatusBadge
-                                        status={hap.integrationStatus}
-                                        size="sm"
-                                        showIcon={false}
-                                      />
-                                    }
                                   />
                                 );
                               })}
