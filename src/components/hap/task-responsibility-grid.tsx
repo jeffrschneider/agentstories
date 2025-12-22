@@ -13,13 +13,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   RESPONSIBILITY_PRESETS,
   PHASE_OWNER_METADATA,
 } from "@/lib/schemas";
@@ -111,28 +104,32 @@ export function TaskResponsibilityGrid({
           {PHASES.map((phase) => (
             <div key={phase} className="col-span-2">
               {editMode ? (
-                <Select
-                  value={task.phases[phase].owner}
-                  onValueChange={(v) => onUpdatePhaseOwner?.(index, phase, v as PhaseOwner)}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currentOwner = task.phases[phase].owner;
+                    const newOwner: PhaseOwner = currentOwner === "human" ? "agent" : "human";
+                    onUpdatePhaseOwner?.(index, phase, newOwner);
+                  }}
+                  className={`
+                    w-full h-8 flex items-center justify-center gap-1 rounded-md border
+                    transition-all duration-150 hover:scale-105
+                    ${task.phases[phase].owner === "human"
+                      ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 dark:bg-blue-950 dark:border-blue-800"
+                      : "bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100 dark:bg-purple-950 dark:border-purple-800"
+                    }
+                  `}
+                  title={`Click to toggle ${phase} owner (currently ${task.phases[phase].owner})`}
                 >
-                  <SelectTrigger className="h-8">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="human">
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-blue-500" />
-                        {compact ? "H" : "Human"}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="agent">
-                      <div className="flex items-center gap-1">
-                        <Bot className="h-3 w-3 text-purple-500" />
-                        {compact ? "A" : "Agent"}
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  {task.phases[phase].owner === "human" ? (
+                    <User className="h-4 w-4" />
+                  ) : (
+                    <Bot className="h-4 w-4" />
+                  )}
+                  <span className="text-xs font-medium">
+                    {task.phases[phase].owner === "human" ? "H" : "A"}
+                  </span>
+                </button>
               ) : (
                 <div className="flex items-center justify-center gap-1">
                   {task.phases[phase].owner === "human" ? (
