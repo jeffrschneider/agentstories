@@ -30,7 +30,7 @@ const mainNavItems: NavItem[] = [
   { title: "Organization", href: "/organization", icon: Building2 },
   { title: "Agent Catalog", href: "/agents", icon: Bot },
   { title: "HAPs", href: "/haps", icon: Users },
-  { title: "Stories", href: "/stories", icon: FileText },
+  { title: "Agent Stories", href: "/stories", icon: FileText },
   { title: "Capability Queue", href: "/capability-queue", icon: Lightbulb },
   { title: "Templates", href: "/templates", icon: LayoutTemplate },
 ];
