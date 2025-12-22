@@ -972,6 +972,279 @@ const mockStories: AgentStory[] = [
     ]
   },
 
+  // Sales Assistant Agent
+  {
+    id: AGENT_STORY_IDS.salesAssistant,
+    version: '1.0',
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
+    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
+    createdBy: 'user-1',
+    identifier: 'sales-assistant-agent',
+    name: 'Sales Assistant Agent',
+    role: 'A sales development assistant that helps qualify leads, personalize outreach, and manage CRM data',
+    purpose: 'Accelerate the sales pipeline by automating lead qualification, outreach personalization, and administrative tasks',
+    autonomyLevel: 'collaborative',
+    tags: ['sales', 'leads', 'crm', 'outreach'],
+
+    skills: [
+      {
+        id: uuid(),
+        name: 'Lead Scoring',
+        description: 'Analyze lead data to assign qualification scores based on fit, intent, and engagement signals',
+        domain: 'Data Processing',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'resource_change',
+            description: 'New lead created or updated in CRM',
+            conditions: ['Lead has company and contact info', 'Lead not yet scored'],
+            examples: ['Form submission on website', 'Lead imported from event']
+          }
+        ],
+        tools: [
+          {
+            name: 'CRM API',
+            purpose: 'Read lead data and update scores',
+            permissions: ['read', 'write'],
+            required: true
+          },
+          {
+            name: 'Company Data Enrichment',
+            purpose: 'Enrich lead with firmographic data',
+            permissions: ['execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Fetch lead data from CRM',
+            'Enrich with company information (size, industry, tech stack)',
+            'Calculate ICP fit score based on criteria',
+            'Analyze engagement signals (email opens, page visits)',
+            'Generate composite lead score',
+            'Update CRM with score and reasoning'
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Lead score assigned (0-100)',
+            'Score reasoning documented',
+            'CRM record updated'
+          ],
+          qualityMetrics: [
+            { name: 'score_accuracy', target: '>= 85%' }
+          ]
+        }
+      },
+      {
+        id: uuid(),
+        name: 'Outreach Personalization',
+        description: 'Generate personalized email sequences based on lead profile and company research',
+        domain: 'Natural Language Generation',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'cascade',
+            description: 'Lead qualified and ready for outreach',
+            conditions: ['Lead score >= 60', 'No active sequence']
+          }
+        ],
+        tools: [
+          {
+            name: 'Company Research API',
+            purpose: 'Gather recent news and insights about company',
+            permissions: ['read'],
+            required: true
+          },
+          {
+            name: 'Email Template Engine',
+            purpose: 'Generate personalized email content',
+            permissions: ['execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Research company recent news and initiatives',
+            'Identify relevant pain points and use cases',
+            'Select appropriate email template',
+            'Personalize with company-specific references',
+            'Generate subject line variants for A/B testing',
+            'Queue email for rep review'
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Email draft generated',
+            'Personalization elements included',
+            'Subject line options provided'
+          ]
+        },
+        guardrails: [
+          {
+            name: 'Accuracy Check',
+            constraint: 'All company references must be verifiable',
+            enforcement: 'hard'
+          }
+        ]
+      },
+      {
+        id: uuid(),
+        name: 'CRM Data Hygiene',
+        description: 'Maintain accurate CRM records by detecting duplicates, updating stale data, and standardizing fields',
+        domain: 'Data Processing',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'schedule',
+            description: 'Daily CRM hygiene scan',
+            conditions: ['After business hours']
+          }
+        ],
+        tools: [
+          {
+            name: 'CRM API',
+            purpose: 'Read and update CRM records',
+            permissions: ['read', 'write'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'sequential',
+          steps: [
+            'Scan for duplicate leads/contacts',
+            'Identify records with missing required fields',
+            'Check for stale records (no activity > 90 days)',
+            'Standardize company names and addresses',
+            'Generate hygiene report for review'
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Duplicates identified and flagged',
+            'Missing data report generated',
+            'No unauthorized merges or deletes'
+          ]
+        },
+        guardrails: [
+          {
+            name: 'No Auto-Delete',
+            constraint: 'Never delete records without human approval',
+            enforcement: 'hard'
+          }
+        ]
+      },
+      {
+        id: uuid(),
+        name: 'Meeting Scheduler',
+        description: 'Coordinate scheduling between qualified leads and account executives',
+        domain: 'Workflow Management',
+        acquired: 'built_in',
+        triggers: [
+          {
+            type: 'message',
+            description: 'Lead responds positively to outreach',
+            conditions: ['Sentiment is positive', 'Intent to meet detected']
+          }
+        ],
+        tools: [
+          {
+            name: 'Calendar API',
+            purpose: 'Check AE availability and book meetings',
+            permissions: ['read', 'write'],
+            required: true
+          },
+          {
+            name: 'Email API',
+            purpose: 'Send meeting invites and confirmations',
+            permissions: ['execute'],
+            required: true
+          }
+        ],
+        behavior: {
+          model: 'workflow',
+          stages: [
+            {
+              name: 'Availability Check',
+              purpose: 'Find available time slots for assigned AE',
+              transitions: [{ to: 'Propose Times', when: 'Slots found' }]
+            },
+            {
+              name: 'Propose Times',
+              purpose: 'Send meeting time options to lead',
+              transitions: [{ to: 'Confirm Booking', when: 'Time selected' }]
+            },
+            {
+              name: 'Confirm Booking',
+              purpose: 'Book meeting and send calendar invites'
+            }
+          ]
+        },
+        acceptance: {
+          successConditions: [
+            'Meeting booked on calendar',
+            'All parties notified',
+            'CRM updated with meeting info'
+          ]
+        }
+      }
+    ],
+
+    humanInteraction: {
+      mode: 'in_the_loop',
+      escalation: {
+        conditions: 'High-value lead or complex objection handling',
+        channel: 'Notify assigned SDR via Slack'
+      }
+    },
+    collaboration: {
+      role: 'worker',
+      reportsTo: 'sales-orchestrator',
+      peers: [
+        { agent: 'marketing-automation-agent', interaction: 'pub_sub' }
+      ]
+    },
+    memory: {
+      working: ['Current lead context', 'Recent email thread'],
+      persistent: [
+        {
+          name: 'Outreach History',
+          type: 'relational',
+          purpose: 'Track what has been sent to each lead',
+          updates: 'append'
+        },
+        {
+          name: 'Successful Patterns',
+          type: 'kv',
+          purpose: 'Store effective personalization approaches by industry',
+          updates: 'full_crud'
+        }
+      ],
+      learning: [
+        {
+          type: 'feedback_loop',
+          signal: 'Email open/reply rates'
+        }
+      ]
+    },
+    guardrails: [
+      {
+        name: 'Send Limits',
+        constraint: 'Maximum 50 emails per day per SDR',
+        rationale: 'Prevent spam and maintain deliverability',
+        enforcement: 'hard'
+      },
+      {
+        name: 'Compliance',
+        constraint: 'Always include unsubscribe option',
+        rationale: 'CAN-SPAM compliance',
+        enforcement: 'hard'
+      }
+    ]
+  },
+
   // Data Pipeline Monitor
   {
     id: uuid(),
