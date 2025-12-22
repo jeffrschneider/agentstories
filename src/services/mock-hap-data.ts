@@ -28,7 +28,7 @@ function uuid(): string {
 
 // Storage keys
 const STORAGE_KEY_HAP = 'agent-stories-hap-data';
-const CURRENT_VERSION = '4.0'; // Bumped to add more HAPs linking roles to agents
+const CURRENT_VERSION = '5.0'; // Bumped to force refresh of role-agent linkages
 
 interface HAPStorageData {
   domains: BusinessDomain[];
