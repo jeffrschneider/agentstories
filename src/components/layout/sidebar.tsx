@@ -10,6 +10,7 @@ import {
   Building2,
   Users,
   Lightbulb,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,6 +28,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: Home },
   { title: "Organization", href: "/organization", icon: Building2 },
+  { title: "Agent Catalog", href: "/agents", icon: Bot },
   { title: "HAPs", href: "/haps", icon: Users },
   { title: "Stories", href: "/stories", icon: FileText },
   { title: "Capability Queue", href: "/capability-queue", icon: Lightbulb },
