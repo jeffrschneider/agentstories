@@ -498,15 +498,15 @@ const mockHAPs: HumanAgentPair[] = [
         'human-only' // Fully human
       ),
     ],
-    skillRequirements: [
+    capabilityRequirements: [
       {
         id: uuid(),
         hapId: '', // Will be set
         taskId: '', // Will be set
         phase: 'perform',
         taskName: 'Ticket Triage',
-        suggestedSkillName: 'Execute Ticket Triage',
-        suggestedSkillDescription: 'Skill to perform the "Ticket Triage" task',
+        suggestedCapabilityName: 'Execute Ticket Triage',
+        suggestedCapabilityDescription: 'Capability to perform the "Ticket Triage" task',
         status: 'pending',
         agentStoryId: AGENT_STORY_PLACEHOLDER,
         createdAt: now,
@@ -550,7 +550,7 @@ const mockHAPs: HumanAgentPair[] = [
         'human-only'
       ),
     ],
-    skillRequirements: [],
+    capabilityRequirements: [],
     integrationStatus: 'ready',
     notes: 'Code review agent is well-established. Focusing on improving security detection.',
     createdAt: weekAgo,
@@ -940,13 +940,13 @@ export const hapDataService = {
       // Calculate aggregate phase distribution
       let totalHumanPhases = 0;
       let totalAgentPhases = 0;
-      let totalPendingSkills = 0;
+      let totalPendingCapabilities = 0;
 
       for (const hap of deptHaps) {
         const metrics = calculateHAPMetrics(hap);
         totalHumanPhases += metrics.humanPhases;
         totalAgentPhases += metrics.agentPhases;
-        totalPendingSkills += metrics.pendingSkillRequirements;
+        totalPendingCapabilities += metrics.pendingCapabilityRequirements;
       }
 
       const totalPhases = totalHumanPhases + totalAgentPhases;
@@ -962,7 +962,7 @@ export const hapDataService = {
           humanPercent: totalPhases > 0 ? Math.round((totalHumanPhases / totalPhases) * 100) : 100,
           agentPercent: totalPhases > 0 ? Math.round((totalAgentPhases / totalPhases) * 100) : 0,
         },
-        pendingSkillRequirements: totalPendingSkills,
+        pendingCapabilityRequirements: totalPendingCapabilities,
         integrationProgress: deptHaps.filter(h => h.integrationStatus === 'ready' || h.integrationStatus === 'active').length / (deptHaps.length || 1) * 100,
       };
     },
@@ -975,14 +975,14 @@ export const hapDataService = {
       let totalTasks = 0;
       let totalHumanPhases = 0;
       let totalAgentPhases = 0;
-      let pendingSkillRequirements = 0;
+      let pendingCapabilityRequirements = 0;
 
       for (const hap of haps) {
         const metrics = calculateHAPMetrics(hap);
         totalTasks += metrics.totalTasks;
         totalHumanPhases += metrics.humanPhases;
         totalAgentPhases += metrics.agentPhases;
-        pendingSkillRequirements += metrics.pendingSkillRequirements;
+        pendingCapabilityRequirements += metrics.pendingCapabilityRequirements;
       }
 
       return {
@@ -1002,7 +1002,7 @@ export const hapDataService = {
             ? Math.round((totalAgentPhases / (totalHumanPhases + totalAgentPhases)) * 100)
             : 0,
         },
-        pendingSkillRequirements,
+        pendingCapabilityRequirements,
         hapsByStatus: {
           not_started: haps.filter(h => h.integrationStatus === 'not_started').length,
           planning: haps.filter(h => h.integrationStatus === 'planning').length,

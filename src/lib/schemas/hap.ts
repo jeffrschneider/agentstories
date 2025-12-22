@@ -169,20 +169,20 @@ export const RESPONSIBILITY_PRESETS = {
 export type ResponsibilityPreset = keyof typeof RESPONSIBILITY_PRESETS;
 
 // ============================================
-// Skill Requirement Schema
+// Capability Requirement Schema
 // ============================================
 
-export const SkillRequirementStatusEnum = z.enum([
+export const CapabilityRequirementStatusEnum = z.enum([
   'pending',     // Waiting to be processed
-  'generating',  // LLM is generating skill
-  'ready',       // Draft skill ready for review
-  'applied',     // Skill added to Agent Story
+  'generating',  // LLM is generating capability
+  'ready',       // Draft capability ready for review
+  'applied',     // Capability added to Agent Story
   'rejected'     // User rejected this requirement
 ]);
 
-export type SkillRequirementStatus = z.infer<typeof SkillRequirementStatusEnum>;
+export type CapabilityRequirementStatus = z.infer<typeof CapabilityRequirementStatusEnum>;
 
-export const SkillRequirementSchema = z.object({
+export const CapabilityRequirementSchema = z.object({
   id: z.string().uuid(),
 
   // Source of the requirement
@@ -195,16 +195,19 @@ export const SkillRequirementSchema = z.object({
   taskDescription: z.string().optional(),
   roleContext: z.string().optional(),
 
-  // Suggested skill
-  suggestedSkillName: z.string(),
-  suggestedSkillDescription: z.string(),
+  // Suggested capability (requires skills to implement)
+  suggestedCapabilityName: z.string(),
+  suggestedCapabilityDescription: z.string(),
+
+  // Skills required to implement this capability
+  requiredSkills: z.array(z.string()).optional(),
 
   // Status
-  status: SkillRequirementStatusEnum,
+  status: CapabilityRequirementStatusEnum,
 
-  // Generated skill (when status is 'ready' or 'applied')
+  // Generated capability definition (when status is 'ready' or 'applied')
   // Using z.any() to avoid circular dependency with skill schema
-  generatedSkill: z.any().optional(),
+  generatedCapability: z.any().optional(),
 
   // Target Agent Story
   agentStoryId: z.string().uuid(),
@@ -215,7 +218,7 @@ export const SkillRequirementSchema = z.object({
   appliedAt: z.string().datetime().optional()
 });
 
-export type SkillRequirement = z.infer<typeof SkillRequirementSchema>;
+export type CapabilityRequirement = z.infer<typeof CapabilityRequirementSchema>;
 
 // ============================================
 // HAP Integration Status
@@ -243,7 +246,7 @@ export const HAPMetricsSchema = z.object({
   agentPhases: z.number(),
   agentPhasesWithSkills: z.number(),
   agentPhasesPendingSkills: z.number(),
-  pendingSkillRequirements: z.number(),
+  pendingCapabilityRequirements: z.number(),
   readyTasks: z.number()
 });
 
@@ -268,8 +271,8 @@ export const HumanAgentPairSchema = z.object({
   // Task responsibilities (replaces asIs/toBe)
   tasks: z.array(TaskResponsibilitySchema).default([]),
 
-  // Pending skill requirements generated from agent phase assignments
-  skillRequirements: z.array(SkillRequirementSchema).default([]),
+  // Pending capability requirements generated from agent phase assignments
+  capabilityRequirements: z.array(CapabilityRequirementSchema).default([]),
 
   // Overall integration status
   integrationStatus: HAPIntegrationStatusEnum.default('not_started'),
@@ -361,24 +364,24 @@ export function createEmptyHAP(
     roleId,
     agentStoryId,
     tasks: [],
-    skillRequirements: [],
+    capabilityRequirements: [],
     integrationStatus: 'not_started',
     createdAt: now,
     updatedAt: now
   };
 }
 
-export function createSkillRequirement(
+export function createCapabilityRequirement(
   hapId: string,
   taskId: string,
   taskName: string,
   phase: ResponsibilityPhase,
   agentStoryId: string,
   taskDescription?: string
-): SkillRequirement {
+): CapabilityRequirement {
   const now = new Date().toISOString();
 
-  // Generate suggested skill name based on phase and task
+  // Generate suggested capability name based on phase and task
   const phaseVerbs: Record<ResponsibilityPhase, string> = {
     manage: 'Manage',
     define: 'Define',
@@ -393,8 +396,8 @@ export function createSkillRequirement(
     phase,
     taskName,
     taskDescription,
-    suggestedSkillName: `${phaseVerbs[phase]} ${taskName}`,
-    suggestedSkillDescription: `Skill to ${phase} the "${taskName}" task`,
+    suggestedCapabilityName: `${phaseVerbs[phase]} ${taskName}`,
+    suggestedCapabilityDescription: `Capability to ${phase} the "${taskName}" task`,
     status: 'pending',
     agentStoryId,
     createdAt: now,
@@ -441,7 +444,7 @@ export function calculateHAPMetrics(hap: HumanAgentPair): HAPMetrics {
     }
   }
 
-  const pendingSkillRequirements = hap.skillRequirements.filter(
+  const pendingCapabilityRequirements = hap.capabilityRequirements.filter(
     r => r.status === 'pending' || r.status === 'generating' || r.status === 'ready'
   ).length;
 
@@ -452,7 +455,7 @@ export function calculateHAPMetrics(hap: HumanAgentPair): HAPMetrics {
     agentPhases,
     agentPhasesWithSkills,
     agentPhasesPendingSkills: agentPhases - agentPhasesWithSkills,
-    pendingSkillRequirements,
+    pendingCapabilityRequirements,
     readyTasks
   };
 }
@@ -635,7 +638,7 @@ export const INTEGRATION_STATUS_METADATA = {
   }
 } as const;
 
-export const SKILL_REQUIREMENT_STATUS_METADATA = {
+export const CAPABILITY_REQUIREMENT_STATUS_METADATA = {
   pending: {
     label: 'Pending',
     description: 'Waiting to be processed',
@@ -644,19 +647,19 @@ export const SKILL_REQUIREMENT_STATUS_METADATA = {
   },
   generating: {
     label: 'Generating',
-    description: 'AI is generating the skill',
+    description: 'AI is generating the capability',
     color: 'blue',
     icon: 'loader'
   },
   ready: {
     label: 'Ready for Review',
-    description: 'Draft skill ready for review',
+    description: 'Draft capability ready for review',
     color: 'yellow',
     icon: 'eye'
   },
   applied: {
     label: 'Applied',
-    description: 'Skill added to Agent Story',
+    description: 'Capability added to Agent Story',
     color: 'green',
     icon: 'check'
   },

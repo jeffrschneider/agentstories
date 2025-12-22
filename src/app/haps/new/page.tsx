@@ -130,7 +130,7 @@ export default function NewHAPPage() {
       roleId: selectedRole.id,
       agentStoryId: selectedAgent.id,
       tasks,
-      skillRequirements: [],
+      capabilityRequirements: [],
       integrationStatus: "planning",
       notes: notes || undefined,
     });
