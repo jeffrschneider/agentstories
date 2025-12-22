@@ -101,6 +101,28 @@ export function Sidebar({ className }: SidebarProps) {
         className
       )}
     >
+      <div className={cn("flex items-center border-b py-2", isCollapsed ? "justify-center px-2" : "justify-end px-3")}>
+        <Tooltip delayDuration={0}>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => uiActions.collapseSidebar()}
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            >
+              {isCollapsed ? (
+                <ChevronsRight className="h-4 w-4" />
+              ) : (
+                <ChevronsLeft className="h-4 w-4" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="right" sideOffset={10}>
+            {isCollapsed ? "Expand" : "Collapse"}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+
       <ScrollArea className="flex-1 py-4">
         <nav className={cn("space-y-1", isCollapsed ? "px-2" : "px-3")}>
           {mainNavItems.map((item) => (
@@ -115,36 +137,6 @@ export function Sidebar({ className }: SidebarProps) {
             <NavLink key={item.href} item={item} />
           ))}
         </nav>
-
-        <div className={cn("mt-2", isCollapsed ? "px-2" : "px-3")}>
-          <Tooltip delayDuration={0}>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => uiActions.collapseSidebar()}
-                className={cn(
-                  "w-full text-muted-foreground hover:text-foreground",
-                  isCollapsed ? "justify-center px-0" : "justify-start"
-                )}
-              >
-                {isCollapsed ? (
-                  <ChevronsRight className="h-4 w-4" />
-                ) : (
-                  <>
-                    <ChevronsLeft className="h-4 w-4 mr-2" />
-                    <span>Collapse</span>
-                  </>
-                )}
-              </Button>
-            </TooltipTrigger>
-            {isCollapsed && (
-              <TooltipContent side="right" sideOffset={10}>
-                Expand sidebar
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </div>
       </div>
     </aside>
   );
