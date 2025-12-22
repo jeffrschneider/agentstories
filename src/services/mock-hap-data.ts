@@ -6,6 +6,8 @@ import type {
   HumanAgentPair,
   TaskResponsibility,
   HAPIntegrationStatus,
+  Capability,
+  CapabilityAnalysis,
 } from '@/lib/schemas';
 import {
   createPhaseAssignment,
@@ -27,7 +29,7 @@ function uuid(): string {
 
 // Storage keys
 const STORAGE_KEY_HAP = 'agent-stories-hap-data';
-const CURRENT_VERSION = '2.0'; // Bumped for responsibility phase model
+const CURRENT_VERSION = '3.0'; // Bumped for capability-centric model
 
 interface HAPStorageData {
   domains: BusinessDomain[];
@@ -35,6 +37,7 @@ interface HAPStorageData {
   roles: Role[];
   people: Person[];
   haps: HumanAgentPair[];
+  capabilities: Capability[];
   version: string;
 }
 
@@ -69,12 +72,155 @@ const PERSON_IDS = {
   taylor: uuid(),
 };
 
+// Capability IDs - the lingua franca
+const CAPABILITY_IDS = {
+  ticketTriage: uuid(),
+  contentClassification: uuid(),
+  naturalLanguageUnderstanding: uuid(),
+  naturalLanguageGeneration: uuid(),
+  informationRetrieval: uuid(),
+  customerService: uuid(),
+  decisionMaking: uuid(),
+  documentAnalysis: uuid(),
+  dataProcessing: uuid(),
+  codeReview: uuid(),
+  securityAnalysis: uuid(),
+  testingQA: uuid(),
+  workflowManagement: uuid(),
+  apiIntegration: uuid(),
+  leadScoring: uuid(),
+};
+
 // We'll reference agent story IDs dynamically
 const AGENT_STORY_PLACEHOLDER = 'customer-support-agent';
 
 // Mock data
 const now = new Date().toISOString();
 const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+// Mock Capabilities - the shared vocabulary
+const mockCapabilities: Capability[] = [
+  {
+    id: CAPABILITY_IDS.ticketTriage,
+    name: 'Ticket Triage',
+    description: 'Categorize and prioritize incoming support tickets based on urgency and type',
+    domain: 'Customer Service',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.contentClassification,
+    name: 'Content Classification',
+    description: 'Classify text content into predefined categories',
+    domain: 'Data & Analytics',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.naturalLanguageUnderstanding,
+    name: 'Natural Language Understanding',
+    description: 'Parse and understand the meaning and intent of text',
+    domain: 'Data & Analytics',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.naturalLanguageGeneration,
+    name: 'Natural Language Generation',
+    description: 'Generate clear, contextually appropriate written responses',
+    domain: 'Data & Analytics',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.informationRetrieval,
+    name: 'Information Retrieval',
+    description: 'Find and retrieve relevant information from knowledge bases',
+    domain: 'Data & Analytics',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.customerService,
+    name: 'Customer Communication',
+    description: 'Communicate effectively with customers in a helpful and empathetic manner',
+    domain: 'Customer Service',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.decisionMaking,
+    name: 'Decision Making',
+    description: 'Make informed decisions based on defined criteria and available data',
+    domain: 'Operations',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.documentAnalysis,
+    name: 'Document Analysis',
+    description: 'Analyze and extract information from documents',
+    domain: 'Data & Analytics',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.dataProcessing,
+    name: 'Data Processing',
+    description: 'Process, transform, and validate data',
+    domain: 'Data & Analytics',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.codeReview,
+    name: 'Code Review',
+    description: 'Review code for quality, correctness, and adherence to standards',
+    domain: 'Engineering',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.securityAnalysis,
+    name: 'Security Analysis',
+    description: 'Identify security vulnerabilities and risks in code or systems',
+    domain: 'Engineering',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.testingQA,
+    name: 'Testing & QA',
+    description: 'Create and execute tests to ensure quality',
+    domain: 'Engineering',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.workflowManagement,
+    name: 'Workflow Management',
+    description: 'Manage and coordinate multi-step workflows',
+    domain: 'Operations',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.apiIntegration,
+    name: 'API Integration',
+    description: 'Integrate with external APIs and services',
+    domain: 'Engineering',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  {
+    id: CAPABILITY_IDS.leadScoring,
+    name: 'Lead Scoring',
+    description: 'Score and qualify leads based on fit and intent signals',
+    domain: 'Sales',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+];
 
 const mockDomains: BusinessDomain[] = [
   {
@@ -564,6 +710,7 @@ let departments: Department[] = [];
 let roles: Role[] = [];
 let people: Person[] = [];
 let haps: HumanAgentPair[] = [];
+let capabilities: Capability[] = [];
 let isInitialized = false;
 
 // Load from localStorage
@@ -597,6 +744,7 @@ function saveHAPData(): void {
       roles,
       people,
       haps,
+      capabilities,
       version: CURRENT_VERSION,
     };
     localStorage.setItem(STORAGE_KEY_HAP, JSON.stringify(data));
@@ -616,12 +764,14 @@ function initializeHAPData(): void {
     roles = stored.roles;
     people = stored.people;
     haps = stored.haps;
+    capabilities = stored.capabilities || [];
   } else {
     domains = [...mockDomains];
     departments = [...mockDepartments];
     roles = [...mockRoles];
     people = [...mockPeople];
     haps = [...mockHAPs];
+    capabilities = [...mockCapabilities];
     saveHAPData();
   }
   isInitialized = true;
@@ -1012,6 +1162,144 @@ export const hapDataService = {
           paused: haps.filter(h => h.integrationStatus === 'paused').length,
         },
       };
+    },
+  },
+
+  // Capabilities - the lingua franca
+  capabilities: {
+    list: async (domain?: string): Promise<Capability[]> => {
+      initializeHAPData();
+      await delay(200);
+      if (domain) {
+        return capabilities.filter(c => c.domain === domain);
+      }
+      return [...capabilities];
+    },
+
+    get: async (id: string): Promise<Capability | null> => {
+      initializeHAPData();
+      await delay(100);
+      return capabilities.find(c => c.id === id) || null;
+    },
+
+    create: async (data: Omit<Capability, 'id' | 'createdAt' | 'updatedAt'>): Promise<Capability> => {
+      initializeHAPData();
+      await delay(300);
+      const now = new Date().toISOString();
+      const newCapability: Capability = {
+        ...data,
+        id: uuid(),
+        createdAt: now,
+        updatedAt: now,
+      };
+      capabilities.push(newCapability);
+      saveHAPData();
+      return newCapability;
+    },
+
+    update: async (id: string, data: Partial<Capability>): Promise<Capability | null> => {
+      initializeHAPData();
+      await delay(300);
+      const index = capabilities.findIndex(c => c.id === id);
+      if (index === -1) return null;
+
+      capabilities[index] = {
+        ...capabilities[index],
+        ...data,
+        updatedAt: new Date().toISOString(),
+      };
+      saveHAPData();
+      return capabilities[index];
+    },
+
+    delete: async (id: string): Promise<boolean> => {
+      initializeHAPData();
+      await delay(200);
+      const index = capabilities.findIndex(c => c.id === id);
+      if (index === -1) return false;
+      capabilities.splice(index, 1);
+      saveHAPData();
+      return true;
+    },
+
+    // Get capability analysis - who needs it (demand) and who provides it (supply)
+    analyze: async (id: string): Promise<CapabilityAnalysis | null> => {
+      initializeHAPData();
+      await delay(200);
+
+      const capability = capabilities.find(c => c.id === id);
+      if (!capability) return null;
+
+      // Find demand - which responsibilities require this capability
+      const demand: CapabilityAnalysis['demand'] = [];
+      for (const role of roles) {
+        for (const resp of role.responsibilities) {
+          // Check both old requiredSkillDomains (string match) and new requiredCapabilityIds
+          const requiredCapabilityIds = (resp as any).requiredCapabilityIds || [];
+          const requiredSkillDomains = resp.requiredSkillDomains || [];
+
+          if (requiredCapabilityIds.includes(id) ||
+              requiredSkillDomains.some((s: string) => s.toLowerCase() === capability.name.toLowerCase())) {
+            demand.push({
+              roleId: role.id,
+              roleName: role.name,
+              responsibilityId: resp.id,
+              responsibilityName: resp.name,
+            });
+          }
+        }
+      }
+
+      // Find supply - which agents/people have this capability
+      // For now, check people's skills (string match)
+      const peopleSupply: CapabilityAnalysis['supply']['people'] = [];
+      for (const person of people) {
+        const personSkills = person.skills || [];
+        const personCapabilityIds = (person as any).capabilityIds || [];
+
+        if (personCapabilityIds.includes(id) ||
+            personSkills.some((s: string) => s.toLowerCase() === capability.name.toLowerCase())) {
+          peopleSupply.push({
+            personId: person.id,
+            personName: person.name,
+          });
+        }
+      }
+
+      // Agent supply would require checking agent stories - placeholder for now
+      const agentSupply: CapabilityAnalysis['supply']['agents'] = [];
+
+      return {
+        capability,
+        demand,
+        supply: {
+          agents: agentSupply,
+          people: peopleSupply,
+        },
+        isMatched: agentSupply.length > 0 || peopleSupply.length > 0,
+        isGap: demand.length > 0 && agentSupply.length === 0 && peopleSupply.length === 0,
+      };
+    },
+
+    // Get all capability analyses
+    analyzeAll: async (): Promise<CapabilityAnalysis[]> => {
+      initializeHAPData();
+      await delay(300);
+
+      const analyses: CapabilityAnalysis[] = [];
+      for (const capability of capabilities) {
+        const analysis = await hapDataService.capabilities.analyze(capability.id);
+        if (analysis) {
+          analyses.push(analysis);
+        }
+      }
+      return analyses;
+    },
+
+    // Get capability gaps - capabilities needed but not provided
+    getGaps: async (): Promise<CapabilityAnalysis[]> => {
+      const all = await hapDataService.capabilities.analyzeAll();
+      return all.filter(a => a.isGap);
     },
   },
 };

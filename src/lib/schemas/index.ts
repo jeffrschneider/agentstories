@@ -1,5 +1,24 @@
 // Re-export all schemas and types
 
+// Capability (the lingua franca)
+export {
+  CapabilitySchema,
+  CapabilityGapStatusEnum,
+  CapabilityDemandSourceSchema,
+  CapabilityGapSchema,
+  createEmptyCapability,
+  createCapability,
+  CAPABILITY_GAP_STATUS_METADATA,
+  CAPABILITY_DOMAINS,
+  type Capability,
+  type CapabilityGapStatus,
+  type CapabilityDemandSource,
+  type CapabilityGap,
+  type CapabilityDemand,
+  type CapabilitySupply,
+  type CapabilityAnalysis
+} from './capability';
+
 // Organization (Domain & Department)
 export {
   BusinessDomainSchema,
