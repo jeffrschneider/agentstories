@@ -32,7 +32,6 @@ import {
 import {
   useRoles,
   useHAPs,
-  useHAPStats,
   useDeleteDomain,
   useDeleteDepartment,
   useDeleteRole,
@@ -215,7 +214,6 @@ export default function OrganizationPage() {
 
   const { data: allRoles } = useRoles();
   const { data: allHaps } = useHAPs();
-  const { data: stats } = useHAPStats();
   const { data: stories } = useStories();
 
   // Delete mutations
@@ -367,57 +365,6 @@ export default function OrganizationPage() {
             </Button>
           </div>
         </div>
-
-        {/* Stats Overview */}
-        {stats && (
-          <div className="grid gap-4 md:grid-cols-5">
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.domainCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Domains</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.departmentCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Departments</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.roleCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Roles</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <UserCircle className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.peopleCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">People</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-2">
-                  <Bot className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-2xl font-bold">{stats.hapCount}</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Human-Agent Pairs</p>
-              </CardContent>
-            </Card>
-          </div>
-        )}
 
         {/* Tree View with Agents Panel */}
         <div className="flex gap-4">
