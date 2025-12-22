@@ -14,6 +14,7 @@ import {
   TrendingUp,
   Target,
   Zap,
+  Layers,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import {
   usePeople,
   useHAPs,
   useHAPStats,
+  useCapabilityAnalyses,
 } from "@/hooks";
 import { analyzeRoleSkillCoverage } from "@/lib/schemas";
 
@@ -43,6 +45,23 @@ export default function Home() {
   const { data: people } = usePeople();
   const { data: haps } = useHAPs();
   const { data: hapStats } = useHAPStats();
+  const { data: capabilityAnalyses } = useCapabilityAnalyses();
+
+  // Calculate capability metrics
+  const capabilityMetrics = useMemo(() => {
+    if (!capabilityAnalyses) {
+      return { total: 0, matched: 0, gaps: 0, gapList: [] as { name: string; demandCount: number }[] };
+    }
+    const total = capabilityAnalyses.length;
+    const matched = capabilityAnalyses.filter((a) => a.isMatched).length;
+    const gaps = capabilityAnalyses.filter((a) => a.isGap);
+    const gapList = gaps.map((g) => ({
+      name: g.capability.name,
+      demandCount: g.demand.length,
+    })).sort((a, b) => b.demandCount - a.demandCount);
+
+    return { total, matched, gaps: gaps.length, gapList };
+  }, [capabilityAnalyses]);
 
   // Calculate transformation metrics
   const metrics = useMemo(() => {
@@ -289,46 +308,57 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* Skill Gaps */}
+          {/* Capability Gaps */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-orange-500" />
-                Skill Gaps
-              </CardTitle>
-              <CardDescription>
-                Skills needed but not available in your team
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Layers className="h-5 w-5 text-orange-500" />
+                    Capability Gaps
+                  </CardTitle>
+                  <CardDescription>
+                    Capabilities needed but not yet available
+                  </CardDescription>
+                </div>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/capability-gaps">View All</Link>
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              {metrics.skillGaps.length > 0 ? (
+              {capabilityMetrics.gapList.length > 0 ? (
                 <div className="space-y-4">
-                  {metrics.skillGaps.slice(0, 5).map((gap) => (
-                    <div key={gap.skill} className="space-y-1">
+                  {capabilityMetrics.gapList.slice(0, 5).map((gap) => (
+                    <Link
+                      key={gap.name}
+                      href="/capabilities"
+                      className="block space-y-1 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
+                    >
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{gap.skill}</span>
+                        <span className="font-medium">{gap.name}</span>
                         <Badge variant="outline" className="text-orange-600">
-                          {gap.count} {gap.count === 1 ? "task" : "tasks"} affected
+                          {gap.demandCount} {gap.demandCount === 1 ? "need" : "needs"}
                         </Badge>
                       </div>
                       <Progress
-                        value={(gap.count / metrics.aiCandidateResponsibilities) * 100}
+                        value={(gap.demandCount / Math.max(metrics.aiCandidateResponsibilities, 1)) * 100}
                         className="h-2"
                       />
-                    </div>
+                    </Link>
                   ))}
-                  {metrics.skillGaps.length > 5 && (
+                  {capabilityMetrics.gapList.length > 5 && (
                     <p className="text-xs text-muted-foreground text-center">
-                      +{metrics.skillGaps.length - 5} more skill gaps
+                      +{capabilityMetrics.gapList.length - 5} more capability gaps
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
-                  <p className="font-medium">No skill gaps detected</p>
+                  <p className="font-medium">No capability gaps</p>
                   <p className="text-sm text-muted-foreground">
-                    Your team has all required skills covered
+                    All required capabilities have providers
                   </p>
                 </div>
               )}
@@ -427,7 +457,7 @@ export default function Home() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-4">
               <Link
                 href="/organization"
                 className="group rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent"
@@ -447,19 +477,37 @@ export default function Home() {
                 </div>
               </Link>
               <Link
-                href="/organization"
+                href="/capabilities"
+                className="group rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="rounded-md bg-purple-100 dark:bg-purple-900 p-2">
+                    <Layers className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold group-hover:text-primary">
+                      Manage Capabilities
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Define the shared vocabulary
+                    </p>
+                  </div>
+                </div>
+              </Link>
+              <Link
+                href="/stories"
                 className="group rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent"
               >
                 <div className="flex items-center gap-3">
                   <div className="rounded-md bg-yellow-100 dark:bg-yellow-900 p-2">
-                    <Users className="h-5 w-5 text-yellow-600" />
+                    <Bot className="h-5 w-5 text-yellow-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold group-hover:text-primary">
-                      Assign Skills
+                      Create Agents
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Map skills to your team
+                      Define agent stories
                     </p>
                   </div>
                 </div>
@@ -470,7 +518,7 @@ export default function Home() {
               >
                 <div className="flex items-center gap-3">
                   <div className="rounded-md bg-green-100 dark:bg-green-900 p-2">
-                    <Bot className="h-5 w-5 text-green-600" />
+                    <Users className="h-5 w-5 text-green-600" />
                   </div>
                   <div>
                     <h3 className="font-semibold group-hover:text-primary">
