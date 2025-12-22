@@ -27,7 +27,7 @@ function uuid(): string {
 
 // Storage keys
 const STORAGE_KEY_HAP = 'agent-stories-hap-data';
-const CURRENT_VERSION = '2.0'; // Bumped for responsibility phase model
+const CURRENT_VERSION = '3.0'; // Bumped for skills on people and responsibilities
 
 interface HAPStorageData {
   domains: BusinessDomain[];

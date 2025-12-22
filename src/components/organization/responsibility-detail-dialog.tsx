@@ -8,6 +8,7 @@ import {
   Bot,
   Lightbulb,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import {
   Dialog,
@@ -16,6 +17,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -27,6 +29,7 @@ interface ResponsibilityDetailDialogProps {
   responsibility: Responsibility | null;
   people: Person[];
   roleName?: string;
+  onEditRole?: () => void;
 }
 
 interface PersonSkillMatch {
@@ -49,6 +52,7 @@ export function ResponsibilityDetailDialog({
   responsibility,
   people,
   roleName,
+  onEditRole,
 }: ResponsibilityDetailDialogProps) {
   const requiredSkills = responsibility?.requiredSkillDomains || [];
 
@@ -132,12 +136,27 @@ export function ResponsibilityDetailDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {responsibility.aiCandidate && (
-              <Bot className="h-5 w-5 text-purple-500" />
+          <div className="flex items-center justify-between">
+            <DialogTitle className="flex items-center gap-2">
+              {responsibility.aiCandidate && (
+                <Bot className="h-5 w-5 text-purple-500" />
+              )}
+              {responsibility.name}
+            </DialogTitle>
+            {onEditRole && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onOpenChange(false);
+                  onEditRole();
+                }}
+              >
+                <Pencil className="h-3 w-3 mr-1" />
+                Edit Role
+              </Button>
             )}
-            {responsibility.name}
-          </DialogTitle>
+          </div>
           <DialogDescription>
             {responsibility.description}
             {roleName && (

@@ -88,7 +88,7 @@ export default function OrganizationPage() {
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [deleteState, setDeleteState] = useState<DeleteState | null>(null);
   const [selectedResponsibility, setSelectedResponsibility] = useState<Responsibility | null>(null);
-  const [selectedResponsibilityRoleName, setSelectedResponsibilityRoleName] = useState<string>("");
+  const [selectedResponsibilityRole, setSelectedResponsibilityRole] = useState<Role | null>(null);
 
   const { data: domains, isLoading: domainsLoading } = useDomains();
   const { data: allDepartments } = useDepartments();
@@ -640,7 +640,7 @@ export default function OrganizationPage() {
                                 className="w-full text-left space-y-1 p-1.5 -ml-1.5 rounded hover:bg-accent transition-colors"
                                 onClick={() => {
                                   setSelectedResponsibility(resp);
-                                  setSelectedResponsibilityRoleName(role.name);
+                                  setSelectedResponsibilityRole(role);
                                   setResponsibilityDialogOpen(true);
                                 }}
                               >
@@ -1013,7 +1013,13 @@ export default function OrganizationPage() {
         onOpenChange={setResponsibilityDialogOpen}
         responsibility={selectedResponsibility}
         people={allPeople || []}
-        roleName={selectedResponsibilityRoleName}
+        roleName={selectedResponsibilityRole?.name}
+        onEditRole={() => {
+          if (selectedResponsibilityRole) {
+            setEditingRole(selectedResponsibilityRole);
+            setRoleDialogOpen(true);
+          }
+        }}
       />
     </AppShell>
   );
