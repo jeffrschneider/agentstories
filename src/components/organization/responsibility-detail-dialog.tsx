@@ -166,9 +166,9 @@ export function ResponsibilityDetailDialog({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Required Skills */}
+          {/* Required Capabilities */}
           <div>
-            <h3 className="text-sm font-semibold mb-2">Required Skills</h3>
+            <h3 className="text-sm font-semibold mb-2">Required Capabilities</h3>
             {requiredSkills.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {requiredSkills.map((skill) => {
@@ -191,7 +191,7 @@ export function ResponsibilityDetailDialog({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No specific skills defined for this responsibility
+                No specific capabilities defined for this responsibility
               </p>
             )}
           </div>
@@ -200,7 +200,7 @@ export function ResponsibilityDetailDialog({
             <>
               <Separator />
 
-              {/* Team Skill Gap Alert */}
+              {/* Team Capability Gap Alert */}
               {missingFromTeam.length > 0 && (
                 <Card className="border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950">
                   <CardContent className="pt-4">
@@ -208,7 +208,7 @@ export function ResponsibilityDetailDialog({
                       <AlertTriangle className="h-5 w-5 text-yellow-600 mt-0.5" />
                       <div>
                         <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                          Skill Gap Detected
+                          Capability Gap Detected
                         </p>
                         <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                           No team members have:{" "}
@@ -223,11 +223,11 @@ export function ResponsibilityDetailDialog({
                 </Card>
               )}
 
-              {/* People with Matching Skills */}
+              {/* People with Matching Capabilities */}
               <div>
                 <h3 className="text-sm font-semibold mb-2 flex items-center gap-2">
                   <User className="h-4 w-4" />
-                  People with Matching Skills
+                  People with Matching Capabilities
                 </h3>
                 {personMatches.length > 0 ? (
                   <div className="space-y-2">
@@ -289,7 +289,7 @@ export function ResponsibilityDetailDialog({
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
-                    No team members have any of the required skills
+                    No team members have any of the required capabilities
                   </p>
                 )}
               </div>
@@ -303,7 +303,7 @@ export function ResponsibilityDetailDialog({
                 <Card className="border-purple-200 bg-purple-50 dark:border-purple-900 dark:bg-purple-950">
                   <CardContent className="py-3">
                     <p className="text-sm text-purple-800 dark:text-purple-200 mb-2">
-                      An AI agent can provide these skills:
+                      An AI agent can provide these capabilities:
                     </p>
                     <div className="flex flex-wrap gap-1">
                       {requiredSkills.map((skill) => (
@@ -418,7 +418,7 @@ export function ResponsibilityDetailDialog({
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     No viable pairings found. Consider adding team members with
-                    relevant skills.
+                    relevant capabilities.
                   </p>
                 )}
               </div>

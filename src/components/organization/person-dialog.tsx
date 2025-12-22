@@ -259,10 +259,10 @@ export function PersonDialog({
             </FormField>
           </div>
 
-          {/* Skills Section */}
+          {/* Capabilities Section */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label>Skills</Label>
+              <Label>Capabilities</Label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -271,7 +271,7 @@ export function PersonDialog({
                     size="sm"
                     disabled={isLoading}
                   >
-                    Add Skill
+                    Add Capability
                     <ChevronDown className="ml-1 h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -305,7 +305,7 @@ export function PersonDialog({
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">
-                No skills assigned yet
+                No capabilities assigned yet
               </p>
             )}
           </div>
