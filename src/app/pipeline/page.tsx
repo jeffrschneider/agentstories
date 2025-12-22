@@ -181,8 +181,17 @@ function PipelineCard({
   canMoveLeft: boolean;
   canMoveRight: boolean;
 }) {
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData("text/plain", item.id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
   return (
-    <Card className="mb-3 shadow-sm hover:shadow-md transition-shadow group">
+    <Card
+      className="mb-3 shadow-sm hover:shadow-md transition-shadow group cursor-grab active:cursor-grabbing"
+      draggable
+      onDragStart={handleDragStart}
+    >
       <CardContent className="p-3">
         {/* Title row */}
         <div className="flex items-start justify-between gap-2">
@@ -251,6 +260,7 @@ function KanbanColumn({
   items: PipelineItem[];
   onMoveItem: (itemId: string, newStage: PipelineStage) => void;
 }) {
+  const [isDragOver, setIsDragOver] = useState(false);
   const metadata = PIPELINE_STAGE_METADATA[stage];
   const stageIndex = KANBAN_STAGES.indexOf(stage);
 
@@ -266,8 +276,35 @@ function KanbanColumn({
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const itemId = e.dataTransfer.getData("text/plain");
+    if (itemId) {
+      onMoveItem(itemId, stage);
+    }
+  };
+
   return (
-    <div className={`flex-1 min-w-[280px] max-w-[320px] rounded-lg ${stageColors[stage]} p-3`}>
+    <div
+      className={`flex-1 min-w-[280px] max-w-[320px] rounded-lg ${stageColors[stage]} p-3 transition-all ${
+        isDragOver ? "ring-2 ring-primary ring-offset-2" : ""
+      }`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-sm">{metadata.label}</h3>
@@ -292,7 +329,7 @@ function KanbanColumn({
             ))
           ) : (
             <div className="text-center py-8 text-muted-foreground text-sm">
-              No items
+              {isDragOver ? "Drop here" : "No items"}
             </div>
           )}
         </div>
