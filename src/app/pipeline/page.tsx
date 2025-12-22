@@ -12,17 +12,11 @@ import {
   Edit,
   MinusCircle,
   Settings,
-  Clock,
-  User,
+  MoreHorizontal,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -65,12 +59,12 @@ const typeIcons: Record<PipelineItemType, React.ComponentType<{ className?: stri
   "agent-update": Settings,
 };
 
-// Priority badge colors
-const priorityColors: Record<PipelinePriority, string> = {
-  critical: "bg-red-100 text-red-800 border-red-200",
-  high: "bg-orange-100 text-orange-800 border-orange-200",
-  medium: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  low: "bg-gray-100 text-gray-600 border-gray-200",
+// Priority colors for inline text
+const priorityTextColors: Record<PipelinePriority, string> = {
+  critical: "text-red-600 font-semibold",
+  high: "text-orange-600 font-medium",
+  medium: "text-yellow-600",
+  low: "text-gray-500",
 };
 
 // Stage column background colors
@@ -82,6 +76,105 @@ const stageColors: Record<PipelineStage, string> = {
   completed: "bg-emerald-50",
   rejected: "bg-red-50",
 };
+
+function ItemDetailDialog({ item, children }: { item: PipelineItem; children: React.ReactNode }) {
+  const TypeIcon = typeIcons[item.type];
+  const typeMetadata = PIPELINE_ITEM_TYPE_METADATA[item.type];
+  const priorityMetadata = PIPELINE_PRIORITY_METADATA[item.priority];
+  const stageMetadata = PIPELINE_STAGE_METADATA[item.stage];
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        {children}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <TypeIcon className="h-5 w-5" />
+            {item.title}
+          </DialogTitle>
+          <DialogDescription>
+            Pipeline item details
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="flex flex-wrap gap-2">
+            <Badge variant="outline">{typeMetadata.label}</Badge>
+            <Badge variant="outline">{priorityMetadata.label} Priority</Badge>
+            <Badge variant="secondary">{stageMetadata.label}</Badge>
+          </div>
+
+          {item.description && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Description</Label>
+              <p className="text-sm mt-1">{item.description}</p>
+            </div>
+          )}
+
+          {(item.agentName || item.proposedAgentName) && (
+            <div>
+              <Label className="text-xs text-muted-foreground">
+                {item.type === "new-agent" ? "Proposed Agent" : "Related Agent"}
+              </Label>
+              <p className="text-sm mt-1 flex items-center gap-1">
+                <Bot className="h-4 w-4" />
+                {item.agentName || item.proposedAgentName}
+              </p>
+            </div>
+          )}
+
+          {item.capabilityName && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Capability</Label>
+              <p className="text-sm mt-1">{item.capabilityName}</p>
+              {item.capabilityDescription && (
+                <p className="text-xs text-muted-foreground mt-1">{item.capabilityDescription}</p>
+              )}
+            </div>
+          )}
+
+          {item.proposedCapabilities && item.proposedCapabilities.length > 0 && (
+            <div>
+              <Label className="text-xs text-muted-foreground">Proposed Capabilities</Label>
+              <ul className="text-sm mt-1 list-disc list-inside">
+                {item.proposedCapabilities.map((cap, i) => (
+                  <li key={i}>{cap}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            {item.requestedBy && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Requested By</Label>
+                <p className="mt-1">{item.requestedBy}</p>
+              </div>
+            )}
+            {item.assignedTo && (
+              <div>
+                <Label className="text-xs text-muted-foreground">Assigned To</Label>
+                <p className="mt-1">{item.assignedTo}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 text-sm text-muted-foreground">
+            <div>
+              <Label className="text-xs">Created</Label>
+              <p className="mt-1">{new Date(item.createdAt).toLocaleDateString()}</p>
+            </div>
+            <div>
+              <Label className="text-xs">Updated</Label>
+              <p className="mt-1">{new Date(item.updatedAt).toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function PipelineCard({
   item,
@@ -96,88 +189,60 @@ function PipelineCard({
   canMoveLeft: boolean;
   canMoveRight: boolean;
 }) {
-  const TypeIcon = typeIcons[item.type];
-  const typeMetadata = PIPELINE_ITEM_TYPE_METADATA[item.type];
   const priorityMetadata = PIPELINE_PRIORITY_METADATA[item.priority];
 
   return (
-    <Card className="mb-3 shadow-sm hover:shadow-md transition-shadow cursor-pointer group">
-      <CardHeader className="pb-2 pt-3 px-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <TypeIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <Badge
-              variant="outline"
-              className={`text-xs shrink-0 ${priorityColors[item.priority]}`}
-            >
-              {priorityMetadata.label}
-            </Badge>
+    <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow group">
+      <CardContent className="p-2">
+        <div className="flex items-center justify-between gap-1">
+          <div className="flex-1 min-w-0">
+            <p className="text-sm truncate">
+              <span className={`${priorityTextColors[item.priority]}`}>
+                {priorityMetadata.label}
+              </span>
+              <span className="text-muted-foreground mx-1">·</span>
+              <span className="font-medium">{item.title}</span>
+            </p>
           </div>
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {canMoveLeft && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveLeft?.();
-                }}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-            )}
-            {canMoveRight && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveRight?.();
-                }}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        </div>
-        <CardTitle className="text-sm font-medium line-clamp-2 mt-1">
-          {item.title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="px-3 pb-3 pt-0">
-        {item.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-            {item.description}
-          </p>
-        )}
-
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Badge variant="secondary" className="text-xs">
-            {typeMetadata.label}
-          </Badge>
-        </div>
-
-        {(item.agentName || item.proposedAgentName) && (
-          <div className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-            <Bot className="h-3 w-3" />
-            <span className="truncate">
-              {item.agentName || item.proposedAgentName}
-            </span>
-          </div>
-        )}
-
-        <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-          {item.assignedTo && (
-            <div className="flex items-center gap-1">
-              <User className="h-3 w-3" />
-              <span className="truncate max-w-[100px]">{item.assignedTo}</span>
+          <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+              {canMoveLeft && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveLeft?.();
+                  }}
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+              )}
+              {canMoveRight && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveRight?.();
+                  }}
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              )}
             </div>
-          )}
-          <div className="flex items-center gap-1 ml-auto">
-            <Clock className="h-3 w-3" />
-            {new Date(item.updatedAt).toLocaleDateString()}
+            <ItemDetailDialog item={item}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </ItemDetailDialog>
           </div>
         </div>
       </CardContent>
