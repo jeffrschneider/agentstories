@@ -18,6 +18,8 @@ import {
   Trash2,
   CheckCircle2,
   AlertCircle,
+  LayoutGrid,
+  Network,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
@@ -59,6 +61,7 @@ import {
   PersonDialog,
   DeleteConfirmationDialog,
   ResponsibilityDetailDialog,
+  OrgTreeView,
 } from "@/components/organization";
 
 type EntityType = "domain" | "department" | "role" | "person";
@@ -72,6 +75,7 @@ interface DeleteState {
 export default function OrganizationPage() {
   const [selectedDomainId, setSelectedDomainId] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"cards" | "tree">("cards");
 
   // Dialog states
   const [domainDialogOpen, setDomainDialogOpen] = useState(false);
@@ -337,7 +341,22 @@ export default function OrganizationPage() {
           </div>
         )}
 
-        {/* Breadcrumb */}
+        {/* View Mode Tabs */}
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "cards" | "tree")} className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="cards" className="flex items-center gap-2">
+              <LayoutGrid className="h-4 w-4" />
+              Cards
+            </TabsTrigger>
+            <TabsTrigger value="tree" className="flex items-center gap-2">
+              <Network className="h-4 w-4" />
+              Tree
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Cards View */}
+          <TabsContent value="cards" className="space-y-4">
+            {/* Breadcrumb */}
         <div className="flex items-center gap-2 text-sm">
           <button
             onClick={() => {
@@ -968,6 +987,24 @@ export default function OrganizationPage() {
             </TabsContent>
           </Tabs>
         )}
+          </TabsContent>
+
+          {/* Tree View */}
+          <TabsContent value="tree">
+            <OrgTreeView
+              onSelectDomain={(domainId) => {
+                setSelectedDomainId(domainId);
+                setSelectedDeptId(null);
+                setViewMode("cards");
+              }}
+              onSelectDepartment={(deptId, domainId) => {
+                setSelectedDomainId(domainId);
+                setSelectedDeptId(deptId);
+                setViewMode("cards");
+              }}
+            />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Dialogs */}
