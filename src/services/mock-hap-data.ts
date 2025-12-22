@@ -29,7 +29,7 @@ function uuid(): string {
 
 // Storage keys
 const STORAGE_KEY_HAP = 'agent-stories-hap-data';
-const CURRENT_VERSION = '3.0'; // Bumped for capability-centric model
+
 
 interface HAPStorageData {
   domains: BusinessDomain[];
