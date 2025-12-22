@@ -211,15 +211,15 @@ export default function Home() {
 
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-2">
-          {/* Skill Coverage */}
+          {/* Capability Coverage */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-yellow-500" />
-                Skill Coverage
+                Capability Coverage
               </CardTitle>
               <CardDescription>
-                How well your team&apos;s skills match AI-ready responsibilities
+                How well your team&apos;s capabilities match AI-ready responsibilities
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -258,7 +258,7 @@ export default function Home() {
                   </span>
                 </div>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Overall skill coverage for AI tasks
+                  Overall capability coverage for AI tasks
                 </p>
               </div>
 
@@ -289,15 +289,15 @@ export default function Home() {
             </CardContent>
           </Card>
 
-          {/* Skill Gaps */}
+          {/* Capability Gaps */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <AlertCircle className="h-5 w-5 text-orange-500" />
-                Skill Gaps
+                Capability Gaps
               </CardTitle>
               <CardDescription>
-                Skills needed but not available in your team
+                Capabilities needed but not available in your team
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -319,16 +319,16 @@ export default function Home() {
                   ))}
                   {metrics.skillGaps.length > 5 && (
                     <p className="text-xs text-muted-foreground text-center">
-                      +{metrics.skillGaps.length - 5} more skill gaps
+                      +{metrics.skillGaps.length - 5} more capability gaps
                     </p>
                   )}
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
-                  <p className="font-medium">No skill gaps detected</p>
+                  <p className="font-medium">No capability gaps detected</p>
                   <p className="text-sm text-muted-foreground">
-                    Your team has all required skills covered
+                    Your team has all required capabilities covered
                   </p>
                 </div>
               )}
@@ -360,13 +360,13 @@ export default function Home() {
 
               <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
 
-              {/* Stage 2: Skills Matched */}
+              {/* Stage 2: Capabilities Matched */}
               <div className="flex-1 text-center">
                 <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900">
                   <Zap className="h-8 w-8 text-yellow-600" />
                 </div>
                 <p className="text-2xl font-bold">{funnelData.withCoverage}</p>
-                <p className="text-xs text-muted-foreground">Skills Matched</p>
+                <p className="text-xs text-muted-foreground">Capabilities Matched</p>
                 <Badge variant="outline" className="mt-1">
                   {funnelData.coveragePercent}%
                 </Badge>
@@ -410,7 +410,7 @@ export default function Home() {
                 />
               </div>
               <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-                <span>Needs Skills</span>
+                <span>Needs Capabilities</span>
                 <span>Ready for HAPs</span>
                 <span>Active</span>
               </div>
@@ -456,10 +456,10 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="font-semibold group-hover:text-primary">
-                      Assign Skills
+                      Assign Capabilities
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      Map skills to your team
+                      Map capabilities to your team
                     </p>
                   </div>
                 </div>

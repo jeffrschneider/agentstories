@@ -314,7 +314,7 @@ export function RoleDialog({
                           <div className="space-y-2 pt-2 border-t mt-2">
                             <div className="flex items-center justify-between">
                               <Label className="text-xs text-muted-foreground">
-                                Required Skills
+                                Required Capabilities
                               </Label>
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
@@ -325,7 +325,7 @@ export function RoleDialog({
                                     className="h-7 text-xs"
                                     disabled={isLoading}
                                   >
-                                    Add Skill
+                                    Add Capability
                                     <ChevronDown className="ml-1 h-3 w-3" />
                                   </Button>
                                 </DropdownMenuTrigger>
@@ -363,7 +363,7 @@ export function RoleDialog({
                               </div>
                             ) : (
                               <p className="text-xs text-muted-foreground italic">
-                                No skills specified yet
+                                No capabilities specified yet
                               </p>
                             )}
                           </div>
