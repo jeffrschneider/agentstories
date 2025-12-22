@@ -113,7 +113,9 @@ interface OrgTreeViewProps {
   onSelectDomain?: (domainId: string) => void;
   onSelectDepartment?: (deptId: string, domainId: string) => void;
   onSelectRole?: (roleId: string) => void;
+  onSelectPerson?: (personId: string, roleId: string, hapId?: string) => void;
   selectedRoleId?: string | null;
+  selectedPersonId?: string | null;
 }
 
 export function OrgTreeView({
@@ -121,7 +123,9 @@ export function OrgTreeView({
   onSelectDomain,
   onSelectDepartment,
   onSelectRole,
+  onSelectPerson,
   selectedRoleId,
+  selectedPersonId,
 }: OrgTreeViewProps) {
   const { data: domains, isLoading: domainsLoading } = useDomains();
   const { data: departments } = useDepartments();
@@ -266,9 +270,12 @@ export function OrgTreeView({
                                       ? `+ ${hapAgentStory?.name || "Unassigned Agent"}`
                                       : person.title || person.email
                                   }
-                                  href={
-                                    personHap ? `/haps/${personHap.id}` : undefined
+                                  onClick={
+                                    onSelectPerson
+                                      ? () => onSelectPerson(person.id, role.id, personHap?.id)
+                                      : undefined
                                   }
+                                  isSelected={selectedPersonId === person.id}
                                 />
                               );
                             })}
@@ -297,7 +304,12 @@ export function OrgTreeView({
                                     }
                                     label={person?.name || "Unknown Person"}
                                     sublabel={`+ ${hapAgentStory?.name || "Unassigned Agent"}`}
-                                    href={`/haps/${hap.id}`}
+                                    onClick={
+                                      onSelectPerson && person
+                                        ? () => onSelectPerson(person.id, role.id, hap.id)
+                                        : undefined
+                                    }
+                                    isSelected={selectedPersonId === person?.id}
                                   />
                                 );
                               })}
