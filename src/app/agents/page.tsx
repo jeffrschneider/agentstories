@@ -191,54 +191,6 @@ export default function AgentCatalogPage() {
           </Button>
         </div>
 
-        {/* Stats Overview */}
-        {stats && (
-          <div className="grid gap-4 md:grid-cols-5">
-            <Card>
-              <CardContent className="pt-4">
-                <div className="text-2xl font-bold">{stats.total}</div>
-                <div className="text-xs text-muted-foreground">Total Agents</div>
-              </CardContent>
-            </Card>
-            <Card className="border-blue-200 dark:border-blue-800">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4 text-blue-500" />
-                  <div className="text-2xl font-bold">{stats.planned}</div>
-                </div>
-                <div className="text-xs text-muted-foreground">Planned</div>
-              </CardContent>
-            </Card>
-            <Card className="border-yellow-200 dark:border-yellow-800">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-yellow-500" />
-                  <div className="text-2xl font-bold">{stats.development}</div>
-                </div>
-                <div className="text-xs text-muted-foreground">Development</div>
-              </CardContent>
-            </Card>
-            <Card className="border-green-200 dark:border-green-800">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <div className="text-2xl font-bold">{stats.operational}</div>
-                </div>
-                <div className="text-xs text-muted-foreground">Operational</div>
-              </CardContent>
-            </Card>
-            <Card className="border-gray-200 dark:border-gray-800">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2">
-                  <Archive className="h-4 w-4 text-gray-500" />
-                  <div className="text-2xl font-bold">{stats.sunset}</div>
-                </div>
-                <div className="text-xs text-muted-foreground">Sunset</div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Lifecycle Tabs */}
         <Tabs value={lifecycleTab} onValueChange={(v) => setLifecycleTab(v as AgentLifecycle | "all")}>
           <TabsList>
