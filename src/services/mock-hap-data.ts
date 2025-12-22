@@ -12,6 +12,7 @@ import {
   calculateHAPMetrics,
   calculatePhaseDistribution,
 } from '@/lib/schemas/hap';
+import { AGENT_STORY_IDS } from './mock-data';
 
 // Simulated delay for realistic async behavior
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -69,8 +70,8 @@ const PERSON_IDS = {
   taylor: uuid(),
 };
 
-// We'll reference agent story IDs dynamically
-const AGENT_STORY_PLACEHOLDER = 'customer-support-agent';
+// Reference well-known agent story IDs from mock-data
+// These IDs link HAPs to their corresponding Agent Stories
 
 // Mock data
 const now = new Date().toISOString();
@@ -470,7 +471,7 @@ const mockHAPs: HumanAgentPair[] = [
     id: uuid(),
     personId: PERSON_IDS.sarah,
     roleId: ROLE_IDS.supportSpecialist,
-    agentStoryId: AGENT_STORY_PLACEHOLDER,
+    agentStoryId: AGENT_STORY_IDS.customerSupport,
     tasks: [
       createTask(
         'Ticket Triage',
@@ -508,7 +509,7 @@ const mockHAPs: HumanAgentPair[] = [
         suggestedCapabilityName: 'Execute Ticket Triage',
         suggestedCapabilityDescription: 'Capability to perform the "Ticket Triage" task',
         status: 'pending',
-        agentStoryId: AGENT_STORY_PLACEHOLDER,
+        agentStoryId: AGENT_STORY_IDS.customerSupport,
         createdAt: now,
         updatedAt: now,
       },
@@ -522,7 +523,7 @@ const mockHAPs: HumanAgentPair[] = [
     id: uuid(),
     personId: PERSON_IDS.alex,
     roleId: ROLE_IDS.codeReviewer,
-    agentStoryId: 'code-review-assistant',
+    agentStoryId: AGENT_STORY_IDS.codeReview,
     tasks: [
       createTask(
         'Initial PR Scan',

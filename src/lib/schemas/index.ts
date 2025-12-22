@@ -63,6 +63,8 @@ export {
   determineTaskIntegrationStatus,
   calculatePhaseDistribution,
   migrateOldTaskOwner,
+  analyzeAgentSkillCoverage,
+  validateHAPAgentAssignment,
   // Constants
   RESPONSIBILITY_PRESETS,
   RESPONSIBILITY_PHASE_METADATA,
@@ -80,7 +82,10 @@ export {
   type HAPIntegrationStatus,
   type HAPMetrics,
   type HumanAgentPair,
-  type ResponsibilityPreset
+  type ResponsibilityPreset,
+  type AgentPhaseRequirement,
+  type SkillCoverageAnalysis,
+  type HAPValidationIssue
 } from './hap';
 
 // Trigger

@@ -51,6 +51,7 @@ import {
   useDeleteDepartment,
   useDeleteRole,
   useDeletePerson,
+  useStories,
 } from "@/hooks";
 import { INTEGRATION_STATUS_METADATA, calculatePhaseDistribution, analyzeRoleSkillCoverage } from "@/lib/schemas";
 import type { HAPIntegrationStatus, BusinessDomain, Department, Role, Person, Responsibility } from "@/lib/schemas";
@@ -111,6 +112,7 @@ export default function OrganizationPage() {
     selectedDeptId ? { departmentId: selectedDeptId } : undefined
   );
   const { data: stats } = useHAPStats();
+  const { data: stories } = useStories();
 
   // Delete mutations
   const deleteDomain = useDeleteDomain();
@@ -907,6 +909,7 @@ export default function OrganizationPage() {
                   {haps.map((hap) => {
                     const person = people?.find((p) => p.id === hap.personId);
                     const role = roles?.find((r) => r.id === hap.roleId);
+                    const agentStory = stories?.find((s) => s.id === hap.agentStoryId);
                     const distribution = calculatePhaseDistribution(hap.tasks);
                     return (
                       <Card key={hap.id}>
@@ -924,7 +927,7 @@ export default function OrganizationPage() {
                             </div>
                           </div>
                           <CardTitle className="text-base">
-                            {person?.name} + Agent
+                            {person?.name} + {agentStory?.name || "Unassigned Agent"}
                           </CardTitle>
                           <CardDescription>{role?.name}</CardDescription>
                         </CardHeader>
