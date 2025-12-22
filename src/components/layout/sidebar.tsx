@@ -9,7 +9,8 @@ import {
   HelpCircle,
   Building2,
   Users,
-  Lightbulb,
+  Layers,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,9 +28,10 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: "Dashboard", href: "/", icon: Home },
   { title: "Organization", href: "/organization", icon: Building2 },
+  { title: "Capabilities", href: "/capabilities", icon: Layers },
   { title: "HAPs", href: "/haps", icon: Users },
   { title: "Stories", href: "/stories", icon: FileText },
-  { title: "Skills Queue", href: "/skills-queue", icon: Lightbulb },
+  { title: "Capability Gaps", href: "/capability-gaps", icon: AlertTriangle },
   { title: "Templates", href: "/templates", icon: LayoutTemplate },
 ];
 

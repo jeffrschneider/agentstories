@@ -31,9 +31,12 @@ export const PersonSchema = z.object({
   // Role assignments - supports multiple roles ("wearing many hats")
   roleAssignments: z.array(RoleAssignmentSchema).default([]),
 
-  // Skills this person has (maps to skill domains)
-  // Used for matching people to responsibilities that require specific skills
-  skills: z.array(z.string()).default([]),
+  // Capabilities this person has (the lingua franca)
+  capabilityIds: z.array(z.string().uuid()).optional().default([]),
+
+  // Legacy: Skills this person has (maps to skill domains)
+  // Kept for backwards compatibility
+  skills: z.array(z.string()).optional().default([]),
 
   // Employment status
   status: z.enum(['active', 'inactive', 'onboarding', 'offboarding']).default('active'),
@@ -56,6 +59,7 @@ export function createEmptyPerson(departmentId: string): Person {
     email: '',
     departmentId,
     roleAssignments: [],
+    capabilityIds: [],
     skills: [],
     status: 'active',
     createdAt: now,

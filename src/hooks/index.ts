@@ -75,3 +75,16 @@ export {
   useHAPStats,
   useDepartmentStats,
 } from './use-hap';
+
+// Capabilities (the lingua franca)
+export {
+  capabilityKeys,
+  useCapabilities,
+  useCapability,
+  useCapabilityAnalysis,
+  useCapabilityAnalyses,
+  useCapabilityGaps,
+  useCreateCapability,
+  useUpdateCapability,
+  useDeleteCapability,
+} from './use-capabilities';
