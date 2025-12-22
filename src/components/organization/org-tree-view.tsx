@@ -23,6 +23,7 @@ import {
   useRoles,
   usePeople,
   useHAPs,
+  useStories,
 } from "@/hooks";
 import type {
   BusinessDomain,
@@ -137,6 +138,7 @@ export function OrgTreeView({
   const { data: roles } = useRoles();
   const { data: people } = usePeople();
   const { data: haps } = useHAPs();
+  const { data: stories } = useStories();
 
   // Calculate progress for department (based on agent phases with skills)
   const getDeptProgress = (deptId: string) => {
@@ -307,6 +309,9 @@ export function OrgTreeView({
                                   h.personId === person.id &&
                                   h.roleId === role.id
                               );
+                              const hapAgentStory = personHap
+                                ? stories?.find((s) => s.id === personHap.agentStoryId)
+                                : undefined;
 
                               return (
                                 <TreeNode
@@ -324,7 +329,11 @@ export function OrgTreeView({
                                     )
                                   }
                                   label={person.name}
-                                  sublabel={person.title || person.email}
+                                  sublabel={
+                                    personHap
+                                      ? `+ ${hapAgentStory?.name || "Unassigned Agent"}`
+                                      : person.title || person.email
+                                  }
                                   href={
                                     personHap ? `/haps/${personHap.id}` : undefined
                                   }
@@ -363,6 +372,9 @@ export function OrgTreeView({
                                 const person = people?.find(
                                   (p) => p.id === hap.personId
                                 );
+                                const hapAgentStory = stories?.find(
+                                  (s) => s.id === hap.agentStoryId
+                                );
                                 return (
                                   <TreeNode
                                     key={`hap-${hap.id}`}
@@ -373,7 +385,7 @@ export function OrgTreeView({
                                       </div>
                                     }
                                     label={person?.name || "Unknown Person"}
-                                    sublabel="Human-Agent Pair"
+                                    sublabel={`+ ${hapAgentStory?.name || "Unassigned Agent"}`}
                                     href={`/haps/${hap.id}`}
                                     progress={getHAPProgress(hap)}
                                     badge={

@@ -183,7 +183,7 @@ export default function HAPDetailPage({
                 )}
               </div>
               <h1 className="text-2xl font-bold tracking-tight mt-1">
-                {person?.name || "Unknown"} + AI Agent
+                {person?.name || "Unknown"} + {agentStory?.name || "Unassigned Agent"}
               </h1>
               <p className="text-muted-foreground">{role?.name || "Unknown Role"}</p>
             </div>

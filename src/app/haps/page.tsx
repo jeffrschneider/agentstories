@@ -48,6 +48,7 @@ import {
   useRoles,
   useDepartments,
   useDomains,
+  useStories,
 } from "@/hooks";
 import { INTEGRATION_STATUS_METADATA, calculatePhaseDistribution } from "@/lib/schemas";
 import type { HAPIntegrationStatus } from "@/lib/schemas";
@@ -66,6 +67,7 @@ export default function HAPsPage() {
   const { data: roles } = useRoles();
   const { data: departments } = useDepartments();
   const { data: domains } = useDomains();
+  const { data: stories } = useStories();
 
   const filteredHAPs =
     haps?.filter((h) => {
@@ -280,6 +282,7 @@ export default function HAPsPage() {
               const person = people?.find((p) => p.id === hap.personId);
               const role = roles?.find((r) => r.id === hap.roleId);
               const dept = departments?.find((d) => d.id === role?.departmentId);
+              const agentStory = stories?.find((s) => s.id === hap.agentStoryId);
 
               // Calculate phase distribution
               const distribution = calculatePhaseDistribution(hap.tasks);
@@ -315,7 +318,7 @@ export default function HAPsPage() {
                               )}
                             </div>
                             <CardTitle className="text-lg">
-                              {person?.name || "Unknown"} + AI Agent
+                              {person?.name || "Unknown"} + {agentStory?.name || "Unassigned Agent"}
                             </CardTitle>
                             <CardDescription>
                               {role?.name || "Unknown Role"}

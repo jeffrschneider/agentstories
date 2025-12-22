@@ -13,11 +13,18 @@ function uuid(): string {
   });
 }
 
+// Well-known Agent Story IDs for HAP linking
+export const AGENT_STORY_IDS = {
+  customerSupport: 'a1b2c3d4-e5f6-4789-abcd-ef0123456789',
+  codeReview: 'b2c3d4e5-f6a7-4890-bcde-f01234567890',
+  salesAssistant: 'c3d4e5f6-a7b8-4901-cdef-012345678901',
+} as const;
+
 // Mock stories data - skill-based architecture
 const mockStories: AgentStory[] = [
   // Customer Support Agent
   {
-    id: uuid(),
+    id: AGENT_STORY_IDS.customerSupport,
     version: '1.0',
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
@@ -374,7 +381,7 @@ const mockStories: AgentStory[] = [
 
   // Code Review Assistant
   {
-    id: uuid(),
+    id: AGENT_STORY_IDS.codeReview,
     version: '1.0',
     createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
     updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
