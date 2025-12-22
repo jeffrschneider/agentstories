@@ -38,7 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePipelineByStage, useMovePipelineItem, useCreatePipelineItem, usePipelineStats } from "@/hooks";
+import { usePipelineByStage, useMovePipelineItem, useReorderPipelineItems, useCreatePipelineItem, usePipelineStats } from "@/hooks";
 import {
   PIPELINE_STAGE_METADATA,
   PIPELINE_ITEM_TYPE_METADATA,
@@ -170,97 +170,127 @@ function ItemDetailDialog({ item, children }: { item: PipelineItem; children: Re
 
 function PipelineCard({
   item,
+  index,
   onMoveLeft,
   onMoveRight,
   canMoveLeft,
-  canMoveRight
+  canMoveRight,
+  onDragOver,
+  dropIndicator,
 }: {
   item: PipelineItem;
+  index: number;
   onMoveLeft?: () => void;
   onMoveRight?: () => void;
   canMoveLeft: boolean;
   canMoveRight: boolean;
+  onDragOver?: (index: number, position: 'before' | 'after') => void;
+  dropIndicator?: 'before' | 'after' | null;
 }) {
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData("text/plain", item.id);
+    e.dataTransfer.setData("application/x-source-stage", item.stage);
     e.dataTransfer.effectAllowed = "move";
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const midY = rect.top + rect.height / 2;
+    const position = e.clientY < midY ? 'before' : 'after';
+    onDragOver?.(index, position);
+  };
+
   return (
-    <Card
-      className="mb-3 shadow-sm hover:shadow-md transition-shadow group cursor-grab active:cursor-grabbing"
-      draggable
-      onDragStart={handleDragStart}
-    >
-      <CardContent className="p-3">
-        {/* Title row */}
-        <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium line-clamp-1 flex-1">
-            {item.title}
-          </p>
-          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            {canMoveLeft && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveLeft?.();
-                }}
-              >
-                <ChevronLeft className="h-3 w-3" />
-              </Button>
-            )}
-            {canMoveRight && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onMoveRight?.();
-                }}
-              >
-                <ChevronRight className="h-3 w-3" />
-              </Button>
-            )}
+    <div className="relative">
+      {/* Drop indicator before */}
+      {dropIndicator === 'before' && (
+        <div className="absolute -top-1.5 left-0 right-0 h-1 bg-primary rounded-full" />
+      )}
+      <Card
+        className="mb-3 shadow-sm hover:shadow-md transition-shadow group cursor-grab active:cursor-grabbing"
+        draggable
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+      >
+        <CardContent className="p-3">
+          {/* Title row */}
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-sm font-medium line-clamp-1 flex-1">
+              {item.title}
+            </p>
+            <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+              {canMoveLeft && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveLeft?.();
+                  }}
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                </Button>
+              )}
+              {canMoveRight && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onMoveRight?.();
+                  }}
+                >
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Description */}
-        {item.description && (
-          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
-            {item.description}
-          </p>
-        )}
+          {/* Description */}
+          {item.description && (
+            <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+              {item.description}
+            </p>
+          )}
 
-        {/* More link */}
-        <div className="mt-2">
-          <ItemDetailDialog item={item}>
-            <button
-              className="text-xs text-primary hover:underline"
-              onClick={(e) => e.stopPropagation()}
-            >
-              More...
-            </button>
-          </ItemDetailDialog>
-        </div>
-      </CardContent>
-    </Card>
+          {/* More link */}
+          <div className="mt-2">
+            <ItemDetailDialog item={item}>
+              <button
+                className="text-xs text-primary hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                More...
+              </button>
+            </ItemDetailDialog>
+          </div>
+        </CardContent>
+      </Card>
+      {/* Drop indicator after */}
+      {dropIndicator === 'after' && (
+        <div className="absolute -bottom-1.5 left-0 right-0 h-1 bg-primary rounded-full" />
+      )}
+    </div>
   );
 }
 
 function KanbanColumn({
   stage,
   items,
-  onMoveItem
+  onMoveItem,
+  onReorderItems,
 }: {
   stage: PipelineStage;
   items: PipelineItem[];
-  onMoveItem: (itemId: string, newStage: PipelineStage) => void;
+  onMoveItem: (itemId: string, newStage: PipelineStage, targetIndex?: number) => void;
+  onReorderItems: (stage: PipelineStage, itemIds: string[]) => void;
 }) {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [dropTarget, setDropTarget] = useState<{ index: number; position: 'before' | 'after' } | null>(null);
   const metadata = PIPELINE_STAGE_METADATA[stage];
   const stageIndex = KANBAN_STAGES.indexOf(stage);
 
@@ -276,6 +306,10 @@ function KanbanColumn({
     }
   };
 
+  const handleCardDragOver = (index: number, position: 'before' | 'after') => {
+    setDropTarget({ index, position });
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
@@ -284,15 +318,55 @@ function KanbanColumn({
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    // Only clear if leaving the column entirely
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (!e.currentTarget.contains(relatedTarget)) {
+      setIsDragOver(false);
+      setDropTarget(null);
+    }
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
+    setDropTarget(null);
+
     const itemId = e.dataTransfer.getData("text/plain");
-    if (itemId) {
-      onMoveItem(itemId, stage);
+    const sourceStage = e.dataTransfer.getData("application/x-source-stage");
+
+    if (!itemId) return;
+
+    // Calculate target index based on drop position
+    let targetIndex: number | undefined;
+    if (dropTarget) {
+      targetIndex = dropTarget.position === 'before' ? dropTarget.index : dropTarget.index + 1;
+    }
+
+    // Check if we're reordering within the same stage
+    if (sourceStage === stage) {
+      const currentIndex = items.findIndex(item => item.id === itemId);
+      if (currentIndex === -1) return;
+
+      // If no specific target, don't reorder
+      if (targetIndex === undefined) return;
+
+      // Adjust target index if moving down
+      if (currentIndex < targetIndex) {
+        targetIndex--;
+      }
+
+      // Don't reorder if dropping in the same position
+      if (currentIndex === targetIndex) return;
+
+      // Create new order array
+      const newOrder = items.map(item => item.id);
+      newOrder.splice(currentIndex, 1);
+      newOrder.splice(targetIndex, 0, itemId);
+
+      onReorderItems(stage, newOrder);
+    } else {
+      // Moving to a different stage
+      onMoveItem(itemId, stage, targetIndex);
     }
   };
 
@@ -317,14 +391,19 @@ function KanbanColumn({
       <ScrollArea className="h-[calc(100vh-280px)]">
         <div className="pr-2">
           {items.length > 0 ? (
-            items.map((item) => (
+            items.map((item, index) => (
               <PipelineCard
                 key={item.id}
                 item={item}
+                index={index}
                 onMoveLeft={() => handleMoveLeft(item.id)}
                 onMoveRight={() => handleMoveRight(item.id)}
                 canMoveLeft={stageIndex > 0}
                 canMoveRight={stageIndex < KANBAN_STAGES.length - 1}
+                onDragOver={handleCardDragOver}
+                dropIndicator={
+                  dropTarget?.index === index ? dropTarget.position : null
+                }
               />
             ))
           ) : (
@@ -471,9 +550,14 @@ export default function PipelinePage() {
   const { data: itemsByStage, isLoading } = usePipelineByStage();
   const { data: stats } = usePipelineStats();
   const moveItem = useMovePipelineItem();
+  const reorderItems = useReorderPipelineItems();
 
-  const handleMoveItem = (itemId: string, newStage: PipelineStage) => {
-    moveItem.mutate({ id: itemId, stage: newStage });
+  const handleMoveItem = (itemId: string, newStage: PipelineStage, targetIndex?: number) => {
+    moveItem.mutate({ id: itemId, stage: newStage, targetIndex });
+  };
+
+  const handleReorderItems = (stage: PipelineStage, itemIds: string[]) => {
+    reorderItems.mutate({ stage, itemIds });
   };
 
   return (
@@ -519,6 +603,7 @@ export default function PipelinePage() {
                 stage={stage}
                 items={itemsByStage[stage] || []}
                 onMoveItem={handleMoveItem}
+                onReorderItems={handleReorderItems}
               />
             ))}
           </div>
