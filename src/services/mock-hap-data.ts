@@ -28,7 +28,7 @@ function uuid(): string {
 
 // Storage keys
 const STORAGE_KEY_HAP = 'agent-stories-hap-data';
-const CURRENT_VERSION = '3.0'; // Bumped for skills on people and responsibilities
+const CURRENT_VERSION = '4.0'; // Bumped to add more HAPs linking roles to agents
 
 interface HAPStorageData {
   domains: BusinessDomain[];
@@ -554,6 +554,137 @@ const mockHAPs: HumanAgentPair[] = [
     capabilityRequirements: [],
     integrationStatus: 'ready',
     notes: 'Code review agent is well-established. Focusing on improving security detection.',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  // Mike (Senior Support) also uses Customer Support Agent
+  {
+    id: uuid(),
+    personId: PERSON_IDS.mike,
+    roleId: ROLE_IDS.seniorSupport,
+    agentStoryId: AGENT_STORY_IDS.customerSupport,
+    tasks: [
+      createTask(
+        'Complex Ticket Analysis',
+        'Analyze escalated tickets for root cause',
+        'human-controlled'
+      ),
+      createTask(
+        'Knowledge Base Research',
+        'Search knowledge base for solutions',
+        'supervised-execution'
+      ),
+      createTask(
+        'Response Quality Review',
+        'Review AI-generated responses for accuracy',
+        'human-only'
+      ),
+      createTask(
+        'Documentation Updates',
+        'Update knowledge base with new solutions',
+        'human-controlled'
+      ),
+    ],
+    capabilityRequirements: [],
+    integrationStatus: 'active',
+    notes: 'Senior support leveraging agent for research and drafting, with human oversight.',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  // Taylor (Support Specialist) also uses Customer Support Agent
+  {
+    id: uuid(),
+    personId: PERSON_IDS.taylor,
+    roleId: ROLE_IDS.supportSpecialist,
+    agentStoryId: AGENT_STORY_IDS.customerSupport,
+    tasks: [
+      createTask(
+        'Ticket Triage',
+        'Categorize and prioritize incoming tickets',
+        'supervised-execution'
+      ),
+      createTask(
+        'FAQ Response',
+        'Handle frequently asked questions',
+        'agent-only'
+      ),
+      createTask(
+        'Customer Follow-up',
+        'Follow up with customers after resolution',
+        'human-controlled'
+      ),
+    ],
+    capabilityRequirements: [],
+    integrationStatus: 'active',
+    notes: 'Taylor has fully adopted the support agent for routine tasks.',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  // Jamie (Lead Qualifier) uses Sales Assistant Agent
+  {
+    id: uuid(),
+    personId: PERSON_IDS.jamie,
+    roleId: ROLE_IDS.leadQualifier,
+    agentStoryId: AGENT_STORY_IDS.salesAssistant,
+    tasks: [
+      createTask(
+        'Lead Scoring',
+        'Score inbound leads based on fit and intent',
+        'supervised-execution'
+      ),
+      createTask(
+        'Email Personalization',
+        'Generate personalized outreach emails',
+        'human-controlled'
+      ),
+      createTask(
+        'CRM Data Entry',
+        'Update CRM with lead information',
+        'agent-only'
+      ),
+      createTask(
+        'Meeting Scheduling',
+        'Schedule meetings with qualified leads',
+        'supervised-execution'
+      ),
+      createTask(
+        'Discovery Calls',
+        'Conduct initial discovery calls',
+        'human-only'
+      ),
+    ],
+    capabilityRequirements: [],
+    integrationStatus: 'ready',
+    notes: 'Sales assistant helping Jamie with lead qualification and outreach.',
+    createdAt: weekAgo,
+    updatedAt: now,
+  },
+  // Alex (Platform Engineer) also uses Code Review Agent for their engineering work
+  {
+    id: uuid(),
+    personId: PERSON_IDS.alex,
+    roleId: ROLE_IDS.platformEngineer,
+    agentStoryId: AGENT_STORY_IDS.codeReview,
+    tasks: [
+      createTask(
+        'Self-Review',
+        'Get AI feedback before submitting PR',
+        'supervised-execution'
+      ),
+      createTask(
+        'Documentation Generation',
+        'Generate code documentation',
+        'human-controlled'
+      ),
+      createTask(
+        'Test Coverage Analysis',
+        'Analyze test coverage gaps',
+        'agent-only'
+      ),
+    ],
+    capabilityRequirements: [],
+    integrationStatus: 'active',
+    notes: 'Alex uses the code review agent as a pre-submission review tool.',
     createdAt: weekAgo,
     updatedAt: now,
   },
