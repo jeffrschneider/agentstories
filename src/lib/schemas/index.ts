@@ -278,3 +278,20 @@ export {
   validateSkill,
   type ValidationResult
 } from './validation';
+
+// Pipeline
+export {
+  PipelineItemTypeEnum,
+  PipelineStageEnum,
+  PipelinePriorityEnum,
+  PipelineItemSchema,
+  createEmptyPipelineItem,
+  PIPELINE_STAGE_METADATA,
+  PIPELINE_ITEM_TYPE_METADATA,
+  PIPELINE_PRIORITY_METADATA,
+  KANBAN_STAGES,
+  type PipelineItemType,
+  type PipelineStage,
+  type PipelinePriority,
+  type PipelineItem
+} from './pipeline';
