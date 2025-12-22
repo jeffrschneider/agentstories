@@ -59,14 +59,6 @@ const typeIcons: Record<PipelineItemType, React.ComponentType<{ className?: stri
   "agent-update": Settings,
 };
 
-// Priority colors for inline text
-const priorityTextColors: Record<PipelinePriority, string> = {
-  critical: "text-red-600 font-semibold",
-  high: "text-orange-600 font-medium",
-  medium: "text-yellow-600",
-  low: "text-gray-500",
-};
-
 // Stage column background colors
 const stageColors: Record<PipelineStage, string> = {
   proposed: "bg-gray-50",
@@ -189,61 +181,61 @@ function PipelineCard({
   canMoveLeft: boolean;
   canMoveRight: boolean;
 }) {
-  const priorityMetadata = PIPELINE_PRIORITY_METADATA[item.priority];
-
   return (
-    <Card className="mb-2 shadow-sm hover:shadow-md transition-shadow group">
-      <CardContent className="p-2">
-        <div className="flex items-center justify-between gap-1">
-          <div className="flex-1 min-w-0">
-            <p className="text-sm truncate">
-              <span className={`${priorityTextColors[item.priority]}`}>
-                {priorityMetadata.label}
-              </span>
-              <span className="text-muted-foreground mx-1">·</span>
-              <span className="font-medium">{item.title}</span>
-            </p>
-          </div>
-          <div className="flex items-center gap-0.5 shrink-0">
-            <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-              {canMoveLeft && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMoveLeft?.();
-                  }}
-                >
-                  <ChevronLeft className="h-3 w-3" />
-                </Button>
-              )}
-              {canMoveRight && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onMoveRight?.();
-                  }}
-                >
-                  <ChevronRight className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-            <ItemDetailDialog item={item}>
+    <Card className="mb-3 shadow-sm hover:shadow-md transition-shadow group">
+      <CardContent className="p-3">
+        {/* Title row */}
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm font-medium line-clamp-1 flex-1">
+            {item.title}
+          </p>
+          <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            {canMoveLeft && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveLeft?.();
+                }}
               >
-                <MoreHorizontal className="h-3 w-3" />
+                <ChevronLeft className="h-3 w-3" />
               </Button>
-            </ItemDetailDialog>
+            )}
+            {canMoveRight && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onMoveRight?.();
+                }}
+              >
+                <ChevronRight className="h-3 w-3" />
+              </Button>
+            )}
           </div>
+        </div>
+
+        {/* Description */}
+        {item.description && (
+          <p className="text-xs text-muted-foreground line-clamp-2 mt-1">
+            {item.description}
+          </p>
+        )}
+
+        {/* More link */}
+        <div className="mt-2">
+          <ItemDetailDialog item={item}>
+            <button
+              className="text-xs text-primary hover:underline"
+              onClick={(e) => e.stopPropagation()}
+            >
+              More...
+            </button>
+          </ItemDetailDialog>
         </div>
       </CardContent>
     </Card>
