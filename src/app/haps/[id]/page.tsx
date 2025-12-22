@@ -163,46 +163,29 @@ export default function HAPDetailPage({
     <AppShell className="p-6">
       <div className="mx-auto max-w-5xl space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/haps">
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <div className={`h-2 w-2 rounded-full ${getStatusColor(hap.integrationStatus)}`} />
-                <Badge variant="outline">
-                  {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link href="/haps">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <div className={`h-2 w-2 rounded-full ${getStatusColor(hap.integrationStatus)}`} />
+              <Badge variant="outline">
+                {INTEGRATION_STATUS_METADATA[hap.integrationStatus].label}
+              </Badge>
+              {pendingCapabilities > 0 && (
+                <Badge variant="outline" className="text-yellow-600 border-yellow-300">
+                  {pendingCapabilities} capabilities pending
                 </Badge>
-                {pendingCapabilities > 0 && (
-                  <Badge variant="outline" className="text-yellow-600 border-yellow-300">
-                    {pendingCapabilities} capabilities pending
-                  </Badge>
-                )}
-              </div>
-              <h1 className="text-2xl font-bold tracking-tight mt-1">
-                {person?.name || "Unknown"} + {agentStory?.name || "Unassigned Agent"}
-              </h1>
-              <p className="text-muted-foreground">{role?.name || "Unknown Role"}</p>
+              )}
             </div>
+            <h1 className="text-2xl font-bold tracking-tight mt-1">
+              {person?.name || "Unknown"} + {agentStory?.name || "Unassigned Agent"}
+            </h1>
+            <p className="text-muted-foreground">{role?.name || "Unknown Role"}</p>
           </div>
-          {!editMode ? (
-            <Button onClick={initEditState}>Edit HAP</Button>
-          ) : (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
-              <Button onClick={handleSave} disabled={updateHAP.isPending}>
-                {updateHAP.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="mr-2 h-4 w-4" />
-                )}
-                Save Changes
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Overview Cards */}
@@ -282,12 +265,29 @@ export default function HAPDetailPage({
                       Define who handles each phase: Manage, Define, Perform, Review
                     </CardDescription>
                   </div>
-                  {editMode && (
-                    <Button size="sm" onClick={() => setTasks([...tasks, createEmptyTaskResponsibility("")])}>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Add Task
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {editMode && (
+                      <Button size="sm" variant="outline" onClick={() => setTasks([...tasks, createEmptyTaskResponsibility("")])}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Task
+                      </Button>
+                    )}
+                    {!editMode ? (
+                      <Button size="sm" onClick={initEditState}>Edit</Button>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
+                        <Button size="sm" onClick={handleSave} disabled={updateHAP.isPending}>
+                          {updateHAP.isPending ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="mr-2 h-4 w-4" />
+                          )}
+                          Save
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
