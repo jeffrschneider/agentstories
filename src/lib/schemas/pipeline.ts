@@ -60,6 +60,9 @@ export const PipelineItemSchema = z.object({
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
   stageChangedAt: z.string().datetime().optional(),
+
+  // Ordering within stage
+  order: z.number().optional(),
 });
 
 export type PipelineItem = z.infer<typeof PipelineItemSchema>;

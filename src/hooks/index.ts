@@ -99,5 +99,6 @@ export {
   useCreatePipelineItem,
   useUpdatePipelineItem,
   useMovePipelineItem,
+  useReorderPipelineItems,
   useDeletePipelineItem,
 } from './use-pipeline';

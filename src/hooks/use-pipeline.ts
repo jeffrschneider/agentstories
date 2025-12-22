@@ -104,13 +104,13 @@ export function useUpdatePipelineItem() {
   });
 }
 
-// Move pipeline item to a different stage
+// Move pipeline item to a different stage (or reorder within same stage)
 export function useMovePipelineItem() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ id, stage }: { id: string; stage: PipelineStage }) =>
-      pipelineDataService.moveToStage(id, stage),
+    mutationFn: ({ id, stage, targetIndex }: { id: string; stage: PipelineStage; targetIndex?: number }) =>
+      pipelineDataService.moveToStage(id, stage, targetIndex),
     onSuccess: (updatedItem) => {
       if (updatedItem) {
         queryClient.invalidateQueries({ queryKey: pipelineKeys.lists() });
@@ -123,6 +123,27 @@ export function useMovePipelineItem() {
       uiActions.addToast({
         type: 'error',
         title: 'Failed to move item',
+        message: error instanceof Error ? error.message : 'An error occurred',
+      });
+    },
+  });
+}
+
+// Reorder items within a stage
+export function useReorderPipelineItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ stage, itemIds }: { stage: PipelineStage; itemIds: string[] }) =>
+      pipelineDataService.reorderInStage(stage, itemIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: pipelineKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: pipelineKeys.byStage() });
+    },
+    onError: (error) => {
+      uiActions.addToast({
+        type: 'error',
+        title: 'Failed to reorder items',
         message: error instanceof Error ? error.message : 'An error occurred',
       });
     },

@@ -14,7 +14,7 @@ function uuid(): string {
 
 // Storage keys
 const STORAGE_KEY_PIPELINE = 'agent-stories-pipeline';
-const CURRENT_VERSION = '1.0';
+const CURRENT_VERSION = '1.1'; // Updated for order field
 
 interface PipelineStorageData {
   items: PipelineItem[];
@@ -42,6 +42,7 @@ const mockPipelineItems: PipelineItem[] = [
     createdAt: dayAgo,
     updatedAt: dayAgo,
     stageChangedAt: dayAgo,
+    order: 0,
   },
   {
     id: uuid(),
@@ -56,6 +57,7 @@ const mockPipelineItems: PipelineItem[] = [
     createdAt: twoDaysAgo,
     updatedAt: twoDaysAgo,
     stageChangedAt: twoDaysAgo,
+    order: 1,
   },
   // Under Review
   {
@@ -74,6 +76,7 @@ const mockPipelineItems: PipelineItem[] = [
     createdAt: weekAgo,
     updatedAt: dayAgo,
     stageChangedAt: twoDaysAgo,
+    order: 0,
   },
   {
     id: uuid(),
@@ -89,6 +92,7 @@ const mockPipelineItems: PipelineItem[] = [
     createdAt: weekAgo,
     updatedAt: twoDaysAgo,
     stageChangedAt: twoDaysAgo,
+    order: 1,
   },
   // Approved
   {
@@ -105,6 +109,7 @@ const mockPipelineItems: PipelineItem[] = [
     createdAt: weekAgo,
     updatedAt: dayAgo,
     stageChangedAt: dayAgo,
+    order: 0,
   },
   // In Progress
   {
@@ -123,6 +128,7 @@ const mockPipelineItems: PipelineItem[] = [
     createdAt: weekAgo,
     updatedAt: now,
     stageChangedAt: twoDaysAgo,
+    order: 0,
   },
   {
     id: uuid(),
@@ -138,6 +144,7 @@ const mockPipelineItems: PipelineItem[] = [
     createdAt: weekAgo,
     updatedAt: now,
     stageChangedAt: dayAgo,
+    order: 1,
   },
   // Completed
   {
@@ -156,6 +163,7 @@ const mockPipelineItems: PipelineItem[] = [
     createdAt: weekAgo,
     updatedAt: twoDaysAgo,
     stageChangedAt: twoDaysAgo,
+    order: 0,
   },
 ];
 
@@ -300,18 +308,17 @@ export const pipelineDataService = {
       grouped[item.stage].push(item);
     }
 
-    // Sort each group by priority
-    const priorityOrder: Record<PipelinePriority, number> = {
-      critical: 0,
-      high: 1,
-      medium: 2,
-      low: 3,
-    };
-
+    // Sort each group by order (if set), then by priority as fallback
     for (const stage of Object.keys(grouped) as PipelineStage[]) {
       grouped[stage].sort((a, b) => {
-        const priorityCompare = priorityOrder[a.priority] - priorityOrder[b.priority];
-        if (priorityCompare !== 0) return priorityCompare;
+        // If both have order, sort by order
+        if (a.order !== undefined && b.order !== undefined) {
+          return a.order - b.order;
+        }
+        // Items with order come before items without
+        if (a.order !== undefined) return -1;
+        if (b.order !== undefined) return 1;
+        // Fallback to date
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
       });
     }
@@ -373,9 +380,64 @@ export const pipelineDataService = {
     return pipelineItems[index];
   },
 
-  // Move item to a different stage
-  moveToStage: async (id: string, stage: PipelineStage): Promise<PipelineItem | null> => {
-    return pipelineDataService.update(id, { stage });
+  // Move item to a different stage (or reorder within same stage)
+  moveToStage: async (id: string, stage: PipelineStage, targetIndex?: number): Promise<PipelineItem | null> => {
+    initializePipelineData();
+    await delay(100);
+
+    const item = pipelineItems.find(i => i.id === id);
+    if (!item) return null;
+
+    const isChangingStage = item.stage !== stage;
+
+    // Get items in the target stage (excluding the moving item)
+    const stageItems = pipelineItems
+      .filter(i => i.stage === stage && i.id !== id)
+      .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+    // Determine the new order
+    let newOrder: number;
+    if (targetIndex !== undefined && targetIndex >= 0) {
+      newOrder = targetIndex;
+    } else {
+      // Add to end of stage
+      newOrder = stageItems.length;
+    }
+
+    // Update orders for items that need to shift
+    for (const stageItem of stageItems) {
+      if ((stageItem.order ?? 0) >= newOrder) {
+        stageItem.order = (stageItem.order ?? 0) + 1;
+      }
+    }
+
+    // Update the item
+    const now = new Date().toISOString();
+    item.stage = stage;
+    item.order = newOrder;
+    item.updatedAt = now;
+    if (isChangingStage) {
+      item.stageChangedAt = now;
+    }
+
+    savePipelineData();
+    return item;
+  },
+
+  // Reorder items within a stage
+  reorderInStage: async (stage: PipelineStage, itemIds: string[]): Promise<void> => {
+    initializePipelineData();
+    await delay(100);
+
+    // Update order for each item based on position in array
+    for (let i = 0; i < itemIds.length; i++) {
+      const item = pipelineItems.find(p => p.id === itemIds[i] && p.stage === stage);
+      if (item) {
+        item.order = i;
+      }
+    }
+
+    savePipelineData();
   },
 
   // Delete a pipeline item
