@@ -24,17 +24,13 @@ export default function Home() {
       <div className="mx-auto max-w-5xl space-y-8">
         {/* Welcome and Challenge - Side by Side */}
         <div className="grid gap-4 md:grid-cols-2">
-          {/* Welcome */}
+          {/* Value Proposition */}
           <Card>
-            <CardHeader>
-              <CardTitle>Welcome</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                Agent Planner is an enterprise AI transformation platform that
-                helps organizations systematically design, document, and deploy
-                AI agents at scale—bridging the gap between strategic AI
-                planning and operational implementation.
+            <CardContent className="flex items-center py-6">
+              <p className="text-xl leading-relaxed text-muted-foreground">
+                Agent Planner helps you define what AI agents should do, specify
+                how humans and agents share responsibilities, and track your
+                organization&apos;s readiness for AI-assisted work.
               </p>
             </CardContent>
           </Card>
