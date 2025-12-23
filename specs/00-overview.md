@@ -1,8 +1,26 @@
-# Agent Story Builder - Technical Specifications
+# Agent Planner - Technical Specifications
 
 ## Overview
 
-This directory contains the technical specifications for Agent Story Builder, a web-based platform for capturing comprehensive requirements for AI agents using the Agent Stories framework.
+This directory contains the technical specifications for **Agent Planner**, an enterprise AI transformation platform that helps organizations systematically design, document, and deploy AI agents at scale—bridging the gap between strategic AI planning and operational implementation.
+
+### The Problem
+
+Organizations face a critical challenge: they want to deploy AI agents across their enterprise, but lack a structured framework to:
+
+- **Specify** exactly what agents should do (and shouldn't do)
+- **Define** how humans and AI collaborate on real work
+- **Track** which business capabilities can be automated
+- **Manage** the organizational change journey
+
+### Key Capabilities
+
+| Capability | Description |
+|------------|-------------|
+| **Transformation Dashboard** | Executive visibility into AI initiative progress: skill coverage, automation candidates, HAP creation funnels, and gap analysis |
+| **Human-Agent Pairs (HAPs)** | Moves beyond the "fully automated vs. fully manual" binary. Organizations can assign responsibility phases (Manage → Define → Perform → Review) between humans and agents for nuanced collaboration |
+| **Skill-First Architecture** | Agents are composed of reusable, modular skills—not monolithic designs. Skills can be tested, versioned, and shared across the organization |
+| **Agent Stories** | A comprehensive specification format that captures triggers, behaviors, reasoning approaches, guardrails, memory requirements, and acceptance criteria—ensuring agents are production-ready before development begins |
 
 ## Core Architecture: Agent vs Skill Separation
 

@@ -6,8 +6,8 @@ import { QueryProvider } from "@/providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Agent Stories",
-  description: "Build structured specifications for AI agents",
+  title: "Agent Planner",
+  description: "Enterprise AI transformation platform for designing, documenting, and deploying AI agents at scale",
 };
 
 export default function RootLayout({
