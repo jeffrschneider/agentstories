@@ -47,14 +47,6 @@ export default function IdeationPage() {
   return (
     <AppShell className="p-0">
       <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-        {/* Page Header */}
-        <div className="border-b px-6 py-4">
-          <h1 className="text-2xl font-bold tracking-tight">Agent Ideation</h1>
-          <p className="text-sm text-muted-foreground">
-            Chat with AI to design and specify your new agent
-          </p>
-        </div>
-
         {/* Main Content - Chat and Panel */}
         <div className="flex flex-1 overflow-hidden">
           {/* Chat Area */}
