@@ -51,7 +51,6 @@ interface DeleteState {
 export default function OrganizationPage() {
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
-  const [selectedHapId, setSelectedHapId] = useState<string | null>(null);
 
   // Dialog states
   const [domainDialogOpen, setDomainDialogOpen] = useState(false);
@@ -205,12 +204,10 @@ export default function OrganizationPage() {
               onSelectRole={(roleId) => {
                 setSelectedRoleId(roleId);
                 setSelectedPersonId(null);
-                setSelectedHapId(null);
               }}
-              onSelectPerson={(personId, roleId, hapId) => {
+              onSelectPerson={(personId, roleId) => {
                 setSelectedPersonId(personId);
                 setSelectedRoleId(roleId);
-                setSelectedHapId(hapId || null);
               }}
               selectedRoleId={selectedRoleId}
               selectedPersonId={selectedPersonId}
@@ -223,7 +220,6 @@ export default function OrganizationPage() {
               <TaskResponsibilitiesPanel
                 selectedPersonId={selectedPersonId}
                 selectedRoleId={selectedRoleId}
-                selectedHapId={selectedHapId}
               />
             ) : (
               <AgentsPanel

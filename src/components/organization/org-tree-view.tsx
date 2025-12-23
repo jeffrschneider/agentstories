@@ -240,21 +240,30 @@ export function OrgTreeView({
                           >
                             {/* People in this role */}
                             {rolePeople.map((person) => {
-                              const personHap = haps?.find(
+                              const personHaps = haps?.filter(
                                 (h) =>
                                   h.personId === person.id &&
                                   h.roleId === role.id
-                              );
-                              const hapAgentStory = personHap
-                                ? stories?.find((s) => s.id === personHap.agentStoryId)
-                                : undefined;
+                              ) || [];
+                              const hasAgents = personHaps.length > 0;
+
+                              // Build sublabel based on agent count
+                              let sublabel: string;
+                              if (personHaps.length === 0) {
+                                sublabel = person.title || person.email;
+                              } else if (personHaps.length === 1) {
+                                const agentStory = stories?.find((s) => s.id === personHaps[0].agentStoryId);
+                                sublabel = `+ ${agentStory?.name || "Unassigned Agent"}`;
+                              } else {
+                                sublabel = `+ ${personHaps.length} agents`;
+                              }
 
                               return (
                                 <TreeNode
                                   key={`person-${person.id}-${role.id}`}
                                   level={0}
                                   icon={
-                                    personHap ? (
+                                    hasAgents ? (
                                       <div className="p-1.5 rounded-md bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400">
                                         <Bot className="h-4 w-4" />
                                       </div>
@@ -265,14 +274,10 @@ export function OrgTreeView({
                                     )
                                   }
                                   label={person.name}
-                                  sublabel={
-                                    personHap
-                                      ? `+ ${hapAgentStory?.name || "Unassigned Agent"}`
-                                      : person.title || person.email
-                                  }
+                                  sublabel={sublabel}
                                   onClick={
                                     onSelectPerson
-                                      ? () => onSelectPerson(person.id, role.id, personHap?.id)
+                                      ? () => onSelectPerson(person.id, role.id, personHaps[0]?.id)
                                       : undefined
                                   }
                                   isSelected={selectedPersonId === person.id}
