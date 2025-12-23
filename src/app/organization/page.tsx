@@ -318,7 +318,7 @@ function TaskResponsibilitiesPanel({
           <h4 className="text-sm font-medium text-muted-foreground mb-2">Task Responsibilities</h4>
         </div>
         {hap.tasks.length > 0 ? (
-          <TaskResponsibilityGrid tasks={hap.tasks} compact />
+          <TaskResponsibilityGrid tasks={hap.tasks} />
         ) : (
           <div className="text-center py-6 text-muted-foreground text-sm">
             No tasks defined yet
