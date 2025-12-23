@@ -16,6 +16,7 @@ import {
   Kanban,
   ChevronsLeft,
   ChevronsRight,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -40,6 +41,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: "Overview", href: "/", icon: Home },
   { title: "Organization", href: "/organization", icon: Building2 },
+  { title: "Agent Ideation", href: "/ideation", icon: Sparkles },
   { title: "Agent Lifecycle", href: "/agents", icon: Bot },
   { title: "Agent Pipeline", href: "/pipeline", icon: Kanban },
   { title: "Human-Agent Pairs", href: "/haps", icon: Users },
