@@ -14,6 +14,16 @@ interface IdeationRequest {
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
+
+    // Debug logging
+    console.log('=== Ideation API Debug ===');
+    console.log('API Key exists:', !!apiKey);
+    console.log('API Key length:', apiKey?.length || 0);
+    console.log('API Key prefix:', apiKey?.substring(0, 15) + '...');
+    console.log('API Key has whitespace:', apiKey !== apiKey?.trim());
+    console.log('API Key has quotes:', apiKey?.startsWith('"') || apiKey?.startsWith("'"));
+    console.log('All env keys:', Object.keys(process.env).filter(k => k.includes('ANTHROPIC')));
+
     if (!apiKey) {
       return NextResponse.json(
         { error: 'ANTHROPIC_API_KEY environment variable is not set. Please add it to .env.local' },
@@ -21,7 +31,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const anthropic = new Anthropic({ apiKey });
+    // Use trimmed key in case of whitespace issues
+    const cleanApiKey = apiKey.trim().replace(/^["']|["']$/g, '');
+    console.log('Clean API Key prefix:', cleanApiKey.substring(0, 15) + '...');
+
+    const anthropic = new Anthropic({ apiKey: cleanApiKey });
 
     const body: IdeationRequest = await request.json();
     const { messages } = body;
