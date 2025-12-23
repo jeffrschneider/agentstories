@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { BookOpen, Plus, Settings, User } from "lucide-react";
+import { BookOpen, Settings, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -28,18 +28,11 @@ export function Header({ className }: HeaderProps) {
         <div className="flex items-center gap-2 font-semibold">
           <BookOpen className="h-5 w-5" />
           <Link href="/" className="hover:opacity-80">
-            Agent Stories
+            Agent Planner
           </Link>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/stories/new">
-              <Plus className="mr-1 h-4 w-4" />
-              New Story
-            </Link>
-          </Button>
-
           <ThemeToggle />
 
           <DropdownMenu>
