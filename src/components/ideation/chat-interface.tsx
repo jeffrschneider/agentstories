@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Send, Loader2, RotateCcw, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -213,7 +214,7 @@ function MessageBubble({ message }: MessageBubbleProps) {
           <div className="whitespace-pre-wrap">{message.content}</div>
         ) : (
           <div className="prose max-w-none text-sm">
-            <ReactMarkdown>{message.content}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
           </div>
         )}
       </div>
