@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { UserCircle, User, Bot, Plus, ArrowRight } from "lucide-react";
+import { UserCircle, User, Bot, Plus, ArrowRight, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,14 +11,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   useHAPDetail,
+  useUpdateHAP,
   usePerson,
   useRole,
   useStories,
 } from "@/hooks";
 import { TaskResponsibilityGrid } from "@/components/hap";
-import { calculatePhaseDistribution } from "@/lib/schemas";
+import {
+  calculatePhaseDistribution,
+  createEmptyTaskResponsibility,
+  RESPONSIBILITY_PRESETS,
+} from "@/lib/schemas";
+import type {
+  TaskResponsibility,
+  ResponsibilityPhase,
+  PhaseOwner,
+  ResponsibilityPreset,
+} from "@/lib/schemas";
 
 interface TaskResponsibilitiesPanelProps {
   selectedPersonId: string | null;
@@ -34,8 +47,55 @@ export function TaskResponsibilitiesPanel({
   const { data: role } = useRole(selectedRoleId || "");
   const { data: hap } = useHAPDetail(selectedHapId || "");
   const { data: stories } = useStories();
+  const updateHAP = useUpdateHAP();
+
+  const [editMode, setEditMode] = useState(false);
+  const [tasks, setTasks] = useState<TaskResponsibility[]>([]);
 
   const agentStory = hap ? stories?.find((s) => s.id === hap.agentStoryId) : undefined;
+
+  const initEditState = () => {
+    if (hap) {
+      setTasks([...hap.tasks]);
+      setEditMode(true);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!hap) return;
+    await updateHAP.mutateAsync({
+      id: hap.id,
+      data: { tasks },
+    });
+    setEditMode(false);
+  };
+
+  const updatePhaseOwner = (index: number, phase: ResponsibilityPhase, owner: PhaseOwner) => {
+    const updated = [...tasks];
+    updated[index] = {
+      ...updated[index],
+      phases: {
+        ...updated[index].phases,
+        [phase]: { ...updated[index].phases[phase], owner },
+      },
+    };
+    setTasks(updated);
+  };
+
+  const applyPresetToTask = (index: number, preset: ResponsibilityPreset) => {
+    const updated = [...tasks];
+    const presetConfig = RESPONSIBILITY_PRESETS[preset];
+    updated[index] = {
+      ...updated[index],
+      phases: {
+        manage: { ...updated[index].phases.manage, owner: presetConfig.phases.manage },
+        define: { ...updated[index].phases.define, owner: presetConfig.phases.define },
+        perform: { ...updated[index].phases.perform, owner: presetConfig.phases.perform },
+        review: { ...updated[index].phases.review, owner: presetConfig.phases.review },
+      },
+    };
+    setTasks(updated);
+  };
 
   if (!selectedPersonId) {
     return (
@@ -81,7 +141,7 @@ export function TaskResponsibilitiesPanel({
     );
   }
 
-  const distribution = calculatePhaseDistribution(hap.tasks);
+  const distribution = calculatePhaseDistribution(editMode ? tasks : hap.tasks);
 
   return (
     <Card className="h-full">
@@ -96,12 +156,29 @@ export function TaskResponsibilitiesPanel({
               <CardDescription>{role?.name || "Unknown Role"}</CardDescription>
             </div>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/haps/${hap.id}`}>
-              View HAP Details
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            {editMode && (
+              <Button size="sm" variant="outline" onClick={() => setTasks([...tasks, createEmptyTaskResponsibility("")])}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Task
+              </Button>
+            )}
+            {!editMode ? (
+              <Button size="sm" onClick={initEditState}>Edit</Button>
+            ) : (
+              <>
+                <Button size="sm" variant="outline" onClick={() => setEditMode(false)}>Cancel</Button>
+                <Button size="sm" onClick={handleSave} disabled={updateHAP.isPending}>
+                  {updateHAP.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Save
+                </Button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Agent Story Info */}
@@ -133,8 +210,39 @@ export function TaskResponsibilitiesPanel({
         <div className="mb-3">
           <h4 className="text-sm font-medium text-muted-foreground mb-2">Task Responsibilities</h4>
         </div>
-        {hap.tasks.length > 0 ? (
-          <TaskResponsibilityGrid tasks={hap.tasks} />
+        {(editMode ? tasks : hap.tasks).length > 0 ? (
+          <>
+            <TaskResponsibilityGrid
+              tasks={editMode ? tasks : hap.tasks}
+              editMode={editMode}
+              onUpdateTask={(index, updates) => {
+                const updated = [...tasks];
+                updated[index] = { ...updated[index], ...updates };
+                setTasks(updated);
+              }}
+              onUpdatePhaseOwner={updatePhaseOwner}
+              onApplyPreset={applyPresetToTask}
+              onRemoveTask={(index) => setTasks(tasks.filter((_, i) => i !== index))}
+            />
+
+            {editMode && tasks.length > 0 && (
+              <div className="mt-6 pt-4 border-t">
+                <Label className="text-sm">Quick Apply Preset to All Tasks</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {Object.entries(RESPONSIBILITY_PRESETS).map(([key, preset]) => (
+                    <Button
+                      key={key}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => tasks.forEach((_, i) => applyPresetToTask(i, key as ResponsibilityPreset))}
+                    >
+                      {preset.label} ({preset.pattern})
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-6 text-muted-foreground text-sm">
             No tasks defined yet
