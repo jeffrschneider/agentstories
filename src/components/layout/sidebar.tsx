@@ -67,7 +67,7 @@ export function Sidebar({ className }: SidebarProps) {
       <Link
         href={item.href}
         className={cn(
-          "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors",
+          "flex items-center rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
           isCollapsed ? "justify-center" : "gap-3",
           isActive
             ? "bg-accent text-accent-foreground"
@@ -97,7 +97,7 @@ export function Sidebar({ className }: SidebarProps) {
     <aside
       className={cn(
         "flex h-full flex-col border-r bg-background transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64",
+        isCollapsed ? "w-14" : "w-48",
         className
       )}
     >
