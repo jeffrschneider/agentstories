@@ -41,9 +41,9 @@ const mainNavItems: NavItem[] = [
   { title: "Overview", href: "/", icon: Home },
   { title: "Organization", href: "/organization", icon: Building2 },
   { title: "Agent Catalog", href: "/agents", icon: Bot },
-  { title: "Pipeline", href: "/pipeline", icon: Kanban },
-  { title: "HAPs", href: "/haps", icon: Users },
-  { title: "Agent Planner", href: "/stories", icon: FileText },
+  { title: "Agent Pipeline", href: "/pipeline", icon: Kanban },
+  { title: "Human-Agent Pairs", href: "/haps", icon: Users },
+  { title: "Agent Stories", href: "/stories", icon: FileText },
   { title: "Capability Queue", href: "/capability-queue", icon: Lightbulb },
   { title: "Templates", href: "/templates", icon: LayoutTemplate },
 ];
