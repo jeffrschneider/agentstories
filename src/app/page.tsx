@@ -1,22 +1,17 @@
 "use client";
 
-import { useMemo } from "react";
-import Link from "next/link";
 import {
-  Building2,
-  Users,
-  Briefcase,
-  UserCircle,
   Bot,
-  CheckCircle2,
-  AlertCircle,
-  ArrowRight,
-  TrendingUp,
+  Users,
+  Puzzle,
+  FileText,
   Target,
-  Zap,
+  ArrowRight,
+  CheckCircle2,
+  Layers,
+  GitBranch,
 } from "lucide-react";
 import { AppShell } from "@/components/layout";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -24,467 +19,306 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import {
-  useDomains,
-  useDepartments,
-  useRoles,
-  usePeople,
-  useHAPs,
-  useHAPStats,
-} from "@/hooks";
-import { analyzeRoleSkillCoverage } from "@/lib/schemas";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function Home() {
-  const { data: domains, isLoading: domainsLoading } = useDomains();
-  const { data: departments } = useDepartments();
-  const { data: roles } = useRoles();
-  const { data: people } = usePeople();
-  const { data: haps } = useHAPs();
-  const { data: hapStats } = useHAPStats();
-
-  // Calculate transformation metrics
-  const metrics = useMemo(() => {
-    if (!roles || !people) {
-      return {
-        totalResponsibilities: 0,
-        aiCandidateResponsibilities: 0,
-        totalSkillCoverage: 0,
-        fullyCovered: 0,
-        partiallyCovered: 0,
-        notCovered: 0,
-        skillGaps: [] as { skill: string; count: number }[],
-        topMissingSkills: [] as string[],
-      };
-    }
-
-    // Get all available skills from people
-    const allPeopleSkills = [...new Set(people.flatMap((p) => p.skills || []))];
-
-    // Analyze all roles
-    let totalResponsibilities = 0;
-    let aiCandidateResponsibilities = 0;
-    let fullyCovered = 0;
-    let partiallyCovered = 0;
-    let notCovered = 0;
-    let totalCoverageSum = 0;
-    let totalAiCandidates = 0;
-    const skillGapCounts: Record<string, number> = {};
-
-    roles.forEach((role) => {
-      totalResponsibilities += role.responsibilities.length;
-      const aiCandidates = role.responsibilities.filter((r) => r.aiCandidate);
-      aiCandidateResponsibilities += aiCandidates.length;
-
-      const coverage = analyzeRoleSkillCoverage(role, allPeopleSkills);
-      fullyCovered += coverage.fullyCovered;
-      partiallyCovered += coverage.partiallyCovered;
-      notCovered += coverage.notCovered;
-      totalCoverageSum += coverage.overallCoveragePercent * coverage.totalAiCandidates;
-      totalAiCandidates += coverage.totalAiCandidates;
-
-      // Track skill gaps
-      coverage.responsibilities.forEach((resp) => {
-        resp.missingSkills.forEach((skill) => {
-          skillGapCounts[skill] = (skillGapCounts[skill] || 0) + 1;
-        });
-      });
-    });
-
-    const totalSkillCoverage =
-      totalAiCandidates > 0 ? Math.round(totalCoverageSum / totalAiCandidates) : 100;
-
-    // Sort skill gaps by frequency
-    const skillGaps = Object.entries(skillGapCounts)
-      .map(([skill, count]) => ({ skill, count }))
-      .sort((a, b) => b.count - a.count);
-
-    return {
-      totalResponsibilities,
-      aiCandidateResponsibilities,
-      totalSkillCoverage,
-      fullyCovered,
-      partiallyCovered,
-      notCovered,
-      skillGaps,
-      topMissingSkills: skillGaps.slice(0, 3).map((g) => g.skill),
-    };
-  }, [roles, people]);
-
-  const isLoading = domainsLoading;
-
-  // Calculate funnel percentages
-  const funnelData = useMemo(() => {
-    const aiCandidates = metrics.aiCandidateResponsibilities;
-    const withCoverage = metrics.fullyCovered + metrics.partiallyCovered;
-    const hapsCreated = hapStats?.hapCount || 0;
-
-    return {
-      aiCandidates,
-      withCoverage,
-      hapsCreated,
-      coveragePercent: aiCandidates > 0 ? Math.round((withCoverage / aiCandidates) * 100) : 0,
-      hapPercent: aiCandidates > 0 ? Math.round((hapsCreated / aiCandidates) * 100) : 0,
-    };
-  }, [metrics, hapStats]);
-
   return (
     <AppShell className="p-6">
-      <div className="mx-auto max-w-7xl space-y-8">
+      <div className="mx-auto max-w-5xl space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">
-              Transformation Dashboard
-            </h1>
-            <p className="text-muted-foreground">
-              Track your organization&apos;s journey to an agentic enterprise
-            </p>
-          </div>
-          <Button asChild>
-            <Link href="/organization">
-              <Building2 className="mr-2 h-4 w-4" />
-              Manage Organization
-            </Link>
-          </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Agent Planner</h1>
+          <p className="text-muted-foreground">
+            Enterprise AI transformation platform
+          </p>
         </div>
 
-        {/* Top Stats */}
-        <div className="grid gap-4 md:grid-cols-5">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-muted-foreground" />
-                <span className="text-2xl font-bold">
-                  {isLoading ? "..." : domains?.length || 0}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">Domains</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-muted-foreground" />
-                <span className="text-2xl font-bold">
-                  {isLoading ? "..." : roles?.length || 0}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">Roles</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Target className="h-4 w-4 text-purple-500" />
-                <span className="text-2xl font-bold">
-                  {isLoading ? "..." : metrics.aiCandidateResponsibilities}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">AI-Ready Tasks</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <UserCircle className="h-4 w-4 text-muted-foreground" />
-                <span className="text-2xl font-bold">
-                  {isLoading ? "..." : people?.length || 0}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">People</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center gap-2">
-                <Bot className="h-4 w-4 text-purple-500" />
-                <span className="text-2xl font-bold">
-                  {isLoading ? "..." : hapStats?.hapCount || 0}
-                </span>
-              </div>
-              <p className="text-xs text-muted-foreground">HAPs Created</p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Tabs */}
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+          </TabsList>
 
-        {/* Main Content Grid */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {/* Capability Coverage */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-yellow-500" />
-                Capability Coverage
-              </CardTitle>
-              <CardDescription>
-                How well your team&apos;s capabilities match AI-ready responsibilities
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Coverage Gauge */}
-              <div className="text-center">
-                <div className="relative inline-flex items-center justify-center">
-                  <svg className="h-32 w-32 -rotate-90">
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                      fill="none"
-                      className="text-muted"
-                    />
-                    <circle
-                      cx="64"
-                      cy="64"
-                      r="56"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                      fill="none"
-                      strokeDasharray={`${metrics.totalSkillCoverage * 3.52} 352`}
-                      className={
-                        metrics.totalSkillCoverage >= 80
-                          ? "text-green-500"
-                          : metrics.totalSkillCoverage >= 50
-                          ? "text-yellow-500"
-                          : "text-red-500"
-                      }
-                    />
-                  </svg>
-                  <span className="absolute text-3xl font-bold">
-                    {metrics.totalSkillCoverage}%
-                  </span>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  Overall capability coverage for AI tasks
+          <TabsContent value="overview" className="space-y-8">
+            {/* Value Proposition */}
+            <Card>
+              <CardHeader>
+                <CardTitle>What is Agent Planner?</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-lg leading-relaxed">
+                  Agent Planner is an enterprise AI transformation platform that
+                  helps organizations systematically design, document, and deploy
+                  AI agents at scale—bridging the gap between strategic AI
+                  planning and operational implementation.
                 </p>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Coverage Breakdown */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span>Fully Covered</span>
-                  </div>
-                  <span className="font-medium">{metrics.fullyCovered} tasks</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    <span>Partially Covered</span>
-                  </div>
-                  <span className="font-medium">{metrics.partiallyCovered} tasks</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
-                    <span>Not Covered</span>
-                  </div>
-                  <span className="font-medium">{metrics.notCovered} tasks</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Capability Gaps */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-orange-500" />
-                Capability Gaps
-              </CardTitle>
-              <CardDescription>
-                Capabilities needed but not available in your team
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {metrics.skillGaps.length > 0 ? (
-                <div className="space-y-4">
-                  {metrics.skillGaps.slice(0, 5).map((gap) => (
-                    <div key={gap.skill} className="space-y-1">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{gap.skill}</span>
-                        <Badge variant="outline" className="text-orange-600">
-                          {gap.count} {gap.count === 1 ? "task" : "tasks"} affected
-                        </Badge>
-                      </div>
-                      <Progress
-                        value={(gap.count / metrics.aiCandidateResponsibilities) * 100}
-                        className="h-2"
-                      />
+            {/* The Problem */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-orange-500" />
+                  The Challenge
+                </CardTitle>
+                <CardDescription>
+                  Why organizations struggle with enterprise AI adoption
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="mb-4 text-muted-foreground">
+                  Organizations face a critical challenge: they want to deploy AI
+                  agents across their enterprise, but lack a structured framework
+                  to:
+                </p>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 rounded-full bg-red-100 p-1 dark:bg-red-900">
+                      <Target className="h-3 w-3 text-red-600" />
                     </div>
-                  ))}
-                  {metrics.skillGaps.length > 5 && (
-                    <p className="text-xs text-muted-foreground text-center">
-                      +{metrics.skillGaps.length - 5} more capability gaps
+                    <div>
+                      <span className="font-medium">Specify</span>
+                      <span className="text-muted-foreground">
+                        {" "}exactly what agents should do (and shouldn&apos;t do)
+                      </span>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 rounded-full bg-red-100 p-1 dark:bg-red-900">
+                      <Users className="h-3 w-3 text-red-600" />
+                    </div>
+                    <div>
+                      <span className="font-medium">Define</span>
+                      <span className="text-muted-foreground">
+                        {" "}how humans and AI collaborate on real work
+                      </span>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 rounded-full bg-red-100 p-1 dark:bg-red-900">
+                      <Layers className="h-3 w-3 text-red-600" />
+                    </div>
+                    <div>
+                      <span className="font-medium">Track</span>
+                      <span className="text-muted-foreground">
+                        {" "}which business capabilities can be automated
+                      </span>
+                    </div>
+                  </li>
+                  <li className="flex items-start gap-3">
+                    <div className="mt-1 rounded-full bg-red-100 p-1 dark:bg-red-900">
+                      <GitBranch className="h-3 w-3 text-red-600" />
+                    </div>
+                    <div>
+                      <span className="font-medium">Manage</span>
+                      <span className="text-muted-foreground">
+                        {" "}the organizational change journey
+                      </span>
+                    </div>
+                  </li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Key Capabilities */}
+            <div>
+              <h2 className="mb-4 text-xl font-semibold">Key Capabilities</h2>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Transformation Dashboard */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <div className="rounded-md bg-blue-100 p-2 dark:bg-blue-900">
+                        <Target className="h-4 w-4 text-blue-600" />
+                      </div>
+                      Transformation Dashboard
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Executive visibility into AI initiative progress: skill
+                      coverage, automation candidates, HAP creation funnels, and
+                      gap analysis.
                     </p>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-2" />
-                  <p className="font-medium">No capability gaps detected</p>
-                  <p className="text-sm text-muted-foreground">
-                    Your team has all required capabilities covered
-                  </p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  </CardContent>
+                </Card>
 
-        {/* Transformation Funnel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-500" />
-              Transformation Progress
-            </CardTitle>
-            <CardDescription>
-              From AI-ready responsibilities to active Human-Agent Pairs
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between gap-4">
-              {/* Stage 1: AI Candidates */}
-              <div className="flex-1 text-center">
-                <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
-                  <Target className="h-8 w-8 text-purple-600" />
-                </div>
-                <p className="text-2xl font-bold">{funnelData.aiCandidates}</p>
-                <p className="text-xs text-muted-foreground">AI-Ready Tasks</p>
-              </div>
+                {/* Human-Agent Pairs */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <div className="rounded-md bg-purple-100 p-2 dark:bg-purple-900">
+                        <Users className="h-4 w-4 text-purple-600" />
+                      </div>
+                      Human-Agent Pairs (HAPs)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Moves beyond the &quot;fully automated vs. fully manual&quot;
+                      binary. Organizations can assign responsibility phases
+                      (Manage → Define → Perform → Review) between humans and
+                      agents for nuanced collaboration.
+                    </p>
+                  </CardContent>
+                </Card>
 
-              <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
+                {/* Skill-First Architecture */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <div className="rounded-md bg-green-100 p-2 dark:bg-green-900">
+                        <Puzzle className="h-4 w-4 text-green-600" />
+                      </div>
+                      Skill-First Architecture
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      Agents are composed of reusable, modular skills—not
+                      monolithic designs. Skills can be tested, versioned, and
+                      shared across the organization.
+                    </p>
+                  </CardContent>
+                </Card>
 
-              {/* Stage 2: Capabilities Matched */}
-              <div className="flex-1 text-center">
-                <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900">
-                  <Zap className="h-8 w-8 text-yellow-600" />
-                </div>
-                <p className="text-2xl font-bold">{funnelData.withCoverage}</p>
-                <p className="text-xs text-muted-foreground">Capabilities Matched</p>
-                <Badge variant="outline" className="mt-1">
-                  {funnelData.coveragePercent}%
-                </Badge>
-              </div>
-
-              <ArrowRight className="h-6 w-6 text-muted-foreground flex-shrink-0" />
-
-              {/* Stage 3: HAPs Created */}
-              <div className="flex-1 text-center">
-                <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
-                  <Bot className="h-8 w-8 text-green-600" />
-                </div>
-                <p className="text-2xl font-bold">{funnelData.hapsCreated}</p>
-                <p className="text-xs text-muted-foreground">HAPs Created</p>
-                <Badge variant="outline" className="mt-1">
-                  {funnelData.hapPercent}%
-                </Badge>
+                {/* Agent Stories */}
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <div className="rounded-md bg-orange-100 p-2 dark:bg-orange-900">
+                        <FileText className="h-4 w-4 text-orange-600" />
+                      </div>
+                      Agent Stories
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">
+                      A comprehensive specification format that captures triggers,
+                      behaviors, reasoning approaches, guardrails, memory
+                      requirements, and acceptance criteria—ensuring agents are
+                      production-ready before development begins.
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="mt-6">
-              <div className="flex h-3 overflow-hidden rounded-full bg-muted">
-                <div
-                  className="bg-purple-500 transition-all"
-                  style={{
-                    width: `${100 - funnelData.coveragePercent}%`,
-                  }}
-                />
-                <div
-                  className="bg-yellow-500 transition-all"
-                  style={{
-                    width: `${funnelData.coveragePercent - funnelData.hapPercent}%`,
-                  }}
-                />
-                <div
-                  className="bg-green-500 transition-all"
-                  style={{
-                    width: `${funnelData.hapPercent}%`,
-                  }}
-                />
-              </div>
-              <div className="mt-2 flex justify-between text-xs text-muted-foreground">
-                <span>Needs Capabilities</span>
-                <span>Ready for HAPs</span>
-                <span>Active</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            {/* How It Works */}
+            <Card>
+              <CardHeader>
+                <CardTitle>How It Works</CardTitle>
+                <CardDescription>
+                  The path from organizational analysis to deployed agents
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-col gap-4 md:flex-row md:items-start">
+                  {/* Step 1 */}
+                  <div className="flex-1 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900">
+                      <span className="text-lg font-bold text-blue-600">1</span>
+                    </div>
+                    <h3 className="font-semibold">Map Organization</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Define domains, departments, roles, and responsibilities
+                    </p>
+                  </div>
 
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Next Steps</CardTitle>
-            <CardDescription>
-              Continue building your agentic enterprise
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-3">
-              <Link
-                href="/organization"
-                className="group rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-md bg-blue-100 dark:bg-blue-900 p-2">
-                    <Building2 className="h-5 w-5 text-blue-600" />
+                  <ArrowRight className="mx-auto h-6 w-6 rotate-90 text-muted-foreground md:mt-6 md:rotate-0" />
+
+                  {/* Step 2 */}
+                  <div className="flex-1 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900">
+                      <span className="text-lg font-bold text-purple-600">2</span>
+                    </div>
+                    <h3 className="font-semibold">Identify AI Candidates</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Flag tasks suitable for AI automation or augmentation
+                    </p>
                   </div>
-                  <div>
-                    <h3 className="font-semibold group-hover:text-primary">
-                      Define Structure
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Add roles & responsibilities
+
+                  <ArrowRight className="mx-auto h-6 w-6 rotate-90 text-muted-foreground md:mt-6 md:rotate-0" />
+
+                  {/* Step 3 */}
+                  <div className="flex-1 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900">
+                      <span className="text-lg font-bold text-green-600">3</span>
+                    </div>
+                    <h3 className="font-semibold">Design Collaboration</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Create HAPs with phase-by-phase responsibility assignments
+                    </p>
+                  </div>
+
+                  <ArrowRight className="mx-auto h-6 w-6 rotate-90 text-muted-foreground md:mt-6 md:rotate-0" />
+
+                  {/* Step 4 */}
+                  <div className="flex-1 text-center">
+                    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900">
+                      <span className="text-lg font-bold text-orange-600">4</span>
+                    </div>
+                    <h3 className="font-semibold">Specify Agents</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Build detailed Agent Stories with skills and behaviors
                     </p>
                   </div>
                 </div>
-              </Link>
-              <Link
-                href="/organization"
-                className="group rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-md bg-yellow-100 dark:bg-yellow-900 p-2">
-                    <Users className="h-5 w-5 text-yellow-600" />
+              </CardContent>
+            </Card>
+
+            {/* Benefits */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  Benefits
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-500" />
+                    <div>
+                      <p className="font-medium">Clear Accountability</p>
+                      <p className="text-sm text-muted-foreground">
+                        Every task phase has a defined owner—human or agent
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold group-hover:text-primary">
-                      Assign Capabilities
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Map capabilities to your team
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-500" />
+                    <div>
+                      <p className="font-medium">Reusable Components</p>
+                      <p className="text-sm text-muted-foreground">
+                        Skills can be shared and reused across multiple agents
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-500" />
+                    <div>
+                      <p className="font-medium">Production-Ready Specs</p>
+                      <p className="text-sm text-muted-foreground">
+                        Agent Stories capture everything developers need
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-500" />
+                    <div>
+                      <p className="font-medium">Progress Visibility</p>
+                      <p className="text-sm text-muted-foreground">
+                        Track transformation progress across the organization
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </Link>
-              <Link
-                href="/haps"
-                className="group rounded-lg border p-4 transition-colors hover:border-primary hover:bg-accent"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="rounded-md bg-green-100 dark:bg-green-900 p-2">
-                    <Bot className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold group-hover:text-primary">
-                      Create HAPs
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Pair humans with agents
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     </AppShell>
   );

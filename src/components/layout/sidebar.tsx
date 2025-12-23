@@ -38,7 +38,7 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { title: "Dashboard", href: "/", icon: Home },
+  { title: "Overview", href: "/", icon: Home },
   { title: "Organization", href: "/organization", icon: Building2 },
   { title: "Agent Catalog", href: "/agents", icon: Bot },
   { title: "Pipeline", href: "/pipeline", icon: Kanban },
