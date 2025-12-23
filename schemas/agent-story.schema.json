@@ -1,0 +1,793 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/jeffrschneider/agentstories/schemas/agent-story.schema.json",
+  "title": "Agent Story",
+  "description": "A skill-based architecture for defining AI agents through identity, relationships, and capabilities.",
+  "type": "object",
+  "required": ["id", "version", "name", "skills"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this schema for validation"
+    },
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the agent story"
+    },
+    "version": {
+      "type": "string",
+      "default": "1.0",
+      "description": "Version of the agent story"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["light", "full"],
+      "default": "full",
+      "description": "Story format: light (simple capability statement) or full (structured skills)"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of creation"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of last update"
+    },
+    "createdBy": {
+      "type": "string",
+      "description": "Identifier of the creator"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "description": "Display name for the agent"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 50,
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Machine-readable identifier (lowercase, hyphens allowed)"
+    },
+    "role": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "What role this agent plays"
+    },
+    "purpose": {
+      "type": "string",
+      "maxLength": 500,
+      "description": "Why this agent exists - the value it provides"
+    },
+    "autonomyLevel": {
+      "type": "string",
+      "enum": ["full", "supervised", "collaborative", "directed"],
+      "description": "Level of decision-making authority: full (complete authority), supervised (independent with escalation), collaborative (shared decisions), directed (requires approval)"
+    },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Tags for categorization and discovery"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Free-form notes about this agent"
+    },
+    "skills": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/skill" },
+      "description": "Capabilities this agent possesses"
+    },
+    "humanInteraction": {
+      "$ref": "#/$defs/humanInteraction",
+      "description": "How humans collaborate with this agent"
+    },
+    "collaboration": {
+      "$ref": "#/$defs/agentCollaboration",
+      "description": "How this agent works with other agents"
+    },
+    "memory": {
+      "$ref": "#/$defs/memory",
+      "description": "What the agent remembers and how it learns"
+    },
+    "guardrails": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/agentGuardrail" },
+      "description": "Agent-level constraints that apply to all skills"
+    }
+  },
+  "$defs": {
+    "skill": {
+      "type": "object",
+      "required": ["name", "description", "domain", "triggers", "acceptance"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this skill"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of the skill"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What this skill does"
+        },
+        "domain": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Knowledge domain (e.g., Engineering, Management, NLP)"
+        },
+        "acquired": {
+          "type": "string",
+          "enum": ["built_in", "pre_trained", "learned", "delegated"],
+          "description": "How the skill was acquired: built_in (core), pre_trained (trained model), learned (from experience), delegated (external service)"
+        },
+        "triggers": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/trigger" },
+          "description": "Conditions that activate this skill"
+        },
+        "inputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/skillInput" },
+          "description": "Input parameters this skill accepts"
+        },
+        "outputs": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/skillOutput" },
+          "description": "Outputs this skill produces"
+        },
+        "tools": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tool" },
+          "description": "Tools (MCP servers, APIs) this skill uses"
+        },
+        "behavior": {
+          "$ref": "#/$defs/behavior",
+          "description": "How this skill executes"
+        },
+        "reasoning": {
+          "$ref": "#/$defs/reasoning",
+          "description": "How this skill makes decisions"
+        },
+        "acceptance": {
+          "$ref": "#/$defs/acceptance",
+          "description": "Success criteria for this skill"
+        },
+        "failureHandling": {
+          "$ref": "#/$defs/failureHandling",
+          "description": "How to handle errors and failures"
+        },
+        "guardrails": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/skillGuardrail" },
+          "description": "Skill-specific constraints"
+        }
+      }
+    },
+    "trigger": {
+      "type": "object",
+      "required": ["type", "description"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["message", "resource_change", "schedule", "cascade", "manual", "condition"],
+          "description": "Type of trigger: message (incoming request), resource_change (data change), schedule (time-based), cascade (from another skill), manual (human-initiated), condition (state becomes true)"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable description of when this triggers"
+        },
+        "conditions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Guard conditions that must be true"
+        },
+        "examples": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Concrete examples of triggering events"
+        }
+      }
+    },
+    "skillInput": {
+      "type": "object",
+      "required": ["name", "type", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Parameter name"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Data type (string, object, array, etc.)"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What this input represents"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this input is required"
+        },
+        "schema": {
+          "type": "string",
+          "description": "JSON Schema reference for complex types"
+        }
+      }
+    },
+    "skillOutput": {
+      "type": "object",
+      "required": ["name", "type", "description"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Output name"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Data type"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What this output represents"
+        },
+        "schema": {
+          "type": "string",
+          "description": "JSON Schema reference for complex types"
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "required": ["name", "purpose", "permissions"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Tool or MCP server name"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why this skill uses this tool"
+        },
+        "permissions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": ["read", "write", "execute", "admin"]
+          },
+          "description": "Required permissions"
+        },
+        "required": {
+          "type": "boolean",
+          "default": true,
+          "description": "Is this tool mandatory for skill execution?"
+        },
+        "conditions": {
+          "type": "string",
+          "description": "When/how this tool is used (for optional tools)"
+        }
+      }
+    },
+    "behavior": {
+      "type": "object",
+      "required": ["model"],
+      "properties": {
+        "model": {
+          "type": "string",
+          "enum": ["sequential", "workflow", "adaptive", "iterative"],
+          "description": "Execution model: sequential (linear steps), workflow (stages with transitions), adaptive (dynamic selection), iterative (loop until done)"
+        },
+        "steps": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ordered steps (for sequential model)"
+        },
+        "stages": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/workflowStage" },
+          "description": "Workflow stages (for workflow model)"
+        },
+        "entryStage": {
+          "type": "string",
+          "description": "Starting stage name (defaults to first)"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Available actions (for adaptive model)"
+        },
+        "selectionStrategy": {
+          "type": "string",
+          "description": "How to select next action (for adaptive model)"
+        },
+        "body": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Actions per iteration (for iterative model)"
+        },
+        "terminationCondition": {
+          "type": "string",
+          "description": "When to stop iterating (for iterative model)"
+        },
+        "maxIterations": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Maximum iterations allowed (for iterative model)"
+        }
+      }
+    },
+    "workflowStage": {
+      "type": "object",
+      "required": ["name", "purpose"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Stage name"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What this stage accomplishes"
+        },
+        "actions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Actions performed in this stage"
+        },
+        "transitions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/stageTransition" },
+          "description": "Possible transitions from this stage"
+        }
+      }
+    },
+    "stageTransition": {
+      "type": "object",
+      "required": ["to", "when"],
+      "properties": {
+        "to": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Target stage name"
+        },
+        "when": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Condition for this transition"
+        }
+      }
+    },
+    "reasoning": {
+      "type": "object",
+      "required": ["strategy"],
+      "properties": {
+        "strategy": {
+          "type": "string",
+          "enum": ["rule_based", "llm_guided", "hybrid"],
+          "description": "Decision-making approach: rule_based (deterministic), llm_guided (LLM-driven), hybrid (rules + LLM)"
+        },
+        "decisionPoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/decisionPoint" },
+          "description": "Key decision points during execution"
+        },
+        "retry": {
+          "$ref": "#/$defs/retryConfig",
+          "description": "Retry configuration for transient failures"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidenceConfig",
+          "description": "Confidence threshold configuration"
+        }
+      }
+    },
+    "decisionPoint": {
+      "type": "object",
+      "required": ["name", "inputs", "approach"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Name of this decision point"
+        },
+        "inputs": {
+          "type": "array",
+          "items": { "type": "string" },
+          "minItems": 1,
+          "description": "What informs this decision"
+        },
+        "approach": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How the decision is made"
+        },
+        "outcomes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Possible decision outcomes"
+        }
+      }
+    },
+    "retryConfig": {
+      "type": "object",
+      "properties": {
+        "maxAttempts": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 3,
+          "description": "Maximum retry attempts"
+        },
+        "backoffStrategy": {
+          "type": "string",
+          "enum": ["none", "linear", "exponential"],
+          "default": "exponential",
+          "description": "Delay strategy between retries"
+        },
+        "retryOn": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Conditions that trigger retry"
+        }
+      }
+    },
+    "confidenceConfig": {
+      "type": "object",
+      "properties": {
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Minimum confidence score (0-1)"
+        },
+        "fallbackAction": {
+          "type": "string",
+          "description": "Action when confidence is below threshold"
+        }
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "required": ["successConditions"],
+      "properties": {
+        "successConditions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" },
+          "description": "What 'done' looks like"
+        },
+        "qualityMetrics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/qualityMetric" },
+          "description": "Measurable performance targets"
+        },
+        "timeout": {
+          "type": "string",
+          "description": "Maximum execution time (e.g., '30s', '5m')"
+        }
+      }
+    },
+    "qualityMetric": {
+      "type": "object",
+      "required": ["name", "target"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Metric name"
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Target value (e.g., '>= 95%', '< 500ms')"
+        },
+        "measurement": {
+          "type": "string",
+          "description": "How this metric is measured"
+        }
+      }
+    },
+    "failureHandling": {
+      "type": "object",
+      "properties": {
+        "modes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/failureMode" },
+          "description": "Specific failure conditions and recoveries"
+        },
+        "defaultFallback": {
+          "type": "string",
+          "description": "Default action when no specific handler matches"
+        },
+        "notifyOnFailure": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether to send notifications on failure"
+        }
+      }
+    },
+    "failureMode": {
+      "type": "object",
+      "required": ["condition", "recovery"],
+      "properties": {
+        "condition": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What failure looks like"
+        },
+        "recovery": {
+          "type": "string",
+          "minLength": 1,
+          "description": "How to handle this failure"
+        },
+        "escalate": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to escalate to human/supervisor"
+        }
+      }
+    },
+    "skillGuardrail": {
+      "type": "object",
+      "required": ["name", "constraint"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Guardrail name"
+        },
+        "constraint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What this skill must not do"
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": ["hard", "soft"],
+          "default": "hard",
+          "description": "hard (blocks action) or soft (warns only)"
+        },
+        "onViolation": {
+          "type": "string",
+          "description": "Action when violated"
+        }
+      }
+    },
+    "agentGuardrail": {
+      "type": "object",
+      "required": ["name", "constraint"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Guardrail name"
+        },
+        "constraint": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Identity-level constraint"
+        },
+        "rationale": {
+          "type": "string",
+          "description": "Why this guardrail exists"
+        },
+        "enforcement": {
+          "type": "string",
+          "enum": ["hard", "soft"],
+          "default": "hard",
+          "description": "hard (blocks action) or soft (warns only)"
+        }
+      }
+    },
+    "humanInteraction": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["in_the_loop", "on_the_loop", "out_of_loop"],
+          "description": "Interaction mode: in_the_loop (approval for every decision), on_the_loop (monitors, intervenes on exceptions), out_of_loop (fully autonomous)"
+        },
+        "checkpoints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/checkpoint" },
+          "description": "Points where human involvement is required"
+        },
+        "escalation": {
+          "$ref": "#/$defs/escalation",
+          "description": "How and when to escalate to humans"
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "required": ["name", "trigger", "type"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Checkpoint name"
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 1,
+          "description": "When human involvement is required"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["approval", "input", "review", "escalation"],
+          "description": "Type of human involvement"
+        },
+        "timeout": {
+          "type": "string",
+          "description": "How long to wait for human response"
+        }
+      }
+    },
+    "escalation": {
+      "type": "object",
+      "properties": {
+        "conditions": {
+          "type": "string",
+          "description": "When to escalate"
+        },
+        "channel": {
+          "type": "string",
+          "description": "How escalation occurs (e.g., Slack channel, email)"
+        }
+      }
+    },
+    "agentCollaboration": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["supervisor", "worker", "peer"],
+          "description": "Role in multi-agent system: supervisor (coordinates others), worker (executes tasks), peer (collaborates as equals)"
+        },
+        "coordinates": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/coordinationEntry" },
+          "description": "Agents this supervisor coordinates"
+        },
+        "reportsTo": {
+          "type": "string",
+          "description": "Supervisor agent ID (for workers)"
+        },
+        "peers": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/peerEntry" },
+          "description": "Peer agents for collaboration"
+        }
+      }
+    },
+    "coordinationEntry": {
+      "type": "object",
+      "required": ["agent", "via", "for"],
+      "properties": {
+        "agent": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Agent ID or type being coordinated"
+        },
+        "via": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Communication protocol"
+        },
+        "for": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Delegated tasks"
+        }
+      }
+    },
+    "peerEntry": {
+      "type": "object",
+      "required": ["agent", "interaction"],
+      "properties": {
+        "agent": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Peer agent ID"
+        },
+        "interaction": {
+          "type": "string",
+          "enum": ["request_response", "pub_sub", "shared_state"],
+          "description": "How agents interact"
+        }
+      }
+    },
+    "memory": {
+      "type": "object",
+      "properties": {
+        "working": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ephemeral context during execution"
+        },
+        "persistent": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/persistentStore" },
+          "description": "Long-term memory stores"
+        },
+        "learning": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/learningConfig" },
+          "description": "How the agent improves over time"
+        }
+      }
+    },
+    "persistentStore": {
+      "type": "object",
+      "required": ["name", "type", "purpose"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Store name"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["kb", "vector", "relational", "kv", "graph"],
+          "description": "Storage type: kb (knowledge base), vector, relational (SQL), kv (key-value), graph"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What this store is used for"
+        },
+        "updateMode": {
+          "type": "string",
+          "enum": ["read_only", "append", "full_crud"],
+          "default": "read_only",
+          "description": "How the store can be modified"
+        },
+        "sharedWith": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Other agents that share this store"
+        }
+      }
+    },
+    "learningConfig": {
+      "type": "object",
+      "required": ["type", "signal"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["feedback_loop", "reinforcement", "fine_tuning", "example_based"],
+          "description": "Learning mechanism"
+        },
+        "signal": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What triggers learning"
+        },
+        "store": {
+          "type": "string",
+          "description": "Which persistent store captures learnings"
+        }
+      }
+    }
+  }
+}
