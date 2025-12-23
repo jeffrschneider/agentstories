@@ -318,7 +318,7 @@ function TaskResponsibilitiesPanel({
           <h4 className="text-sm font-medium text-muted-foreground mb-2">Task Responsibilities</h4>
         </div>
         {hap.tasks.length > 0 ? (
-          <TaskResponsibilityGrid tasks={hap.tasks} compact />
+          <TaskResponsibilityGrid tasks={hap.tasks} />
         ) : (
           <div className="text-center py-6 text-muted-foreground text-sm">
             No tasks defined yet
@@ -505,8 +505,8 @@ export default function OrganizationPage() {
 
         {/* Tree View with Task Responsibilities Panel */}
         <div className="flex gap-4">
-          {/* Tree Panel - 35% width */}
-          <div className="w-[35%]">
+          {/* Tree Panel - 27% width */}
+          <div className="w-[27%]">
             <OrgTreeView
               onSelectRole={(roleId) => {
                 setSelectedRoleId(roleId);
@@ -523,8 +523,8 @@ export default function OrganizationPage() {
             />
           </div>
 
-          {/* Right Panel - 65% width */}
-          <div className="w-[65%]">
+          {/* Right Panel - 73% width */}
+          <div className="w-[73%]">
             {selectedPersonId ? (
               <TaskResponsibilitiesPanel
                 selectedPersonId={selectedPersonId}
