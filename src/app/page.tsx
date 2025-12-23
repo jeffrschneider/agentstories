@@ -26,9 +26,9 @@ export default function Home() {
         <div className="grid gap-4 md:grid-cols-2">
           {/* Value Proposition */}
           <Card>
-            <CardContent className="flex items-center py-6">
-              <p className="text-xl leading-relaxed text-muted-foreground">
-                Agent Planner helps you define what AI agents should do, specify
+            <CardContent className="flex h-full items-center justify-center py-6">
+              <p className="text-xl leading-relaxed text-muted-foreground text-center">
+                <span className="font-bold text-foreground">Agent Planner</span> helps you define what AI agents should do, specify
                 how humans and agents share responsibilities, and track your
                 organization&apos;s readiness for AI-assisted work.
               </p>

@@ -43,7 +43,7 @@ const mainNavItems: NavItem[] = [
   { title: "Agent Catalog", href: "/agents", icon: Bot },
   { title: "Pipeline", href: "/pipeline", icon: Kanban },
   { title: "HAPs", href: "/haps", icon: Users },
-  { title: "Agent Stories", href: "/stories", icon: FileText },
+  { title: "Agent Planner", href: "/stories", icon: FileText },
   { title: "Capability Queue", href: "/capability-queue", icon: Lightbulb },
   { title: "Templates", href: "/templates", icon: LayoutTemplate },
 ];
@@ -96,7 +96,7 @@ export function Sidebar({ className }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "flex h-full flex-col border-r bg-background transition-all duration-300",
+        "fixed top-14 left-0 z-40 flex h-[calc(100vh-3.5rem)] flex-col border-r bg-background transition-all duration-300",
         isCollapsed ? "w-14" : "w-48",
         className
       )}
