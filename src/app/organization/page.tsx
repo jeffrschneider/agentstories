@@ -505,8 +505,8 @@ export default function OrganizationPage() {
 
         {/* Tree View with Task Responsibilities Panel */}
         <div className="flex gap-4">
-          {/* Tree Panel - 35% width */}
-          <div className="w-[35%]">
+          {/* Tree Panel - 27% width */}
+          <div className="w-[27%]">
             <OrgTreeView
               onSelectRole={(roleId) => {
                 setSelectedRoleId(roleId);
@@ -523,8 +523,8 @@ export default function OrganizationPage() {
             />
           </div>
 
-          {/* Right Panel - 65% width */}
-          <div className="w-[65%]">
+          {/* Right Panel - 73% width */}
+          <div className="w-[73%]">
             {selectedPersonId ? (
               <TaskResponsibilitiesPanel
                 selectedPersonId={selectedPersonId}
