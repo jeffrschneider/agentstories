@@ -2,8 +2,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest, NextResponse } from 'next/server';
 import { IDEATION_SYSTEM_PROMPT } from '@/lib/ideation/agent-context';
 
-const anthropic = new Anthropic();
-
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -15,6 +13,16 @@ interface IdeationRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'ANTHROPIC_API_KEY environment variable is not set. Please add it to .env.local' },
+        { status: 500 }
+      );
+    }
+
+    const anthropic = new Anthropic({ apiKey });
+
     const body: IdeationRequest = await request.json();
     const { messages } = body;
 
@@ -33,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Call Claude Opus
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-20250514',
+      model: 'claude-opus-4-5-20251101',
       max_tokens: 4096,
       system: IDEATION_SYSTEM_PROMPT,
       messages: formattedMessages,

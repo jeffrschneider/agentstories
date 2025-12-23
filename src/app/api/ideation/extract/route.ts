@@ -2,8 +2,6 @@ import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest, NextResponse } from 'next/server';
 import { EXTRACTION_SYSTEM_PROMPT, IdeatedAgent } from '@/lib/ideation/agent-context';
 
-const anthropic = new Anthropic();
-
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -15,6 +13,16 @@ interface ExtractionRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json(
+        { error: 'ANTHROPIC_API_KEY environment variable is not set' },
+        { status: 500 }
+      );
+    }
+
+    const anthropic = new Anthropic({ apiKey });
+
     const body: ExtractionRequest = await request.json();
     const { messages } = body;
 
