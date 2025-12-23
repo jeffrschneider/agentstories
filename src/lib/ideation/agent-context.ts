@@ -148,39 +148,190 @@ Start by understanding what kind of agent the user wants to build and what probl
 
 /**
  * Generates a structured summary of the agent being ideated
- * for display in the accumulated data panel
+ * for display in the accumulated data panel.
+ *
+ * This structure aligns with the canonical Agent Story JSON Schema
+ * at /schemas/agent-story.schema.json
  */
 export interface IdeatedAgent {
+  // Identity
   name?: string;
   identifier?: string;
   role?: string;
   purpose?: string;
-  autonomyLevel?: string;
+  autonomyLevel?: 'full' | 'supervised' | 'collaborative' | 'directed';
+  tags?: string[];
+
+  // Skills
   skills: IdeatedSkill[];
-  humanInteraction?: {
-    mode?: string;
-    checkpoints?: string[];
-  };
-  collaboration?: {
-    role?: string;
-    coordinates?: string[];
-    reportsTo?: string;
-  };
-  guardrails?: Array<{
-    name: string;
-    constraint: string;
-  }>;
+
+  // Agent-level configuration
+  humanInteraction?: IdeatedHumanInteraction;
+  collaboration?: IdeatedCollaboration;
+  memory?: IdeatedMemory;
+  guardrails?: IdeatedGuardrail[];
+
   notes?: string;
 }
 
 export interface IdeatedSkill {
+  id?: string;
   name: string;
   description?: string;
   domain?: string;
-  acquired?: string;
-  triggers?: string[];
-  tools?: string[];
-  acceptance?: string[];
+  acquired?: 'built_in' | 'pre_trained' | 'learned' | 'delegated';
+
+  // Interface
+  triggers?: IdeatedTrigger[];
+  inputs?: IdeatedInput[];
+  outputs?: IdeatedOutput[];
+
+  // Resources
+  tools?: IdeatedTool[];
+
+  // Execution
+  behavior?: IdeatedBehavior;
+  reasoning?: IdeatedReasoning;
+
+  // Success & Failure
+  acceptance?: IdeatedAcceptance;
+  failureHandling?: IdeatedFailureHandling;
+
+  // Constraints
+  guardrails?: IdeatedSkillGuardrail[];
+}
+
+export interface IdeatedTrigger {
+  type: 'message' | 'resource_change' | 'schedule' | 'cascade' | 'manual' | 'condition';
+  description: string;
+  conditions?: string[];
+  examples?: string[];
+}
+
+export interface IdeatedInput {
+  name: string;
+  type: string;
+  description: string;
+  required?: boolean;
+}
+
+export interface IdeatedOutput {
+  name: string;
+  type: string;
+  description: string;
+}
+
+export interface IdeatedTool {
+  name: string;
+  purpose: string;
+  permissions: ('read' | 'write' | 'execute' | 'admin')[];
+  required?: boolean;
+}
+
+export interface IdeatedBehavior {
+  model: 'sequential' | 'workflow' | 'adaptive' | 'iterative';
+  steps?: string[];
+  stages?: Array<{ name: string; purpose: string }>;
+  capabilities?: string[];
+  selectionStrategy?: string;
+  body?: string[];
+  terminationCondition?: string;
+  maxIterations?: number;
+}
+
+export interface IdeatedReasoning {
+  strategy: 'rule_based' | 'llm_guided' | 'hybrid';
+  decisionPoints?: Array<{
+    name: string;
+    inputs: string[];
+    approach: string;
+    outcomes?: string[];
+  }>;
+  retry?: {
+    maxAttempts?: number;
+    backoffStrategy?: 'none' | 'linear' | 'exponential';
+    retryOn?: string[];
+  };
+  confidence?: {
+    threshold?: number;
+    fallbackAction?: string;
+  };
+}
+
+export interface IdeatedAcceptance {
+  successConditions: string[];
+  qualityMetrics?: Array<{
+    name: string;
+    target: string;
+    measurement?: string;
+  }>;
+  timeout?: string;
+}
+
+export interface IdeatedFailureHandling {
+  modes?: Array<{
+    condition: string;
+    recovery: string;
+    escalate?: boolean;
+  }>;
+  defaultFallback?: string;
+  notifyOnFailure?: boolean;
+}
+
+export interface IdeatedSkillGuardrail {
+  name: string;
+  constraint: string;
+  enforcement?: 'hard' | 'soft';
+  onViolation?: string;
+}
+
+export interface IdeatedGuardrail {
+  name: string;
+  constraint: string;
+  rationale?: string;
+  enforcement?: 'hard' | 'soft';
+}
+
+export interface IdeatedHumanInteraction {
+  mode?: 'in_the_loop' | 'on_the_loop' | 'out_of_loop';
+  checkpoints?: Array<{
+    name: string;
+    trigger: string;
+    type: 'approval' | 'input' | 'review' | 'escalation';
+    timeout?: string;
+  }>;
+  escalation?: {
+    conditions?: string;
+    channel?: string;
+  };
+}
+
+export interface IdeatedCollaboration {
+  role?: 'supervisor' | 'worker' | 'peer';
+  coordinates?: Array<{
+    agent: string;
+    via: string;
+    for: string;
+  }>;
+  reportsTo?: string;
+  peers?: Array<{
+    agent: string;
+    interaction: 'request_response' | 'pub_sub' | 'shared_state';
+  }>;
+}
+
+export interface IdeatedMemory {
+  working?: string[];
+  persistent?: Array<{
+    name: string;
+    type: 'kb' | 'vector' | 'relational' | 'kv' | 'graph';
+    purpose: string;
+    updateMode?: 'read_only' | 'append' | 'full_crud';
+  }>;
+  learning?: Array<{
+    type: 'feedback_loop' | 'reinforcement' | 'fine_tuning' | 'example_based';
+    signal: string;
+  }>;
 }
 
 export function createEmptyIdeatedAgent(): IdeatedAgent {
@@ -191,45 +342,104 @@ export function createEmptyIdeatedAgent(): IdeatedAgent {
 }
 
 /**
- * Generates an extraction prompt to help Claude identify agent details from the conversation
+ * Generates an extraction prompt to help Claude identify agent details from the conversation.
+ * Updated to match the canonical Agent Story JSON Schema.
  */
 export const EXTRACTION_SYSTEM_PROMPT = `You are a JSON extractor. Given a conversation about designing an AI agent, extract the structured agent specification.
 
-Return ONLY valid JSON matching this schema (omit fields that haven't been discussed):
+Return ONLY valid JSON matching this schema. Omit any fields/objects that haven't been discussed:
 
 {
-  "name": "string or null",
-  "identifier": "string or null",
-  "role": "string or null",
-  "purpose": "string or null",
-  "autonomyLevel": "full|supervised|collaborative|directed or null",
+  "name": "string",
+  "identifier": "string (lowercase, hyphens)",
+  "role": "string",
+  "purpose": "string",
+  "autonomyLevel": "full|supervised|collaborative|directed",
+  "tags": ["string array"],
   "skills": [
     {
-      "name": "string",
-      "description": "string or null",
-      "domain": "string or null",
-      "acquired": "built_in|learned|delegated or null",
-      "triggers": ["string array of trigger descriptions"],
-      "tools": ["string array of tool names"],
-      "acceptance": ["string array of success criteria"]
+      "name": "string (required)",
+      "description": "string",
+      "domain": "string",
+      "acquired": "built_in|pre_trained|learned|delegated",
+      "triggers": [
+        {
+          "type": "message|resource_change|schedule|cascade|manual|condition",
+          "description": "string",
+          "conditions": ["string array"]
+        }
+      ],
+      "inputs": [
+        { "name": "string", "type": "string", "description": "string", "required": true }
+      ],
+      "outputs": [
+        { "name": "string", "type": "string", "description": "string" }
+      ],
+      "tools": [
+        {
+          "name": "string",
+          "purpose": "string",
+          "permissions": ["read", "write", "execute", "admin"],
+          "required": true
+        }
+      ],
+      "behavior": {
+        "model": "sequential|workflow|adaptive|iterative",
+        "steps": ["string array for sequential"],
+        "capabilities": ["string array for adaptive"],
+        "terminationCondition": "string for iterative"
+      },
+      "reasoning": {
+        "strategy": "rule_based|llm_guided|hybrid",
+        "decisionPoints": [
+          { "name": "string", "inputs": ["string"], "approach": "string" }
+        ]
+      },
+      "acceptance": {
+        "successConditions": ["string array (required)"],
+        "qualityMetrics": [{ "name": "string", "target": "string" }],
+        "timeout": "string"
+      },
+      "failureHandling": {
+        "modes": [{ "condition": "string", "recovery": "string", "escalate": false }],
+        "defaultFallback": "string",
+        "notifyOnFailure": true
+      },
+      "guardrails": [
+        { "name": "string", "constraint": "string", "enforcement": "hard|soft" }
+      ]
     }
   ],
   "humanInteraction": {
-    "mode": "in_the_loop|on_the_loop|out_of_loop or null",
-    "checkpoints": ["string array"]
+    "mode": "in_the_loop|on_the_loop|out_of_loop",
+    "checkpoints": [
+      { "name": "string", "trigger": "string", "type": "approval|input|review|escalation" }
+    ],
+    "escalation": { "conditions": "string", "channel": "string" }
   },
   "collaboration": {
-    "role": "supervisor|worker|peer or null",
-    "coordinates": ["string array"],
-    "reportsTo": "string or null"
+    "role": "supervisor|worker|peer",
+    "coordinates": [{ "agent": "string", "via": "string", "for": "string" }],
+    "reportsTo": "string",
+    "peers": [{ "agent": "string", "interaction": "request_response|pub_sub|shared_state" }]
+  },
+  "memory": {
+    "working": ["string array"],
+    "persistent": [
+      { "name": "string", "type": "kb|vector|relational|kv|graph", "purpose": "string" }
+    ],
+    "learning": [
+      { "type": "feedback_loop|reinforcement|fine_tuning|example_based", "signal": "string" }
+    ]
   },
   "guardrails": [
-    {
-      "name": "string",
-      "constraint": "string"
-    }
+    { "name": "string", "constraint": "string", "rationale": "string", "enforcement": "hard|soft" }
   ],
-  "notes": "string or null"
+  "notes": "string"
 }
 
-Only include fields that have been explicitly discussed. Return an empty object {} if nothing has been specified yet.`;
+IMPORTANT:
+- Only include fields that have been explicitly discussed
+- Return {"skills": []} if nothing has been specified yet
+- For skills, triggers and acceptance.successConditions are required if the skill is included
+- Keep the structure clean - omit empty arrays and null values`;
