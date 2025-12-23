@@ -40,7 +40,7 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { title: "Overview", href: "/", icon: Home },
   { title: "Organization", href: "/organization", icon: Building2 },
-  { title: "Agent Catalog", href: "/agents", icon: Bot },
+  { title: "Agent Lifecycle", href: "/agents", icon: Bot },
   { title: "Agent Pipeline", href: "/pipeline", icon: Kanban },
   { title: "Human-Agent Pairs", href: "/haps", icon: Users },
   { title: "Agent Stories", href: "/stories", icon: FileText },

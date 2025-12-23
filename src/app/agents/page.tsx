@@ -163,7 +163,7 @@ export default function AgentCatalogPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
               <Bot className="h-8 w-8" />
-              Agent Catalog
+              Agent Lifecycle
             </h1>
             <p className="text-muted-foreground">
               Track agents through their lifecycle from planning to operations
