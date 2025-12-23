@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     // Call Claude Opus
     const response = await anthropic.messages.create({
-      model: 'claude-opus-4-20250514',
+      model: 'claude-opus-4-5-20251101',
       max_tokens: 4096,
       system: IDEATION_SYSTEM_PROMPT,
       messages: formattedMessages,
