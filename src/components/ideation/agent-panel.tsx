@@ -38,6 +38,12 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useIdeation } from '@/stores';
 import type {
   IdeatedAgent,
@@ -473,34 +479,30 @@ interface CompactViewProps {
 
 function CompactView({ agent, onExpandToSkill, onExpand }: CompactViewProps) {
   return (
-    <div className="p-4 space-y-4">
-      {/* Identity Summary */}
-      {(agent.name || agent.role) && (
-        <div
-          className="p-3 rounded-lg bg-background border cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={onExpand}
-        >
-          <div className="flex items-center gap-2 mb-2">
-            <Bot className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground">
-              Identity
-            </span>
-          </div>
-          {agent.name && (
-            <div className="font-medium text-sm mb-1">{agent.name}</div>
-          )}
-          {agent.role && (
-            <div className="text-xs text-muted-foreground line-clamp-2">
-              {agent.role}
+    <TooltipProvider>
+      <div className="p-4 space-y-4">
+        {/* Agent Name */}
+        {(agent.name || agent.role) && (
+          <div
+            className="p-3 rounded-lg bg-background border cursor-pointer hover:border-primary/50 transition-colors"
+            onClick={onExpand}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Bot className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">
+                Agent:
+              </span>
+              {agent.name && (
+                <span className="font-medium text-sm">{agent.name}</span>
+              )}
             </div>
-          )}
-          {agent.autonomyLevel && (
-            <Badge variant="secondary" className="mt-2 text-xs">
-              {agent.autonomyLevel}
-            </Badge>
-          )}
-        </div>
-      )}
+            {agent.role && (
+              <div className="text-xs text-muted-foreground line-clamp-2 ml-6">
+                {agent.role}
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Skills Summary */}
       {agent.skills.length > 0 && (
@@ -532,45 +534,88 @@ function CompactView({ agent, onExpandToSkill, onExpand }: CompactViewProps) {
         </div>
       )}
 
-      {/* Configuration Summary */}
-      <div className="flex flex-wrap gap-2">
-        {agent.humanInteraction?.mode && (
-          <Badge variant="outline" className="text-xs">
-            <Users className="h-3 w-3 mr-1" />
-            {agent.humanInteraction.mode.replace(/_/g, ' ')}
-          </Badge>
-        )}
-        {agent.collaboration?.role && (
-          <Badge variant="outline" className="text-xs">
-            <GitBranch className="h-3 w-3 mr-1" />
-            {agent.collaboration.role}
-          </Badge>
-        )}
-        {agent.guardrails && agent.guardrails.length > 0 && (
-          <Badge variant="outline" className="text-xs">
-            <Shield className="h-3 w-3 mr-1" />
-            {agent.guardrails.length} guardrails
-          </Badge>
-        )}
-        {agent.memory && (
-          <Badge variant="outline" className="text-xs">
-            <Database className="h-3 w-3 mr-1" />
-            memory
-          </Badge>
-        )}
-      </div>
+        {/* Configuration Summary */}
+        <div className="flex flex-wrap gap-2">
+          {agent.humanInteraction?.mode && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-help">
+                  <Users className="h-3 w-3 mr-1" />
+                  {agent.humanInteraction.mode.replace(/_/g, ' ')}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-xs">
+                  {agent.humanInteraction.mode === 'out_of_loop'
+                    ? 'Agent operates autonomously without human intervention during execution'
+                    : agent.humanInteraction.mode === 'in_the_loop'
+                    ? 'Human reviews and approves each action before the agent proceeds'
+                    : agent.humanInteraction.mode === 'on_the_loop'
+                    ? 'Agent operates autonomously but human monitors and can intervene'
+                    : 'Defines how humans interact with the agent during execution'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {agent.collaboration?.role && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-help">
+                  <GitBranch className="h-3 w-3 mr-1" />
+                  {agent.collaboration.role}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-xs">
+                  Agent&apos;s role in multi-agent collaboration (e.g., orchestrator, worker, peer)
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {agent.guardrails && agent.guardrails.length > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-help">
+                  <Shield className="h-3 w-3 mr-1" />
+                  {agent.guardrails.length} guardrails
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-xs">
+                  Safety constraints that limit agent behavior to prevent harmful or unwanted actions
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {agent.memory && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge variant="outline" className="text-xs cursor-help">
+                  <Database className="h-3 w-3 mr-1" />
+                  memory
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p className="max-w-xs text-xs">
+                  Agent has persistent memory to retain context across sessions or interactions
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+        </div>
 
-      {/* Expand Button */}
-      <Button
-        variant="outline"
-        size="sm"
-        className="w-full"
-        onClick={onExpand}
-      >
-        <Maximize2 className="h-4 w-4 mr-2" />
-        View Full Specification
-      </Button>
-    </div>
+        {/* Expand Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={onExpand}
+        >
+          <Maximize2 className="h-4 w-4 mr-2" />
+          View Full Specification
+        </Button>
+      </div>
+    </TooltipProvider>
   );
 }
 
