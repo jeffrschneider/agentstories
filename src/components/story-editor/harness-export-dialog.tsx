@@ -17,6 +17,7 @@ import {
   Copy,
   Check,
   Server,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,8 +43,8 @@ import {
   type HarnessAdapter,
   type HarnessCompatibility,
   type HarnessExportResult,
-  type TryItConfig,
 } from "@/lib/export";
+import { TryItChat } from "./try-it-chat";
 
 interface HarnessExportDialogProps {
   story: AgentStory;
@@ -191,7 +192,7 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
               Preview Export
             </TabsTrigger>
             <TabsTrigger value="tryit">
-              <ExternalLink className="mr-2 h-4 w-4" />
+              <Play className="mr-2 h-4 w-4" />
               Try It
             </TabsTrigger>
           </TabsList>
@@ -218,12 +219,8 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
             />
           </TabsContent>
 
-          <TabsContent value="tryit" className="flex-1 overflow-hidden mt-4">
-            <TryItTab
-              story={story}
-              adapters={adapters}
-              compatibility={compatibility}
-            />
+          <TabsContent value="tryit" className="flex-1 overflow-hidden mt-4 h-[500px]">
+            <TryItChat story={story} />
           </TabsContent>
         </Tabs>
       </DialogContent>
@@ -488,95 +485,3 @@ function PreviewTab({ exportResult, onDownload }: PreviewTabProps) {
   );
 }
 
-// ============================================================================
-// Try It Tab
-// ============================================================================
-
-interface TryItTabProps {
-  story: AgentStory;
-  adapters: HarnessAdapter[];
-  compatibility: Record<string, HarnessCompatibility>;
-}
-
-function TryItTab({ story, adapters, compatibility }: TryItTabProps) {
-  const [copied, setCopied] = useState<string | null>(null);
-
-  const handleCopy = async (text: string, id: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopied(id);
-    setTimeout(() => setCopied(null), 2000);
-  };
-
-  const compatibleAdapters = adapters.filter(
-    (a) => compatibility[a.id]?.compatible && a.getTryItConfig
-  );
-
-  if (compatibleAdapters.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
-        No compatible harnesses support direct launching
-      </div>
-    );
-  }
-
-  return (
-    <ScrollArea className="h-80">
-      <div className="space-y-4 pr-4">
-        {compatibleAdapters.map((adapter) => {
-          const config = adapter.getTryItConfig?.(story);
-          if (!config) return null;
-
-          return (
-            <div key={adapter.id} className="border rounded-lg p-4">
-              <div className="flex items-center gap-2 mb-2">
-                {ADAPTER_ICONS[adapter.id] || <Server className="h-4 w-4" />}
-                <span className="font-medium">{adapter.name}</span>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                {config.description}
-              </p>
-
-              {config.type === "cli" && (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 bg-muted p-2 rounded text-xs font-mono">
-                      {config.command}
-                    </code>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(config.command, adapter.id)}
-                    >
-                      {copied === adapter.id ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
-                      )}
-                    </Button>
-                  </div>
-                  <details className="text-xs text-muted-foreground">
-                    <summary className="cursor-pointer hover:text-foreground">
-                      Setup instructions
-                    </summary>
-                    <pre className="mt-2 p-2 bg-muted rounded whitespace-pre-wrap">
-                      {config.setupInstructions}
-                    </pre>
-                  </details>
-                </div>
-              )}
-
-              {config.type === "url" && (
-                <Button asChild>
-                  <a href={config.launchUrl} target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="mr-2 h-4 w-4" />
-                    Launch
-                  </a>
-                </Button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </ScrollArea>
-  );
-}
