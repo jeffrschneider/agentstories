@@ -19,6 +19,7 @@ import {
   Server,
   Play,
   FileCode,
+  Github,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,6 +47,7 @@ import {
   type HarnessExportResult,
 } from "@/lib/export";
 import { TryItChat } from "./try-it-chat";
+import { GitHubPublish } from "./github-publish";
 
 interface HarnessExportDialogProps {
   story: AgentStory;
@@ -67,7 +69,7 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
   const [exportResult, setExportResult] = useState<HarnessExportResult | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [expandedAdapter, setExpandedAdapter] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"export" | "tryit">("export");
+  const [activeTab, setActiveTab] = useState<"export" | "github" | "tryit">("export");
 
   // Load adapters and check compatibility
   useEffect(() => {
@@ -182,10 +184,14 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
           onValueChange={(v) => setActiveTab(v as typeof activeTab)}
           className="flex-1 flex flex-col min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-2 shrink-0">
+          <TabsList className="grid w-full grid-cols-3 shrink-0">
             <TabsTrigger value="export" className="flex items-center gap-2">
               <FileCode className="h-4 w-4" />
               Export Configs
+            </TabsTrigger>
+            <TabsTrigger value="github" className="flex items-center gap-2">
+              <Github className="h-4 w-4" />
+              Push to GitHub
             </TabsTrigger>
             <TabsTrigger value="tryit" className="flex items-center gap-2">
               <Play className="h-4 w-4" />
@@ -207,6 +213,13 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
               isExporting={isExporting}
               exportResult={exportResult}
               onDownload={handleDownload}
+            />
+          </TabsContent>
+
+          <TabsContent value="github" className="flex-1 mt-4 overflow-hidden flex flex-col min-h-0">
+            <GitHubPublish
+              exportResult={exportResult}
+              onExportNeeded={() => setActiveTab("export")}
             />
           </TabsContent>
 
