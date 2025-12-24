@@ -282,6 +282,7 @@ export function AgentPanel({ isExtracting, onRefresh }: AgentPanelProps) {
   const ideation = useIdeation();
   const agent = ideation.ideatedAgent as IdeatedAgent;
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const [scrollToSkillIndex, setScrollToSkillIndex] = React.useState<number | null>(null);
 
   const hasContent =
     agent.name ||
@@ -290,42 +291,17 @@ export function AgentPanel({ isExtracting, onRefresh }: AgentPanelProps) {
     agent.skills.length > 0 ||
     (agent.guardrails && agent.guardrails.length > 0);
 
-  // Calculate completeness score
-  const completenessScore = React.useMemo(() => {
-    let score = 0;
-    let total = 0;
+  const handleExpandToSkill = React.useCallback((skillIndex: number) => {
+    setScrollToSkillIndex(skillIndex);
+    setIsExpanded(true);
+  }, []);
 
-    // Identity (20 points)
-    total += 20;
-    if (agent.name) score += 5;
-    if (agent.role) score += 5;
-    if (agent.purpose) score += 5;
-    if (agent.autonomyLevel) score += 5;
-
-    // Skills (40 points)
-    total += 40;
-    if (agent.skills.length > 0) {
-      score += 10;
-      const skillScore = agent.skills.reduce((acc, skill) => {
-        let s = 0;
-        if (skill.triggers?.length) s += 2;
-        if (skill.tools?.length) s += 2;
-        if (skill.acceptance?.successConditions?.length) s += 2;
-        if (skill.behavior) s += 2;
-        return acc + s;
-      }, 0);
-      score += Math.min(30, skillScore);
+  // Clear scroll target when panel closes
+  React.useEffect(() => {
+    if (!isExpanded) {
+      setScrollToSkillIndex(null);
     }
-
-    // Configuration (40 points)
-    total += 40;
-    if (agent.humanInteraction?.mode) score += 10;
-    if (agent.collaboration?.role) score += 10;
-    if (agent.guardrails?.length) score += 10;
-    if (agent.memory) score += 10;
-
-    return Math.round((score / total) * 100);
-  }, [agent]);
+  }, [isExpanded]);
 
   return (
     <>
@@ -374,7 +350,7 @@ export function AgentPanel({ isExtracting, onRefresh }: AgentPanelProps) {
           ) : (
             <CompactView
               agent={agent}
-              completenessScore={completenessScore}
+              onExpandToSkill={handleExpandToSkill}
               onExpand={() => setIsExpanded(true)}
             />
           )}
@@ -438,7 +414,11 @@ export function AgentPanel({ isExtracting, onRefresh }: AgentPanelProps) {
 
             <TabsContent value="spec" className="flex-1 overflow-hidden mt-4">
               <ScrollArea className="h-full -mx-6 px-6">
-                <ExpandedView agent={agent} completenessScore={completenessScore} />
+                <ExpandedView
+                  agent={agent}
+                  scrollToSkillIndex={scrollToSkillIndex}
+                  onScrollComplete={() => setScrollToSkillIndex(null)}
+                />
               </ScrollArea>
             </TabsContent>
 
@@ -487,32 +467,13 @@ function EmptyState() {
 
 interface CompactViewProps {
   agent: IdeatedAgent;
-  completenessScore: number;
+  onExpandToSkill: (skillIndex: number) => void;
   onExpand: () => void;
 }
 
-function CompactView({ agent, completenessScore, onExpand }: CompactViewProps) {
+function CompactView({ agent, onExpandToSkill, onExpand }: CompactViewProps) {
   return (
     <div className="p-4 space-y-4">
-      {/* Completeness Indicator */}
-      <div
-        className="p-3 rounded-lg bg-background border cursor-pointer hover:border-primary/50 transition-colors"
-        onClick={onExpand}
-      >
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs font-medium text-muted-foreground">
-            Completeness
-          </span>
-          <span className="text-sm font-semibold">{completenessScore}%</span>
-        </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${completenessScore}%` }}
-          />
-        </div>
-      </div>
-
       {/* Identity Summary */}
       {(agent.name || agent.role) && (
         <div
@@ -543,10 +504,7 @@ function CompactView({ agent, completenessScore, onExpand }: CompactViewProps) {
 
       {/* Skills Summary */}
       {agent.skills.length > 0 && (
-        <div
-          className="p-3 rounded-lg bg-background border cursor-pointer hover:border-primary/50 transition-colors"
-          onClick={onExpand}
-        >
+        <div className="p-3 rounded-lg bg-background border">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Zap className="h-4 w-4 text-muted-foreground" />
@@ -559,16 +517,17 @@ function CompactView({ agent, completenessScore, onExpand }: CompactViewProps) {
             </Badge>
           </div>
           <div className="space-y-1">
-            {agent.skills.slice(0, 3).map((skill, i) => (
-              <div key={i} className="text-sm truncate">
-                {skill.name}
-              </div>
+            {agent.skills.map((skill, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onExpandToSkill(i)}
+                className="flex items-center gap-2 w-full text-left text-sm text-primary hover:underline truncate"
+              >
+                <span className="text-muted-foreground text-xs w-4">{i + 1}.</span>
+                <span className="truncate">{skill.name}</span>
+              </button>
             ))}
-            {agent.skills.length > 3 && (
-              <div className="text-xs text-muted-foreground">
-                +{agent.skills.length - 3} more
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -617,26 +576,30 @@ function CompactView({ agent, completenessScore, onExpand }: CompactViewProps) {
 
 interface ExpandedViewProps {
   agent: IdeatedAgent;
-  completenessScore: number;
+  scrollToSkillIndex: number | null;
+  onScrollComplete: () => void;
 }
 
-function ExpandedView({ agent, completenessScore }: ExpandedViewProps) {
+function ExpandedView({ agent, scrollToSkillIndex, onScrollComplete }: ExpandedViewProps) {
+  const skillRefs = React.useRef<(HTMLDivElement | null)[]>([]);
+
+  // Scroll to skill when scrollToSkillIndex changes
+  React.useEffect(() => {
+    if (scrollToSkillIndex !== null && skillRefs.current[scrollToSkillIndex]) {
+      // Small delay to ensure the sheet is fully open
+      const timer = setTimeout(() => {
+        skillRefs.current[scrollToSkillIndex]?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+        onScrollComplete();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [scrollToSkillIndex, onScrollComplete]);
+
   return (
     <div className="space-y-6 py-4">
-      {/* Completeness */}
-      <div className="p-4 rounded-lg border bg-muted/30">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium">Specification Completeness</span>
-          <span className="text-lg font-bold">{completenessScore}%</span>
-        </div>
-        <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary transition-all duration-500"
-            style={{ width: `${completenessScore}%` }}
-          />
-        </div>
-      </div>
-
       {/* Identity Section */}
       <CollapsibleSection
         title="Identity"
@@ -682,7 +645,16 @@ function ExpandedView({ agent, completenessScore }: ExpandedViewProps) {
         >
           <div className="space-y-4">
             {agent.skills.map((skill, index) => (
-              <SkillCard key={skill.id || index} skill={skill} index={index} />
+              <div
+                key={skill.id || index}
+                ref={(el) => { skillRefs.current[index] = el; }}
+              >
+                <SkillCard
+                  skill={skill}
+                  index={index}
+                  defaultOpen={scrollToSkillIndex === index}
+                />
+              </div>
             ))}
           </div>
         </CollapsibleSection>
@@ -741,10 +713,11 @@ function ExpandedView({ agent, completenessScore }: ExpandedViewProps) {
 interface SkillCardProps {
   skill: IdeatedSkill;
   index: number;
+  defaultOpen?: boolean;
 }
 
-function SkillCard({ skill, index }: SkillCardProps) {
-  const [isOpen, setIsOpen] = React.useState(index === 0);
+function SkillCard({ skill, index, defaultOpen }: SkillCardProps) {
+  const [isOpen, setIsOpen] = React.useState(defaultOpen ?? index === 0);
 
   return (
     <div className="rounded-lg border bg-background overflow-hidden">
