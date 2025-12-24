@@ -182,9 +182,9 @@ export function TryItChat({ story }: TryItChatProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-col h-full min-h-[400px]">
       {/* Header */}
-      <div className="border-b px-4 py-3 flex items-center justify-between">
+      <div className="border-b px-4 py-3 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-primary" />
           <span className="font-medium">Testing: {story.name}</span>
@@ -197,7 +197,7 @@ export function TryItChat({ story }: TryItChatProps) {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 bg-muted/30">
+      <div className="flex-1 overflow-auto bg-muted/30 min-h-0">
         <div className="mx-auto w-full max-w-3xl px-4">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -244,11 +244,11 @@ export function TryItChat({ story }: TryItChatProps) {
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Error Display */}
       {error && (
-        <div className="mx-auto w-full max-w-3xl px-4 pb-2">
+        <div className="mx-auto w-full max-w-3xl px-4 pb-2 shrink-0">
           <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
             <XCircle className="h-4 w-4" />
             {error}
@@ -256,8 +256,8 @@ export function TryItChat({ story }: TryItChatProps) {
         </div>
       )}
 
-      {/* Input Area */}
-      <div className="border-t bg-background p-4">
+      {/* Input Area - Always visible */}
+      <div className="border-t bg-background p-4 shrink-0">
         <div className="mx-auto w-full max-w-3xl">
           <form onSubmit={handleSubmit} className="flex gap-2">
             <div className="relative flex-1">
