@@ -219,7 +219,7 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
             />
           </TabsContent>
 
-          <TabsContent value="tryit" className="flex-1 overflow-hidden mt-4 h-[500px]">
+          <TabsContent value="tryit" className="flex-1 mt-4 overflow-hidden" style={{ minHeight: '450px' }}>
             <TryItChat story={story} />
           </TabsContent>
         </Tabs>
