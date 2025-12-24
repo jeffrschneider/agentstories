@@ -52,24 +52,12 @@ export const ideationActions = {
     if (agent.purpose !== undefined) ideationStore.ideatedAgent.purpose = agent.purpose;
     if (agent.autonomyLevel !== undefined) ideationStore.ideatedAgent.autonomyLevel = agent.autonomyLevel;
     if (agent.notes !== undefined) ideationStore.ideatedAgent.notes = agent.notes;
+    if (agent.tags !== undefined) ideationStore.ideatedAgent.tags = agent.tags;
 
-    // Merge skills (add new ones, update existing by name)
-    if (agent.skills && agent.skills.length > 0) {
-      agent.skills.forEach((newSkill) => {
-        const existingIndex = ideationStore.ideatedAgent.skills.findIndex(
-          (s) => s.name.toLowerCase() === newSkill.name.toLowerCase()
-        );
-        if (existingIndex >= 0) {
-          // Update existing skill
-          ideationStore.ideatedAgent.skills[existingIndex] = {
-            ...ideationStore.ideatedAgent.skills[existingIndex],
-            ...newSkill,
-          };
-        } else {
-          // Add new skill
-          ideationStore.ideatedAgent.skills.push(newSkill);
-        }
-      });
+    // Replace skills array entirely - extraction is authoritative
+    // This allows skills to be removed and prevents duplicates from slight name variations
+    if (agent.skills !== undefined) {
+      ideationStore.ideatedAgent.skills = agent.skills;
     }
 
     // Merge human interaction
@@ -88,19 +76,17 @@ export const ideationActions = {
       };
     }
 
-    // Merge guardrails (add new ones by name)
-    if (agent.guardrails && agent.guardrails.length > 0) {
-      agent.guardrails.forEach((newGuardrail) => {
-        const exists = ideationStore.ideatedAgent.guardrails?.some(
-          (g) => g.name.toLowerCase() === newGuardrail.name.toLowerCase()
-        );
-        if (!exists) {
-          if (!ideationStore.ideatedAgent.guardrails) {
-            ideationStore.ideatedAgent.guardrails = [];
-          }
-          ideationStore.ideatedAgent.guardrails.push(newGuardrail);
-        }
-      });
+    // Merge memory
+    if (agent.memory) {
+      ideationStore.ideatedAgent.memory = {
+        ...ideationStore.ideatedAgent.memory,
+        ...agent.memory,
+      };
+    }
+
+    // Replace guardrails array entirely - extraction is authoritative
+    if (agent.guardrails !== undefined) {
+      ideationStore.ideatedAgent.guardrails = agent.guardrails;
     }
   },
 
