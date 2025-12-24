@@ -21,6 +21,11 @@ import {
   Play,
   CheckCircle2,
   ArrowRightLeft,
+  Copy,
+  Check,
+  FileJson,
+  FileText,
+  FileCode,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -32,6 +37,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIdeation } from '@/stores';
 import type {
   IdeatedAgent,
@@ -45,6 +51,227 @@ import type {
   IdeatedCollaboration,
   IdeatedMemory,
 } from '@/lib/ideation/agent-context';
+
+// ============ Export Utilities ============
+
+/**
+ * Convert a value to YAML format (simple implementation)
+ */
+function toYaml(obj: unknown, indent = 0): string {
+  const prefix = '  '.repeat(indent);
+
+  if (obj === null || obj === undefined) {
+    return 'null';
+  }
+
+  if (typeof obj === 'string') {
+    // Escape strings that need quoting
+    if (obj.includes('\n') || obj.includes(':') || obj.includes('#') ||
+        obj.includes('"') || obj.includes("'") || obj.trim() !== obj ||
+        obj === '' || /^[\d.]+$/.test(obj) || ['true', 'false', 'null'].includes(obj.toLowerCase())) {
+      return `"${obj.replace(/"/g, '\\"').replace(/\n/g, '\\n')}"`;
+    }
+    return obj;
+  }
+
+  if (typeof obj === 'number' || typeof obj === 'boolean') {
+    return String(obj);
+  }
+
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) return '[]';
+    return obj.map((item) => {
+      const value = toYaml(item, indent + 1);
+      if (typeof item === 'object' && item !== null) {
+        return `${prefix}- ${value.trim().split('\n').join(`\n${prefix}  `)}`;
+      }
+      return `${prefix}- ${value}`;
+    }).join('\n');
+  }
+
+  if (typeof obj === 'object') {
+    const entries = Object.entries(obj).filter(([, v]) => v !== undefined && v !== null);
+    if (entries.length === 0) return '{}';
+
+    return entries.map(([key, value]) => {
+      const yamlValue = toYaml(value, indent + 1);
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        return `${prefix}${key}:\n${yamlValue}`;
+      }
+      if (Array.isArray(value) && value.length > 0) {
+        return `${prefix}${key}:\n${yamlValue}`;
+      }
+      return `${prefix}${key}: ${yamlValue}`;
+    }).join('\n');
+  }
+
+  return String(obj);
+}
+
+/**
+ * Convert agent to Markdown format
+ */
+function toMarkdown(agent: IdeatedAgent): string {
+  const lines: string[] = [];
+
+  // Title
+  lines.push(`# ${agent.name || 'Untitled Agent'}`);
+  lines.push('');
+
+  // Identity
+  if (agent.role || agent.purpose || agent.autonomyLevel) {
+    lines.push('## Identity');
+    lines.push('');
+    if (agent.identifier) lines.push(`**Identifier:** \`${agent.identifier}\``);
+    if (agent.role) lines.push(`**Role:** ${agent.role}`);
+    if (agent.purpose) lines.push(`**Purpose:** ${agent.purpose}`);
+    if (agent.autonomyLevel) lines.push(`**Autonomy Level:** ${agent.autonomyLevel.replace(/_/g, ' ')}`);
+    if (agent.tags?.length) lines.push(`**Tags:** ${agent.tags.join(', ')}`);
+    lines.push('');
+  }
+
+  // Skills
+  if (agent.skills.length > 0) {
+    lines.push('## Skills');
+    lines.push('');
+
+    agent.skills.forEach((skill, index) => {
+      lines.push(`### ${index + 1}. ${skill.name}`);
+      lines.push('');
+
+      if (skill.description) lines.push(skill.description);
+      if (skill.domain) lines.push(`**Domain:** ${skill.domain}`);
+      if (skill.acquired) lines.push(`**Acquired:** ${skill.acquired.replace(/_/g, ' ')}`);
+      lines.push('');
+
+      if (skill.triggers?.length) {
+        lines.push('#### Triggers');
+        skill.triggers.forEach((t) => {
+          lines.push(`- **${t.type}:** ${t.description}`);
+        });
+        lines.push('');
+      }
+
+      if (skill.tools?.length) {
+        lines.push('#### Tools');
+        skill.tools.forEach((t) => {
+          lines.push(`- **${t.name}** (${t.permissions.join(', ')}): ${t.purpose}`);
+        });
+        lines.push('');
+      }
+
+      if (skill.behavior) {
+        lines.push('#### Behavior');
+        lines.push(`**Model:** ${skill.behavior.model}`);
+        if (skill.behavior.steps?.length) {
+          lines.push('**Steps:**');
+          skill.behavior.steps.forEach((s, i) => lines.push(`${i + 1}. ${s}`));
+        }
+        lines.push('');
+      }
+
+      if (skill.acceptance?.successConditions?.length) {
+        lines.push('#### Acceptance Criteria');
+        skill.acceptance.successConditions.forEach((c) => lines.push(`- ${c}`));
+        lines.push('');
+      }
+
+      if (skill.guardrails?.length) {
+        lines.push('#### Guardrails');
+        skill.guardrails.forEach((g) => {
+          lines.push(`- **${g.name}:** ${g.constraint}`);
+        });
+        lines.push('');
+      }
+    });
+  }
+
+  // Human Interaction
+  if (agent.humanInteraction) {
+    lines.push('## Human Interaction');
+    lines.push('');
+    if (agent.humanInteraction.mode) {
+      lines.push(`**Mode:** ${agent.humanInteraction.mode.replace(/_/g, ' ')}`);
+    }
+    if (agent.humanInteraction.checkpoints?.length) {
+      lines.push('**Checkpoints:**');
+      agent.humanInteraction.checkpoints.forEach((cp) => {
+        lines.push(`- ${cp.name} (${cp.type}): ${cp.trigger}`);
+      });
+    }
+    lines.push('');
+  }
+
+  // Collaboration
+  if (agent.collaboration) {
+    lines.push('## Collaboration');
+    lines.push('');
+    if (agent.collaboration.role) lines.push(`**Role:** ${agent.collaboration.role}`);
+    if (agent.collaboration.reportsTo) lines.push(`**Reports To:** ${agent.collaboration.reportsTo}`);
+    lines.push('');
+  }
+
+  // Memory
+  if (agent.memory) {
+    lines.push('## Memory');
+    lines.push('');
+    if (agent.memory.working?.length) {
+      lines.push('**Working Memory:** ' + agent.memory.working.join(', '));
+    }
+    if (agent.memory.persistent?.length) {
+      lines.push('**Persistent Stores:**');
+      agent.memory.persistent.forEach((p) => {
+        lines.push(`- ${p.name} (${p.type}): ${p.purpose}`);
+      });
+    }
+    lines.push('');
+  }
+
+  // Guardrails
+  if (agent.guardrails?.length) {
+    lines.push('## Guardrails');
+    lines.push('');
+    agent.guardrails.forEach((g) => {
+      lines.push(`### ${g.name}`);
+      lines.push(g.constraint);
+      if (g.rationale) lines.push(`*${g.rationale}*`);
+      if (g.enforcement) lines.push(`**Enforcement:** ${g.enforcement}`);
+      lines.push('');
+    });
+  }
+
+  // Notes
+  if (agent.notes) {
+    lines.push('## Notes');
+    lines.push('');
+    lines.push(agent.notes);
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Clean agent object for export (remove undefined/null values)
+ */
+function cleanForExport(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return undefined;
+  if (typeof obj !== 'object') return obj;
+
+  if (Array.isArray(obj)) {
+    const cleaned = obj.map(cleanForExport).filter((v) => v !== undefined);
+    return cleaned.length > 0 ? cleaned : undefined;
+  }
+
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    const cleaned = cleanForExport(value);
+    if (cleaned !== undefined) {
+      result[key] = cleaned;
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
 
 interface AgentPanelProps {
   isExtracting?: boolean;
@@ -62,19 +289,6 @@ export function AgentPanel({ isExtracting, onRefresh }: AgentPanelProps) {
     agent.purpose ||
     agent.skills.length > 0 ||
     (agent.guardrails && agent.guardrails.length > 0);
-
-  const handleExport = () => {
-    const json = JSON.stringify(agent, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${agent.identifier || agent.name || 'agent'}-ideation.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
 
   // Calculate completeness score
   const completenessScore = React.useMemo(() => {
@@ -195,10 +409,6 @@ export function AgentPanel({ isExtracting, onRefresh }: AgentPanelProps) {
                     Refresh
                   </Button>
                 )}
-                <Button variant="outline" size="sm" onClick={handleExport}>
-                  <Download className="h-4 w-4 mr-1" />
-                  Export
-                </Button>
               </div>
             </div>
             <SheetDescription>
@@ -206,9 +416,56 @@ export function AgentPanel({ isExtracting, onRefresh }: AgentPanelProps) {
             </SheetDescription>
           </SheetHeader>
 
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <ExpandedView agent={agent} completenessScore={completenessScore} />
-          </ScrollArea>
+          <Tabs defaultValue="spec" className="flex-1 flex flex-col overflow-hidden mt-4">
+            <TabsList className="grid w-full grid-cols-4 flex-shrink-0">
+              <TabsTrigger value="spec" className="flex items-center gap-1.5">
+                <Bot className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Spec</span>
+              </TabsTrigger>
+              <TabsTrigger value="json" className="flex items-center gap-1.5">
+                <FileJson className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">JSON</span>
+              </TabsTrigger>
+              <TabsTrigger value="yaml" className="flex items-center gap-1.5">
+                <FileCode className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">YAML</span>
+              </TabsTrigger>
+              <TabsTrigger value="markdown" className="flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">MD</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="spec" className="flex-1 overflow-hidden mt-4">
+              <ScrollArea className="h-full -mx-6 px-6">
+                <ExpandedView agent={agent} completenessScore={completenessScore} />
+              </ScrollArea>
+            </TabsContent>
+
+            <TabsContent value="json" className="flex-1 overflow-hidden mt-4">
+              <ExportView
+                content={JSON.stringify(cleanForExport(agent), null, 2)}
+                filename={`${agent.identifier || agent.name || 'agent'}.json`}
+                language="json"
+              />
+            </TabsContent>
+
+            <TabsContent value="yaml" className="flex-1 overflow-hidden mt-4">
+              <ExportView
+                content={toYaml(cleanForExport(agent))}
+                filename={`${agent.identifier || agent.name || 'agent'}.yaml`}
+                language="yaml"
+              />
+            </TabsContent>
+
+            <TabsContent value="markdown" className="flex-1 overflow-hidden mt-4">
+              <ExportView
+                content={toMarkdown(agent)}
+                filename={`${agent.identifier || agent.name || 'agent'}.md`}
+                language="markdown"
+              />
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
     </>
@@ -991,6 +1248,94 @@ function GuardrailCard({ guardrail }: { guardrail: IdeatedGuardrail }) {
           {guardrail.rationale}
         </p>
       )}
+    </div>
+  );
+}
+
+// ============ Export View ============
+
+interface ExportViewProps {
+  content: string;
+  filename: string;
+  language: 'json' | 'yaml' | 'markdown';
+}
+
+function ExportView({ content, filename, language }: ExportViewProps) {
+  const [copied, setCopied] = React.useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  const handleDownload = () => {
+    const mimeTypes = {
+      json: 'application/json',
+      yaml: 'text/yaml',
+      markdown: 'text/markdown',
+    };
+    const blob = new Blob([content], { type: mimeTypes[language] });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="h-full flex flex-col">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">
+            {filename}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopy}
+            className="h-8"
+          >
+            {copied ? (
+              <>
+                <Check className="h-3.5 w-3.5 mr-1.5 text-green-500" />
+                Copied
+              </>
+            ) : (
+              <>
+                <Copy className="h-3.5 w-3.5 mr-1.5" />
+                Copy
+              </>
+            )}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownload}
+            className="h-8"
+          >
+            <Download className="h-3.5 w-3.5 mr-1.5" />
+            Download
+          </Button>
+        </div>
+      </div>
+
+      {/* Code Display */}
+      <ScrollArea className="flex-1 -mx-6 px-6">
+        <pre className="p-4 rounded-lg bg-muted text-sm font-mono overflow-x-auto whitespace-pre-wrap break-words">
+          <code>{content}</code>
+        </pre>
+      </ScrollArea>
     </div>
   );
 }
