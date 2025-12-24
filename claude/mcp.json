@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "helpdesk-api": {
+      "command": "npx @helpdesk-api/mcp-server",
+      "args": []
+    },
+    "customer-crm": {
+      "command": "npx @customer-crm/mcp-server",
+      "args": []
+    },
+    "sentiment-analysis-api": {
+      "command": "npx @sentiment-analysis-api/mcp-server",
+      "args": []
+    },
+    "knowledge-base-api": {
+      "command": "npx @knowledge-base-api/mcp-server",
+      "args": []
+    },
+    "vector-search": {
+      "command": "npx @vector-search/mcp-server",
+      "args": []
+    },
+    "response-template-engine": {
+      "command": "npx @response-template-engine/mcp-server",
+      "args": []
+    },
+    "agent-availability-api": {
+      "command": "npx @agent-availability-api/mcp-server",
+      "args": []
+    },
+    "slack-notifier": {
+      "command": "npx @slack-notifier/mcp-server",
+      "args": []
+    }
+  }
+}
