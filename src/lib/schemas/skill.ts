@@ -6,6 +6,80 @@ import { SkillToolSchema } from './tools';
 import { SkillAcceptanceCriteriaSchema } from './acceptance';
 import { SkillGuardrailSchema } from './guardrails';
 
+// ============================================================================
+// AgentSkills.io Portability Schema
+// See: https://agentskills.io/specification
+// ============================================================================
+
+// Script language options for agentskills.io scripts/ directory
+export const ScriptLanguageEnum = z.enum(['python', 'bash', 'javascript', 'typescript']);
+export type ScriptLanguage = z.infer<typeof ScriptLanguageEnum>;
+
+// Script reference for agentskills.io compatibility
+export const SkillScriptSchema = z.object({
+  filename: z.string().min(1).describe('Script filename (e.g., "extract.py")'),
+  language: ScriptLanguageEnum,
+  purpose: z.string().min(1).describe('What this script does'),
+  content: z.string().optional().describe('Inline script content, if not external file')
+});
+
+export type SkillScript = z.infer<typeof SkillScriptSchema>;
+
+// Reference document for agentskills.io compatibility
+export const SkillReferenceSchema = z.object({
+  filename: z.string().min(1).describe('Reference filename (e.g., "REFERENCE.md")'),
+  title: z.string().min(1).describe('Human-readable title'),
+  content: z.string().optional().describe('Inline reference content, if not external file')
+});
+
+export type SkillReference = z.infer<typeof SkillReferenceSchema>;
+
+// AgentSkills.io portability configuration
+export const AgentSkillsPortabilitySchema = z.object({
+  // Required by agentskills.io
+  slug: z.string()
+    .min(1)
+    .max(64)
+    .regex(/^[a-z][a-z0-9]*(-[a-z0-9]+)*$/, {
+      message: 'Must be lowercase alphanumeric with single hyphens, no leading/trailing hyphens'
+    })
+    .describe('AgentSkills.io compatible name (kebab-case)'),
+
+  // Optional agentskills.io fields
+  license: z.string()
+    .max(100)
+    .optional()
+    .describe('SPDX license identifier or custom license name (e.g., "MIT", "Apache-2.0")'),
+
+  compatibility: z.string()
+    .max(500)
+    .optional()
+    .describe('Environment requirements (e.g., "Python 3.10+, Node 18+")'),
+
+  // References to additional files
+  scripts: z.array(SkillScriptSchema).optional()
+    .describe('Executable scripts for this skill'),
+
+  references: z.array(SkillReferenceSchema).optional()
+    .describe('Additional documentation files')
+});
+
+export type AgentSkillsPortability = z.infer<typeof AgentSkillsPortabilitySchema>;
+
+// Common license options for UI
+export const COMMON_LICENSES = [
+  'MIT',
+  'Apache-2.0',
+  'BSD-3-Clause',
+  'GPL-3.0',
+  'ISC',
+  'proprietary'
+] as const;
+
+// ============================================================================
+// Skill Acquisition Types
+// ============================================================================
+
 // Skill acquisition types
 export const SkillAcquisitionEnum = z.enum([
   'built_in',    // Core competency the agent is designed with
@@ -59,9 +133,13 @@ export const SkillSchema = z.object({
   // Identity
   id: z.string().optional(),
   name: z.string().min(1),
-  description: z.string().min(1).describe('What this skill does'),
+  description: z.string().min(1).max(1024).describe('What this skill does (max 1024 chars for agentskills.io)'),
   domain: z.string().min(1).describe('Knowledge domain (e.g., "NLP", "Workflow Management")'),
   acquired: SkillAcquisitionEnum,
+
+  // AgentSkills.io Portability (optional)
+  portability: AgentSkillsPortabilitySchema.optional()
+    .describe('AgentSkills.io compatibility settings for export/import'),
 
   // Interface (when this skill activates and what it produces)
   triggers: z.array(SkillTriggerSchema).min(1).describe('When this skill activates'),
@@ -164,4 +242,118 @@ export function getSkillCompleteness(skill: Skill): {
     complete: missing.length === 0,
     missing
   };
+}
+
+// ============================================================================
+// AgentSkills.io Portability Helpers
+// ============================================================================
+
+/**
+ * Generate a valid agentskills.io slug from a skill name.
+ * Converts to lowercase, replaces non-alphanumeric chars with hyphens,
+ * removes leading/trailing hyphens, and collapses consecutive hyphens.
+ */
+export function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')  // Replace non-alphanumeric with hyphens
+    .replace(/^-+|-+$/g, '')       // Remove leading/trailing hyphens
+    .replace(/-{2,}/g, '-')        // Collapse consecutive hyphens
+    .slice(0, 64);                 // Truncate to max length
+}
+
+/**
+ * Validate a slug against agentskills.io requirements.
+ * Must be lowercase alphanumeric with single hyphens, no leading/trailing hyphens.
+ */
+export function isValidSlug(slug: string): boolean {
+  return /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/.test(slug) && slug.length <= 64;
+}
+
+/**
+ * Check if a skill has the required portability data for agentskills.io export.
+ */
+export function hasPortabilityData(skill: Skill): boolean {
+  return !!(skill.portability?.slug && isValidSlug(skill.portability.slug));
+}
+
+/**
+ * Get detailed portability completeness for UI indicators.
+ * Returns whether the skill is ready for export and what fields are missing/optional.
+ */
+export function getPortabilityCompleteness(skill: Skill): {
+  ready: boolean;
+  missing: string[];
+  optional: string[];
+} {
+  const missing: string[] = [];
+  const optional: string[] = [];
+
+  // Required field
+  if (!skill.portability?.slug) {
+    missing.push('slug');
+  } else if (!isValidSlug(skill.portability.slug)) {
+    missing.push('valid slug format');
+  }
+
+  // Optional but recommended fields
+  if (!skill.portability?.license) {
+    optional.push('license');
+  }
+
+  if (!skill.portability?.compatibility) {
+    optional.push('compatibility');
+  }
+
+  return {
+    ready: missing.length === 0,
+    missing,
+    optional
+  };
+}
+
+/**
+ * Auto-populate portability defaults from existing skill data.
+ * Generates slug from name and compatibility from tools.
+ */
+export function populatePortabilityDefaults(skill: Skill): Skill {
+  if (skill.portability?.slug) {
+    // Already has portability data, don't overwrite
+    return skill;
+  }
+
+  const generatedSlug = generateSlug(skill.name);
+  const compatibility = skill.tools?.length
+    ? `Requires: ${skill.tools.map(t => t.name).join(', ')}`
+    : undefined;
+
+  return {
+    ...skill,
+    portability: {
+      slug: generatedSlug,
+      compatibility,
+      ...skill.portability
+    }
+  };
+}
+
+/**
+ * Infer script language from filename extension.
+ */
+export function inferScriptLanguage(filename: string): ScriptLanguage {
+  if (filename.endsWith('.py')) return 'python';
+  if (filename.endsWith('.sh') || filename.endsWith('.bash')) return 'bash';
+  if (filename.endsWith('.ts') || filename.endsWith('.tsx')) return 'typescript';
+  return 'javascript';
+}
+
+/**
+ * Convert a slug back to a human-readable title case name.
+ */
+export function slugToName(slug: string): string {
+  return slug
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
 }

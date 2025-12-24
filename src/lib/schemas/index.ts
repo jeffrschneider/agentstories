@@ -185,22 +185,43 @@ export {
 
 // Skills
 export {
+  // Enums
   SkillAcquisitionEnum,
+  ScriptLanguageEnum,
+  // Schemas
   SkillInputSchema,
   SkillOutputSchema,
   FailureModeSchema,
   SkillFailureHandlingSchema,
+  SkillScriptSchema,
+  SkillReferenceSchema,
+  AgentSkillsPortabilitySchema,
   SkillSchema,
   SkillsSchema,
+  // Constants
   SKILL_ACQUISITION_METADATA,
   SKILL_DOMAINS,
+  COMMON_LICENSES,
+  // Helper functions
   createEmptySkill,
   getSkillCompleteness,
+  generateSlug,
+  isValidSlug,
+  hasPortabilityData,
+  getPortabilityCompleteness,
+  populatePortabilityDefaults,
+  inferScriptLanguage,
+  slugToName,
+  // Types
   type SkillAcquisition,
+  type ScriptLanguage,
   type SkillInput,
   type SkillOutput,
   type FailureMode,
   type SkillFailureHandling,
+  type SkillScript,
+  type SkillReference,
+  type AgentSkillsPortability,
   type Skill,
   type Skills
 } from './skill';
