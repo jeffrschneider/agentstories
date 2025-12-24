@@ -15,15 +15,6 @@ export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
 
-    // Debug logging
-    console.log('=== Ideation API Debug ===');
-    console.log('API Key exists:', !!apiKey);
-    console.log('API Key length:', apiKey?.length || 0);
-    console.log('API Key prefix:', apiKey?.substring(0, 15) + '...');
-    console.log('API Key has whitespace:', apiKey !== apiKey?.trim());
-    console.log('API Key has quotes:', apiKey?.startsWith('"') || apiKey?.startsWith("'"));
-    console.log('All env keys:', Object.keys(process.env).filter(k => k.includes('ANTHROPIC')));
-
     if (!apiKey) {
       return NextResponse.json(
         { error: 'ANTHROPIC_API_KEY environment variable is not set. Please add it to .env.local' },
@@ -33,8 +24,6 @@ export async function POST(request: NextRequest) {
 
     // Use trimmed key in case of whitespace issues
     const cleanApiKey = apiKey.trim().replace(/^["']|["']$/g, '');
-    console.log('Clean API Key prefix:', cleanApiKey.substring(0, 15) + '...');
-
     const anthropic = new Anthropic({ apiKey: cleanApiKey });
 
     const body: IdeationRequest = await request.json();
@@ -53,21 +42,49 @@ export async function POST(request: NextRequest) {
       content: msg.content,
     }));
 
-    // Call Claude Opus
-    const response = await anthropic.messages.create({
+    // Create a streaming response using the Anthropic SDK
+    const stream = anthropic.messages.stream({
       model: 'claude-opus-4-5-20251101',
       max_tokens: 4096,
       system: IDEATION_SYSTEM_PROMPT,
       messages: formattedMessages,
     });
 
-    // Extract the text content from the response
-    const textContent = response.content.find((block) => block.type === 'text');
-    const assistantMessage = textContent?.type === 'text' ? textContent.text : '';
+    // Create a ReadableStream that forwards the Anthropic stream as SSE
+    const encoder = new TextEncoder();
+    const readableStream = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (event.type === 'content_block_delta') {
+              const delta = event.delta;
+              if ('text' in delta) {
+                // Send text delta as SSE
+                const sseData = `data: ${JSON.stringify({ type: 'delta', text: delta.text })}\n\n`;
+                controller.enqueue(encoder.encode(sseData));
+              }
+            } else if (event.type === 'message_stop') {
+              // Signal completion
+              const sseData = `data: ${JSON.stringify({ type: 'done' })}\n\n`;
+              controller.enqueue(encoder.encode(sseData));
+            }
+          }
+          controller.close();
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : 'Stream error';
+          const sseData = `data: ${JSON.stringify({ type: 'error', error: errorMessage })}\n\n`;
+          controller.enqueue(encoder.encode(sseData));
+          controller.close();
+        }
+      },
+    });
 
-    return NextResponse.json({
-      message: assistantMessage,
-      usage: response.usage,
+    return new Response(readableStream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
     });
   } catch (error) {
     console.error('Ideation API error:', error);
