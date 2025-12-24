@@ -7,7 +7,7 @@ import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AgentSection, SkillsSection, LinkedHAPsSection, ImportExportDialog } from "@/components/story-editor";
+import { AgentSection, SkillsSection, LinkedHAPsSection, ImportExportDialog, HarnessExportDialog } from "@/components/story-editor";
 import { ValidationPanel } from "@/components/story-editor/validation-panel";
 import { StoryPreview } from "@/components/story-preview";
 import { storyEditorActions, useStoryEditor } from "@/stores";
@@ -157,6 +157,11 @@ export default function EditStoryPage() {
               {/* Import/Export Dialog */}
               {currentStoryData.id && (
                 <ImportExportDialog story={currentStoryData} />
+              )}
+
+              {/* Harness Export Dialog */}
+              {currentStoryData.id && (
+                <HarnessExportDialog story={currentStoryData} />
               )}
 
               <Button variant="ghost" size="icon" onClick={handleDuplicate} title="Duplicate">
