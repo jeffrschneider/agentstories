@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { AppShell } from '@/components/layout';
 import { ChatInterface, AgentPanel } from '@/components/ideation';
-import { useIdeation, ideationActions } from '@/stores';
+import { useIdeation, ideationActions, ideationStore } from '@/stores';
 import type { IdeatedAgent } from '@/lib/ideation/agent-context';
 
 export default function IdeationPage() {
@@ -11,12 +11,13 @@ export default function IdeationPage() {
   const [isExtracting, setIsExtracting] = React.useState(false);
 
   const handleExtract = React.useCallback(async () => {
-    // Only extract if there are enough messages
-    if (ideation.messages.length < 2) return;
+    // Read directly from store to get latest messages (snapshot may be stale)
+    const currentMessages = ideationStore.messages;
+    if (currentMessages.length < 2) return;
 
     setIsExtracting(true);
     try {
-      const messages = ideation.messages.map((m) => ({
+      const messages = currentMessages.map((m) => ({
         role: m.role,
         content: m.content,
       }));
@@ -38,7 +39,7 @@ export default function IdeationPage() {
     } finally {
       setIsExtracting(false);
     }
-  }, [ideation.messages]);
+  }, []);
 
   const handleRefreshExtract = React.useCallback(() => {
     handleExtract();
