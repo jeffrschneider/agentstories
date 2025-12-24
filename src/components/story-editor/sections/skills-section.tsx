@@ -1,21 +1,20 @@
 "use client";
 
 import { useSnapshot } from "valtio";
-import { Plus, Trash2, ChevronDown, ChevronUp, Zap, Wrench, Share2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, ChevronUp, Zap, Wrench } from "lucide-react";
 import { useState } from "react";
 import { storyEditorStore, storyEditorActions } from "@/stores";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skill, createEmptySkill, SKILL_ACQUISITION_METADATA, hasPortabilityData } from "@/lib/schemas/skill";
+import { Skill, createEmptySkill, SKILL_ACQUISITION_METADATA } from "@/lib/schemas/skill";
 import {
   SkillIdentityEditor,
   SkillTriggersEditor,
   SkillToolsEditor,
   SkillBehaviorEditor,
   SkillAcceptanceEditor,
-  SkillPortabilityEditor,
 } from "./skill-editors";
 
 export function SkillsSection() {
@@ -168,12 +167,6 @@ function SkillEditor({
               {SKILL_ACQUISITION_METADATA[skill.acquired as keyof typeof SKILL_ACQUISITION_METADATA]?.label}
             </Badge>
           )}
-          {hasPortabilityData(skill) && (
-            <Badge variant="outline" className="text-xs text-green-600 border-green-600">
-              <Share2 className="mr-1 h-2 w-2" />
-              Portable
-            </Badge>
-          )}
           <Button
             variant="ghost"
             size="icon"
@@ -190,16 +183,12 @@ function SkillEditor({
       {isExpanded && (
         <div className="p-4 border-t">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-6 mb-4">
+            <TabsList className="grid grid-cols-5 mb-4">
               <TabsTrigger value="identity">Identity</TabsTrigger>
               <TabsTrigger value="triggers">Triggers</TabsTrigger>
               <TabsTrigger value="tools">Tools</TabsTrigger>
               <TabsTrigger value="behavior">Behavior</TabsTrigger>
               <TabsTrigger value="acceptance">Acceptance</TabsTrigger>
-              <TabsTrigger value="portability" className="flex items-center gap-1">
-                <Share2 className="h-3 w-3" />
-                Export
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="identity" className="space-y-4">
@@ -220,10 +209,6 @@ function SkillEditor({
 
             <TabsContent value="acceptance" className="space-y-4">
               <SkillAcceptanceEditor skill={skill} onUpdate={onUpdate} />
-            </TabsContent>
-
-            <TabsContent value="portability" className="space-y-4">
-              <SkillPortabilityEditor skill={skill} onUpdate={onUpdate} />
             </TabsContent>
           </Tabs>
         </div>
