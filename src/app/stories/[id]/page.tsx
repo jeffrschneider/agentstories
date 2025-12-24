@@ -2,14 +2,14 @@
 
 import { useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Save, Loader2, Trash2, Copy, Eye, Download, User, Zap, Users } from "lucide-react";
+import { Save, Loader2, Trash2, Copy, Eye, User, Zap, Users } from "lucide-react";
 import Link from "next/link";
 import { AppShell } from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { AgentSection, SkillsSection, LinkedHAPsSection } from "@/components/story-editor";
+import { AgentSection, SkillsSection, LinkedHAPsSection, ImportExportDialog } from "@/components/story-editor";
 import { ValidationPanel } from "@/components/story-editor/validation-panel";
-import { StoryPreview, ExportPanel } from "@/components/story-preview";
+import { StoryPreview } from "@/components/story-preview";
 import { storyEditorActions, useStoryEditor } from "@/stores";
 import { useStory, useUpdateStory, useDeleteStory, useDuplicateStory } from "@/hooks";
 import {
@@ -154,28 +154,10 @@ export default function EditStoryPage() {
                 </SheetContent>
               </Sheet>
 
-              {/* Export Sheet */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon" title="Export">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-[600px] sm:max-w-[600px] overflow-y-auto">
-                  <SheetHeader>
-                    <SheetTitle>Export</SheetTitle>
-                  </SheetHeader>
-                  <div className="mt-4">
-                    {currentStoryData.id ? (
-                      <ExportPanel story={currentStoryData} />
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground">
-                        Loading export...
-                      </div>
-                    )}
-                  </div>
-                </SheetContent>
-              </Sheet>
+              {/* Import/Export Dialog */}
+              {currentStoryData.id && (
+                <ImportExportDialog story={currentStoryData} />
+              )}
 
               <Button variant="ghost" size="icon" onClick={handleDuplicate} title="Duplicate">
                 <Copy className="h-4 w-4" />
