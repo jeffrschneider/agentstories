@@ -184,7 +184,7 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
         >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="select" className="flex items-center gap-2">
-              <Checkbox className="h-3 w-3" />
+              <Server className="mr-2 h-4 w-4" />
               Select Harnesses
             </TabsTrigger>
             <TabsTrigger value="preview" disabled={!exportResult}>
