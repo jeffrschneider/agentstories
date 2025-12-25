@@ -16,10 +16,6 @@ import {
   Kanban,
   ChevronsLeft,
   ChevronsRight,
-  Sparkles,
-  MessageSquare,
-  Play,
-  FileOutput,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -41,35 +37,16 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
-interface NavSection {
-  label: string;
-  items: NavItem[];
-}
-
-// Ideation & Rapid Testing
-const ideationSection: NavSection = {
-  label: "IDEATION",
-  items: [
-    { title: "Chat", href: "/ideation", icon: MessageSquare },
-    { title: "Try It", href: "/ideation/try", icon: Play },
-    { title: "Export", href: "/ideation/export", icon: FileOutput },
-  ],
-};
-
-// Portfolio Management
-const portfolioSection: NavSection = {
-  label: "PORTFOLIO",
-  items: [
-    { title: "Overview", href: "/", icon: Home },
-    { title: "Agent Stories", href: "/stories", icon: FileText },
-    { title: "Human-Agent Pairs", href: "/haps", icon: Users },
-    { title: "Agent Lifecycle", href: "/agents", icon: Bot },
-    { title: "Pipeline", href: "/pipeline", icon: Kanban },
-    { title: "Organization", href: "/organization", icon: Building2 },
-    { title: "Capability Queue", href: "/capability-queue", icon: Lightbulb },
-    { title: "Templates", href: "/templates", icon: LayoutTemplate },
-  ],
-};
+const mainNavItems: NavItem[] = [
+  { title: "Overview", href: "/", icon: Home },
+  { title: "Agent Stories", href: "/stories", icon: FileText },
+  { title: "Human-Agent Pairs", href: "/haps", icon: Users },
+  { title: "Agent Lifecycle", href: "/agents", icon: Bot },
+  { title: "Pipeline", href: "/pipeline", icon: Kanban },
+  { title: "Organization", href: "/organization", icon: Building2 },
+  { title: "Capability Queue", href: "/capability-queue", icon: Lightbulb },
+  { title: "Templates", href: "/templates", icon: LayoutTemplate },
+];
 
 const bottomNavItems: NavItem[] = [
   { title: "Settings", href: "/settings", icon: Settings },
@@ -116,19 +93,6 @@ export function Sidebar({ className }: SidebarProps) {
     return linkContent;
   };
 
-  const SectionHeader = ({ label }: { label: string }) => {
-    if (isCollapsed) {
-      return <div className="my-2 border-t border-border" />;
-    }
-    return (
-      <div className="mb-2 mt-4 first:mt-0 px-2">
-        <span className="text-[10px] font-semibold tracking-wider text-muted-foreground/70">
-          {label}
-        </span>
-      </div>
-    );
-  };
-
   return (
     <aside
       className={cn(
@@ -160,22 +124,10 @@ export function Sidebar({ className }: SidebarProps) {
       </div>
 
       <ScrollArea className="flex-1 py-2">
-        <nav className={cn(isCollapsed ? "px-2" : "px-3")}>
-          {/* Ideation Section */}
-          <SectionHeader label={ideationSection.label} />
-          <div className="space-y-1">
-            {ideationSection.items.map((item) => (
-              <NavLink key={item.href} item={item} />
-            ))}
-          </div>
-
-          {/* Portfolio Section */}
-          <SectionHeader label={portfolioSection.label} />
-          <div className="space-y-1">
-            {portfolioSection.items.map((item) => (
-              <NavLink key={item.href} item={item} />
-            ))}
-          </div>
+        <nav className={cn("space-y-1", isCollapsed ? "px-2" : "px-3")}>
+          {mainNavItems.map((item) => (
+            <NavLink key={item.href} item={item} />
+          ))}
         </nav>
       </ScrollArea>
 
