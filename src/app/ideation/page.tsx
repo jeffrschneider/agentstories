@@ -1,13 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { AppShell } from '@/components/layout';
 import { ChatInterface, AgentPanel } from '@/components/ideation';
-import { useIdeation, ideationActions, ideationStore } from '@/stores';
+import { ideationActions, ideationStore } from '@/stores';
 import type { IdeatedAgent } from '@/lib/ideation/agent-context';
 
-export default function IdeationPage() {
-  const ideation = useIdeation();
+export default function IdeationChatPage() {
   const [isExtracting, setIsExtracting] = React.useState(false);
 
   const handleExtract = React.useCallback(async () => {
@@ -46,24 +44,19 @@ export default function IdeationPage() {
   }, [handleExtract]);
 
   return (
-    <AppShell className="p-0">
-      <div className="flex h-[calc(100vh-3.5rem)] flex-col">
-        {/* Main Content - Chat and Panel */}
-        <div className="flex flex-1 overflow-hidden">
-          {/* Chat Area */}
-          <div className="flex-1 min-w-0">
-            <ChatInterface onExtract={handleExtract} />
-          </div>
-
-          {/* Agent Specification Panel */}
-          <div className="hidden lg:block w-80 xl:w-96 flex-shrink-0">
-            <AgentPanel
-              isExtracting={isExtracting}
-              onRefresh={handleRefreshExtract}
-            />
-          </div>
-        </div>
+    <div className="flex h-full overflow-hidden">
+      {/* Chat Area */}
+      <div className="flex-1 min-w-0">
+        <ChatInterface onExtract={handleExtract} />
       </div>
-    </AppShell>
+
+      {/* Agent Specification Panel */}
+      <div className="hidden lg:block w-80 xl:w-96 flex-shrink-0 border-l">
+        <AgentPanel
+          isExtracting={isExtracting}
+          onRefresh={handleRefreshExtract}
+        />
+      </div>
+    </div>
   );
 }
