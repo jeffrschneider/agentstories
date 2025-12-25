@@ -17,7 +17,6 @@ import {
   Copy,
   Check,
   Server,
-  Play,
   FileCode,
   Github,
 } from "lucide-react";
@@ -46,7 +45,6 @@ import {
   type HarnessCompatibility,
   type HarnessExportResult,
 } from "@/lib/export";
-import { TryItChat } from "./try-it-chat";
 import { GitHubPublish } from "./github-publish";
 
 interface HarnessExportDialogProps {
@@ -69,7 +67,7 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
   const [exportResult, setExportResult] = useState<HarnessExportResult | null>(null);
   const [isExporting, setIsExporting] = useState(false);
   const [expandedAdapter, setExpandedAdapter] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"export" | "github" | "tryit">("export");
+  const [activeTab, setActiveTab] = useState<"export" | "github">("export");
 
   // Load adapters and check compatibility
   useEffect(() => {
@@ -175,7 +173,7 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
         <DialogHeader className="shrink-0">
           <DialogTitle>Agent Harness Tools</DialogTitle>
           <DialogDescription>
-            Export configs for different frameworks or test your agent directly
+            Generate framework-specific configurations and push to GitHub
           </DialogDescription>
         </DialogHeader>
 
@@ -184,7 +182,7 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
           onValueChange={(v) => setActiveTab(v as typeof activeTab)}
           className="flex-1 flex flex-col min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-3 shrink-0">
+          <TabsList className="grid w-full grid-cols-2 shrink-0">
             <TabsTrigger value="export" className="flex items-center gap-2">
               <FileCode className="h-4 w-4" />
               Export Configs
@@ -192,10 +190,6 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
             <TabsTrigger value="github" className="flex items-center gap-2">
               <Github className="h-4 w-4" />
               Push to GitHub
-            </TabsTrigger>
-            <TabsTrigger value="tryit" className="flex items-center gap-2">
-              <Play className="h-4 w-4" />
-              Try It Live
             </TabsTrigger>
           </TabsList>
 
@@ -221,10 +215,6 @@ export function HarnessExportDialog({ story }: HarnessExportDialogProps) {
               exportResult={exportResult}
               onExportNeeded={() => setActiveTab("export")}
             />
-          </TabsContent>
-
-          <TabsContent value="tryit" className="flex-1 mt-4 overflow-hidden flex flex-col min-h-0">
-            <TryItChat story={story} />
           </TabsContent>
         </Tabs>
       </DialogContent>
