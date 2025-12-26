@@ -72,6 +72,9 @@ export function inferFileType(path: string): AgentFileType {
   if (path === 'tools/mcp-servers.json' || path.includes('mcp')) {
     return 'mcp-config';
   }
+  if (path === 'config.yaml') {
+    return 'config';
+  }
   if (path.startsWith('.agentstories/')) {
     return 'config';
   }

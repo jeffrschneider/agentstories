@@ -15,26 +15,58 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
   const files: AgentFile[] = [];
   const now = story.updatedAt || new Date().toISOString();
 
-  // AGENTS.md from agent identity
+  // agent.md - Core agent definition and behavior
   files.push({
-    path: 'AGENTS.md',
-    content: generateAgentsMd(story),
+    path: 'agent.md',
+    content: generateAgentMd(story),
     type: 'agents',
     lastModified: now,
   });
 
-  // Always add placeholder folders for skills and tools
-  // These act as empty directory markers that show in the file tree
+  // config.yaml - Agent configuration settings
+  files.push({
+    path: 'config.yaml',
+    content: generateAgentConfig(story),
+    type: 'config',
+    lastModified: now,
+  });
+
+  // Directory structure with placeholders
+  // skills/ folder
   files.push({
     path: 'skills/.gitkeep',
-    content: '# Skills folder - add skill subdirectories here',
+    content: '',
+    type: 'unknown',
+    lastModified: now,
+  });
+
+  // memory/ folder structure
+  files.push({
+    path: 'memory/short_term/.gitkeep',
+    content: '',
     type: 'unknown',
     lastModified: now,
   });
 
   files.push({
+    path: 'memory/long_term/.gitkeep',
+    content: '',
+    type: 'unknown',
+    lastModified: now,
+  });
+
+  // tools/ folder (agent-level tools)
+  files.push({
     path: 'tools/.gitkeep',
-    content: '# Tools folder - add MCP server configs here',
+    content: '',
+    type: 'unknown',
+    lastModified: now,
+  });
+
+  // logs/ folder
+  files.push({
+    path: 'logs/.gitkeep',
+    content: '',
     type: 'unknown',
     lastModified: now,
   });
@@ -44,7 +76,7 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
     const slug = generateSlug(skill.name);
     const skillDir = `skills/${slug}`;
 
-    // SKILL.md
+    // SKILL.md - Skill documentation and usage
     files.push({
       path: `${skillDir}/SKILL.md`,
       content: generateSkillMd(skill),
@@ -52,7 +84,7 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
       lastModified: now,
     });
 
-    // config.yaml for skill
+    // config.yaml - Skill-specific settings
     files.push({
       path: `${skillDir}/config.yaml`,
       content: generateSkillConfig(skill),
@@ -60,7 +92,7 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
       lastModified: now,
     });
 
-    // Prompt files
+    // prompts/ folder - always create even if empty
     if (skill.prompts?.length) {
       for (const prompt of skill.prompts) {
         files.push({
@@ -70,9 +102,16 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
           lastModified: now,
         });
       }
+    } else {
+      files.push({
+        path: `${skillDir}/prompts/.gitkeep`,
+        content: '',
+        type: 'unknown',
+        lastModified: now,
+      });
     }
 
-    // Tool implementation files
+    // tools/ folder - always create even if empty
     if (skill.toolImplementations?.length) {
       for (const impl of skill.toolImplementations) {
         files.push({
@@ -82,9 +121,16 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
           lastModified: now,
         });
       }
+    } else {
+      files.push({
+        path: `${skillDir}/tools/.gitkeep`,
+        content: '',
+        type: 'unknown',
+        lastModified: now,
+      });
     }
 
-    // Example files
+    // examples/ folder - always create even if empty
     if (skill.examples?.length) {
       for (const example of skill.examples) {
         files.push({
@@ -94,9 +140,16 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
           lastModified: now,
         });
       }
+    } else {
+      files.push({
+        path: `${skillDir}/examples/.gitkeep`,
+        content: '',
+        type: 'unknown',
+        lastModified: now,
+      });
     }
 
-    // Template files
+    // templates/ folder - only create if has content
     if (skill.templates?.length) {
       for (const template of skill.templates) {
         files.push({
@@ -144,10 +197,12 @@ export function storyToFileSystem(story: AgentStory): AgentFileSystem {
 export function filesToStory(
   fileSystem: AgentFileSystem
 ): AgentStory {
-  const agentFile = fileSystem.files.find(f => f.path === 'AGENTS.md');
+  // Look for agent.md (new format) or AGENTS.md (legacy format)
+  const agentFile = fileSystem.files.find(f => f.path === 'agent.md')
+    || fileSystem.files.find(f => f.path === 'AGENTS.md');
   const skillFiles = fileSystem.files.filter(f => f.type === 'skill');
 
-  const agent = agentFile ? parseAgentsMd(agentFile.content) : {};
+  const agent = agentFile ? parseAgentMd(agentFile.content) : {};
   const skills = skillFiles.map(f => parseSkillMd(f.content, f.path));
 
   return {
@@ -163,10 +218,10 @@ export function filesToStory(
 }
 
 // ============================================================================
-// AGENTS.md Generation
+// agent.md Generation
 // ============================================================================
 
-export function generateAgentsMd(story: AgentStory): string {
+export function generateAgentMd(story: AgentStory): string {
   const lines: string[] = [];
 
   // Title
@@ -272,10 +327,76 @@ function formatAutonomy(level: string): string {
 }
 
 // ============================================================================
-// AGENTS.md Parsing
+// config.yaml Generation (Agent-level)
 // ============================================================================
 
-export function parseAgentsMd(content: string): Partial<AgentStory> {
+function generateAgentConfig(story: AgentStory): string {
+  const lines: string[] = [];
+
+  lines.push('# Agent Configuration');
+  lines.push(`name: ${story.name || 'Untitled Agent'}`);
+  lines.push(`identifier: ${story.identifier || generateSlug(story.name || 'untitled')}`);
+  lines.push(`version: ${story.version || '1.0'}`);
+  lines.push('');
+
+  if (story.autonomyLevel) {
+    lines.push(`autonomy_level: ${story.autonomyLevel}`);
+  }
+
+  if (story.humanInteraction?.mode) {
+    lines.push('');
+    lines.push('human_interaction:');
+    lines.push(`  mode: ${story.humanInteraction.mode}`);
+    if (story.humanInteraction.escalation) {
+      lines.push('  escalation:');
+      if (story.humanInteraction.escalation.conditions) {
+        lines.push(`    conditions: "${story.humanInteraction.escalation.conditions}"`);
+      }
+      if (story.humanInteraction.escalation.channel) {
+        lines.push(`    channel: ${story.humanInteraction.escalation.channel}`);
+      }
+    }
+  }
+
+  if (story.collaboration) {
+    lines.push('');
+    lines.push('collaboration:');
+    if (story.collaboration.role) {
+      lines.push(`  role: ${story.collaboration.role}`);
+    }
+    if (story.collaboration.reportsTo) {
+      lines.push(`  reports_to: ${story.collaboration.reportsTo}`);
+    }
+  }
+
+  if (story.memory) {
+    lines.push('');
+    lines.push('memory:');
+    if (story.memory.working?.length) {
+      lines.push('  working:');
+      for (const item of story.memory.working) {
+        lines.push(`    - "${item}"`);
+      }
+    }
+    if (story.memory.persistent?.length) {
+      lines.push('  persistent:');
+      for (const p of story.memory.persistent) {
+        lines.push(`    - name: ${p.name}`);
+        lines.push(`      type: ${p.type}`);
+        lines.push(`      purpose: "${p.purpose}"`);
+      }
+    }
+  }
+
+  lines.push('');
+  return lines.join('\n');
+}
+
+// ============================================================================
+// agent.md Parsing
+// ============================================================================
+
+export function parseAgentMd(content: string): Partial<AgentStory> {
   const result: Partial<AgentStory> = {};
 
   // Parse title (H1)

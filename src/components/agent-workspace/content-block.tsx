@@ -522,7 +522,7 @@ export function parseContentBlocks(
       } else {
         // Fall back to language-based inference
         if (language === 'markdown' || language === 'md') {
-          targetFile = activeFile?.endsWith('.md') ? activeFile : 'AGENTS.md';
+          targetFile = activeFile?.endsWith('.md') ? activeFile : 'agent.md';
         } else if (language === 'yaml') {
           if (activeFile?.includes('SKILL.md')) {
             targetFile = activeFile;
