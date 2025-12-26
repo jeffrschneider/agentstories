@@ -143,6 +143,11 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
   const processStructuredResponse = React.useCallback((response: AgentChatResponse): ChatAction[] => {
     const actions: ChatAction[] = [];
 
+    // Handle question action - no file changes, just display the message
+    if (response.action === 'question') {
+      return actions; // Empty - the message is already shown in the chat
+    }
+
     // Process agent identity
     if (response.agent) {
       // Build skill links for agent.md
