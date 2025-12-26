@@ -6,10 +6,9 @@ export type AgentFileType =
   | 'agents'
   | 'skill'
   | 'skill-config'
-  | 'prompt'
-  | 'tool-impl'
-  | 'example'
-  | 'template'
+  | 'script'      // Agent Skills spec: executable code
+  | 'reference'   // Agent Skills spec: additional documentation
+  | 'asset'       // Agent Skills spec: static resources
   | 'mcp-config'
   | 'config'
   | 'unknown';
@@ -54,17 +53,15 @@ export function inferFileType(path: string): AgentFileType {
   if (path.startsWith('skills/') && path.endsWith('/config.yaml')) {
     return 'skill-config';
   }
-  if (path.startsWith('skills/') && path.includes('/prompts/')) {
-    return 'prompt';
+  // Agent Skills spec directories
+  if (path.startsWith('skills/') && path.includes('/scripts/')) {
+    return 'script';
   }
-  if (path.startsWith('skills/') && path.includes('/tools/')) {
-    return 'tool-impl';
+  if (path.startsWith('skills/') && path.includes('/references/')) {
+    return 'reference';
   }
-  if (path.startsWith('skills/') && path.includes('/examples/')) {
-    return 'example';
-  }
-  if (path.startsWith('skills/') && path.includes('/templates/')) {
-    return 'template';
+  if (path.startsWith('skills/') && path.includes('/assets/')) {
+    return 'asset';
   }
   if (path.startsWith('skills/') && path.endsWith('.md')) {
     return 'skill';

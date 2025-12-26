@@ -188,29 +188,86 @@ export function AgentWorkspace({
   };
 
   // Handle file creation
-  const handleCreateFile = (parentPath: string, type: 'skill' | 'file') => {
-    if (type === 'skill') {
-      const skillName = `new-skill-${Date.now()}`;
-      const skillPath = `skills/${skillName}/SKILL.md`;
-      const newFile: AgentFile = {
-        path: skillPath,
-        content: generateSkillTemplate(skillName),
-        type: 'skill',
-        lastModified: new Date().toISOString(),
-      };
-      setFileSystem((prev) => ({
-        ...prev,
-        files: [...prev.files, newFile],
-      }));
-      handleSelectFile(skillPath);
-      setHasUnsavedChanges(true);
+  const handleCreateFile = (parentPath: string, type: 'skill' | 'script' | 'reference' | 'asset' | 'config' | 'file') => {
+    const timestamp = Date.now();
+    let newFile: AgentFile;
+
+    switch (type) {
+      case 'skill': {
+        const skillName = `new-skill-${timestamp}`;
+        const skillPath = `skills/${skillName}/SKILL.md`;
+        newFile = {
+          path: skillPath,
+          content: generateSkillTemplate(skillName),
+          type: 'skill',
+          lastModified: new Date().toISOString(),
+        };
+        break;
+      }
+      case 'script': {
+        const filename = `script-${timestamp}.py`;
+        newFile = {
+          path: `${parentPath}/${filename}`,
+          content: `#!/usr/bin/env python3\n"""Script description."""\n\ndef main():\n    pass\n\nif __name__ == '__main__':\n    main()\n`,
+          type: 'script',
+          lastModified: new Date().toISOString(),
+        };
+        break;
+      }
+      case 'reference': {
+        const filename = `reference-${timestamp}.md`;
+        newFile = {
+          path: `${parentPath}/${filename}`,
+          content: `# Reference Document\n\n## Overview\n\nAdd reference documentation here.\n`,
+          type: 'reference',
+          lastModified: new Date().toISOString(),
+        };
+        break;
+      }
+      case 'asset': {
+        const filename = `asset-${timestamp}.yaml`;
+        newFile = {
+          path: `${parentPath}/${filename}`,
+          content: `# Asset configuration\nname: asset\ndescription: Add description\n`,
+          type: 'asset',
+          lastModified: new Date().toISOString(),
+        };
+        break;
+      }
+      case 'config': {
+        const filename = `config-${timestamp}.yaml`;
+        newFile = {
+          path: parentPath ? `${parentPath}/${filename}` : filename,
+          content: `# Configuration\nversion: '1.0'\n`,
+          type: 'config',
+          lastModified: new Date().toISOString(),
+        };
+        break;
+      }
+      default: {
+        const filename = `file-${timestamp}.md`;
+        newFile = {
+          path: parentPath ? `${parentPath}/${filename}` : filename,
+          content: `# New File\n\nAdd content here.\n`,
+          type: 'unknown',
+          lastModified: new Date().toISOString(),
+        };
+        break;
+      }
     }
+
+    setFileSystem((prev) => ({
+      ...prev,
+      files: [...prev.files, newFile],
+    }));
+    handleSelectFile(newFile.path);
+    setHasUnsavedChanges(true);
   };
 
   // Handle file deletion
   const handleDeleteFile = (path: string) => {
-    // Don't allow deleting AGENTS.md
-    if (path === 'AGENTS.md') return;
+    // Don't allow deleting core agent files
+    if (path === 'AGENTS.md' || path === 'agent.md') return;
 
     setFileSystem((prev) => ({
       ...prev,

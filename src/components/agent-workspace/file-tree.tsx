@@ -12,6 +12,10 @@ import {
   FileText,
   Braces,
   Bot,
+  Code,
+  BookOpen,
+  FileBox,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -20,15 +24,21 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import type { FileTreeNode, AgentFileType } from '@/lib/agent-files';
+
+// File creation types aligned with Agent Skills spec
+export type CreateFileType = 'skill' | 'script' | 'reference' | 'asset' | 'config' | 'file';
 
 interface FileTreeProps {
   nodes: FileTreeNode[];
   selectedPath: string | null;
   onSelectFile: (path: string) => void;
-  onCreateFile: (parentPath: string, type: 'skill' | 'file') => void;
+  onCreateFile: (parentPath: string, type: CreateFileType) => void;
   onDeleteFile: (path: string) => void;
   onRenameFile?: (path: string) => void;
   className?: string;
@@ -60,10 +70,27 @@ export function FileTree({
               <FileText className="h-4 w-4 mr-2" />
               New Skill
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onCreateFile('', 'file')}>
-              <File className="h-4 w-4 mr-2" />
-              New File
-            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Plus className="h-4 w-4 mr-2" />
+                Add to Agent
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => onCreateFile('', 'config')}>
+                  <Settings className="h-4 w-4 mr-2" />
+                  Config File
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onCreateFile('tools', 'file')}>
+                  <Braces className="h-4 w-4 mr-2" />
+                  MCP Tool Config
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onCreateFile('', 'file')}>
+                  <File className="h-4 w-4 mr-2" />
+                  Other File
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -90,7 +117,7 @@ interface TreeNodeProps {
   depth: number;
   selectedPath: string | null;
   onSelectFile: (path: string) => void;
-  onCreateFile: (parentPath: string, type: 'skill' | 'file') => void;
+  onCreateFile: (parentPath: string, type: CreateFileType) => void;
   onDeleteFile: (path: string) => void;
   onRenameFile?: (path: string) => void;
 }
@@ -122,12 +149,30 @@ function TreeNode({
         return <Bot className="h-4 w-4 text-blue-500" />;
       case 'skill':
         return <FileText className="h-4 w-4 text-green-500" />;
+      case 'skill-config':
+      case 'config':
+        return <Settings className="h-4 w-4 text-slate-500" />;
+      case 'script':
+        return <Code className="h-4 w-4 text-purple-500" />;
+      case 'reference':
+        return <BookOpen className="h-4 w-4 text-cyan-500" />;
+      case 'asset':
+        return <FileBox className="h-4 w-4 text-amber-500" />;
       case 'mcp-config':
         return <Braces className="h-4 w-4 text-orange-500" />;
       default:
         return <File className="h-4 w-4 text-muted-foreground" />;
     }
   };
+
+  // Check if this is a skill directory (contains SKILL.md)
+  const isSkillDirectory = isFolder && node.path.startsWith('skills/') &&
+    node.path.split('/').length === 2 && node.path !== 'skills';
+
+  // Check if this is a skill subdirectory (scripts, references, assets)
+  const isSkillSubdirectory = isFolder && node.path.startsWith('skills/') &&
+    node.path.split('/').length === 3 &&
+    ['scripts', 'references', 'assets'].includes(node.name);
 
   return (
     <div>
@@ -179,6 +224,7 @@ function TreeNode({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {/* Skills folder - add new skill */}
             {isFolder && node.path === 'skills' && (
               <>
                 <DropdownMenuItem onClick={() => onCreateFile(node.path, 'skill')}>
@@ -188,12 +234,55 @@ function TreeNode({
                 <DropdownMenuSeparator />
               </>
             )}
+
+            {/* Skill directory - add scripts, references, assets */}
+            {isSkillDirectory && (
+              <>
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add to Skill
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => onCreateFile(`${node.path}/scripts`, 'script')}>
+                      <Code className="h-4 w-4 mr-2" />
+                      Script
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onCreateFile(`${node.path}/references`, 'reference')}>
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      Reference Doc
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => onCreateFile(`${node.path}/assets`, 'asset')}>
+                      <FileBox className="h-4 w-4 mr-2" />
+                      Asset
+                    </DropdownMenuItem>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator />
+              </>
+            )}
+
+            {/* Skill subdirectory - add appropriate file type */}
+            {isSkillSubdirectory && (
+              <>
+                <DropdownMenuItem onClick={() => onCreateFile(node.path,
+                  node.name === 'scripts' ? 'script' :
+                  node.name === 'references' ? 'reference' : 'asset'
+                )}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add {node.name === 'scripts' ? 'Script' :
+                       node.name === 'references' ? 'Reference' : 'Asset'}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+
             {onRenameFile && (
               <DropdownMenuItem onClick={() => onRenameFile(node.path)}>
                 Rename
               </DropdownMenuItem>
             )}
-            {node.path !== 'AGENTS.md' && (
+            {node.path !== 'agent.md' && node.path !== 'AGENTS.md' && (
               <DropdownMenuItem
                 onClick={() => onDeleteFile(node.path)}
                 className="text-destructive"
