@@ -428,6 +428,44 @@ function extractFilePathHint(textBefore: string): string | null {
   return null;
 }
 
+// Convert a name to kebab-case slug
+function toSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .trim();
+}
+
+// Detect if content is a skill definition and extract skill name
+function detectSkillContent(content: string): string | null {
+  // Check for YAML frontmatter with name field
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (frontmatterMatch) {
+    const yaml = frontmatterMatch[1];
+    const nameMatch = yaml.match(/^name:\s*(.+)$/m);
+    const descMatch = yaml.match(/^description:\s*.+$/m);
+
+    if (nameMatch && descMatch) {
+      // This looks like a skill file
+      return nameMatch[1].trim();
+    }
+  }
+
+  // Also check for markdown title with skill-like structure
+  // (e.g., "# Joke Telling" followed by "## Triggers" or "## Behavior")
+  const titleMatch = content.match(/^#\s+(.+)$/m);
+  if (titleMatch) {
+    const hasSkillSections = /^##\s+(Triggers|Behavior|Tools|Success Criteria|Guardrails)/m.test(content);
+    if (hasSkillSections) {
+      return titleMatch[1].trim();
+    }
+  }
+
+  return null;
+}
+
 // Parse content to extract code blocks and text sections
 export function parseContentBlocks(
   content: string,
@@ -465,19 +503,27 @@ export function parseContentBlocks(
     const language = match[1] || undefined;
     const codeContent = match[2].trim();
 
-    // Determine target file: use hint if found, otherwise infer from language/context
+    // Determine target file: use hint if found, otherwise try to auto-detect
     let targetFile = filePathHint || activeFile;
 
     if (!filePathHint) {
-      // Fall back to language-based inference
-      if (language === 'markdown' || language === 'md') {
-        targetFile = activeFile?.endsWith('.md') ? activeFile : 'AGENTS.md';
-      } else if (language === 'yaml') {
-        if (activeFile?.includes('SKILL.md')) {
-          targetFile = activeFile;
+      // Check if this looks like skill content
+      const skillName = detectSkillContent(codeContent);
+      if (skillName) {
+        // Auto-route to skills folder
+        const slug = toSlug(skillName);
+        targetFile = `skills/${slug}/SKILL.md`;
+      } else {
+        // Fall back to language-based inference
+        if (language === 'markdown' || language === 'md') {
+          targetFile = activeFile?.endsWith('.md') ? activeFile : 'AGENTS.md';
+        } else if (language === 'yaml') {
+          if (activeFile?.includes('SKILL.md')) {
+            targetFile = activeFile;
+          }
+        } else if (language === 'json') {
+          targetFile = activeFile?.endsWith('.json') ? activeFile : 'tools/mcp-servers.json';
         }
-      } else if (language === 'json') {
-        targetFile = activeFile?.endsWith('.json') ? activeFile : 'tools/mcp-servers.json';
       }
     }
 

@@ -23,6 +23,22 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
     lastModified: now,
   });
 
+  // Always add placeholder folders for skills and tools
+  // These act as empty directory markers that show in the file tree
+  files.push({
+    path: 'skills/.gitkeep',
+    content: '# Skills folder - add skill subdirectories here',
+    type: 'unknown',
+    lastModified: now,
+  });
+
+  files.push({
+    path: 'tools/.gitkeep',
+    content: '# Tools folder - add MCP server configs here',
+    type: 'unknown',
+    lastModified: now,
+  });
+
   // Skill files for each skill
   for (const skill of story.skills || []) {
     const slug = generateSlug(skill.name);
