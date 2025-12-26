@@ -531,9 +531,8 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
     try {
       const systemPrompt = buildSystemPrompt();
 
+      // Build chat messages - just the conversation history + new message
       const chatMessages = [
-        { role: 'user' as const, content: systemPrompt },
-        { role: 'assistant' as const, content: 'I understand. How can I help you?' },
         ...messages.map((m) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
@@ -541,10 +540,14 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
         { role: 'user' as const, content: trimmedInput },
       ];
 
+      // Pass system prompt via API (not as a user message)
       const response = await fetch('/api/ideation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: chatMessages }),
+        body: JSON.stringify({
+          messages: chatMessages,
+          systemPrompt: systemPrompt, // Pass as actual system prompt
+        }),
       });
 
       if (!response.ok) {

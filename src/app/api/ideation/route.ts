@@ -9,6 +9,7 @@ interface ChatMessage {
 
 interface IdeationRequest {
   messages: ChatMessage[];
+  systemPrompt?: string; // Optional custom system prompt (for agent chat)
 }
 
 export async function POST(request: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     const anthropic = new Anthropic({ apiKey: cleanApiKey });
 
     const body: IdeationRequest = await request.json();
-    const { messages } = body;
+    const { messages, systemPrompt } = body;
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -42,11 +43,14 @@ export async function POST(request: NextRequest) {
       content: msg.content,
     }));
 
+    // Use custom system prompt if provided (for agent chat), otherwise default
+    const effectiveSystemPrompt = systemPrompt || IDEATION_SYSTEM_PROMPT;
+
     // Create a streaming response using the Anthropic SDK
     const stream = anthropic.messages.stream({
       model: 'claude-opus-4-5-20251101',
       max_tokens: 4096,
-      system: IDEATION_SYSTEM_PROMPT,
+      system: effectiveSystemPrompt,
       messages: formattedMessages,
     });
 
