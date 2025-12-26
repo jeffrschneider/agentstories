@@ -32,9 +32,10 @@ interface ChatMessage {
 }
 
 interface ChatAction {
-  type: 'create_file' | 'update_file' | 'delete_file';
+  type: 'create_file' | 'update_file' | 'delete_file' | 'update_name';
   path: string;
   content?: string;
+  name?: string;
 }
 
 interface CurrentAgentState {
@@ -155,6 +156,15 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
         path: 'agent.md',
         content: agentContent,
       });
+
+      // Update the agent name in the UI header
+      if (response.agent.name) {
+        actions.push({
+          type: 'update_name',
+          path: '',
+          name: response.agent.name,
+        });
+      }
     }
 
     // Process skills
