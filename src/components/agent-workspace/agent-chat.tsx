@@ -126,30 +126,21 @@ export function AgentChat({
   const buildSystemPrompt = () => {
     const fileList = files.map(f => `- ${f.path}`).join('\n');
 
-    if (contextFile) {
-      // File-specific editing - keep the simple markdown format
-      return `You are helping edit the file "${contextFile.path}" for the agent "${agentName}".
-
-Current file content:
-\`\`\`
-${contextFile.content}
-\`\`\`
-
-Help the user modify this file. When suggesting changes:
-1. Acknowledge what they want to change
-2. Provide the updated content in a fenced code block
-3. Use markdown or yaml language tags as appropriate
-4. Be concise but include complete sections
-
-IMPORTANT: When providing file updates, always wrap them in fenced code blocks so users can apply them.`;
-    }
-
-    // Agent scope - pass file contents for context
+    // Always use structured JSON prompt - this ensures skills/files are created properly
+    // Include file contents for context, with the active file highlighted if selected
     const fileContents = files
       .filter(f => !f.path.includes('.gitkeep'))
       .map(f => ({ path: f.path, content: f.content }));
 
-    return buildStructuredSystemPrompt(agentName, fileList, currentAgent, fileContents);
+    // Build the base structured prompt
+    let prompt = buildStructuredSystemPrompt(agentName, fileList, currentAgent, fileContents);
+
+    // If a file is selected, add context about it so the LLM knows the user may want to edit it
+    if (contextFile) {
+      prompt += `\n\nNOTE: The user currently has the file "${contextFile.path}" selected in the editor. If they ask to edit or modify this file specifically, include it in the "files" array with action "update". But if they ask to add skills or create new things, use the appropriate agent/skills fields as normal.`;
+    }
+
+    return prompt;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
