@@ -846,6 +846,120 @@ export function populatePortabilityDefaults(skill: Skill): Skill {
 
 ---
 
+## Additional Recommendations (Based on Official Spec Review)
+
+After reviewing the official Agent Skills specification (see `specs/13-agentskills-standard.md`), here are additional recommendations for better compatibility:
+
+### 1. Progressive Disclosure Alignment
+
+The Agent Skills spec emphasizes progressive disclosure with specific token budgets:
+- **Metadata**: ~100 tokens (name + description)
+- **Instructions**: < 5000 tokens (SKILL.md body)
+- **Resources**: Loaded on demand
+
+**Recommendation**: Add token estimation to the export preview UI:
+```typescript
+interface SkillTokenEstimate {
+  metadata: number;     // ~100 target
+  instructions: number; // <5000 target
+  totalWithResources: number;
+  withinBudget: boolean;
+}
+```
+
+Display warnings when skills exceed recommended limits.
+
+### 2. Directory Name Validation
+
+The Agent Skills spec requires the `name` field to match the parent directory name.
+
+**Recommendation**: Ensure our ZIP export uses the slug as the directory name (already implemented) and add validation to import that verifies this match.
+
+### 3. Allowed-Tools Field
+
+The Agent Skills spec has an experimental `allowed-tools` field for pre-approved tools.
+
+**Current Mapping**: We map `skill.tools[].name` to this field.
+
+**Recommendation**: Add a UI toggle to mark tools as "pre-approved" vs "requires approval" to better map to this experimental feature when it stabilizes:
+
+```typescript
+interface SkillTool {
+  // ... existing fields
+  preApproved?: boolean; // Maps to allowed-tools in export
+}
+```
+
+### 4. Metadata Field for Custom Properties
+
+The Agent Skills spec allows arbitrary metadata key-value pairs.
+
+**Recommendation**: Expose this in the UI for power users:
+
+```typescript
+portability: {
+  // ... existing fields
+  customMetadata?: Record<string, string>; // Custom metadata for agentskills.io
+}
+```
+
+### 5. File Reference Best Practices
+
+The Agent Skills spec recommends:
+- Keep file references one level deep
+- Avoid deeply nested reference chains
+- Keep SKILL.md under 500 lines
+
+**Recommendation**: Add validation warnings for:
+- Reference chains deeper than 2 levels
+- SKILL.md exports exceeding 500 lines
+- Deeply nested skill structures
+
+### 6. Description Quality Guidance
+
+The Agent Skills spec provides specific guidance on description quality:
+- Should describe what the skill does AND when to use it
+- Should include keywords for agent discovery
+
+**Recommendation**: Add description quality hints in the UI:
+```typescript
+function analyzeDescriptionQuality(description: string): {
+  hasWhatStatement: boolean;
+  hasWhenStatement: boolean;
+  keywordDensity: number;
+  suggestions: string[];
+}
+```
+
+### 7. Skills-Ref Validation Integration
+
+The Agent Skills spec references a `skills-ref` validation tool.
+
+**Recommendation**: Add a "Validate for Agent Skills" button that either:
+- Runs validation locally using equivalent rules
+- Optionally calls the skills-ref API if available
+
+### 8. Assets Directory Support
+
+The Agent Skills spec supports an `assets/` directory for templates, images, and data files.
+
+**Current State**: Not supported.
+
+**Recommendation**: Add assets support to the portability schema:
+
+```typescript
+portability: {
+  // ... existing fields
+  assets?: Array<{
+    filename: string;
+    type: 'template' | 'image' | 'data' | 'schema';
+    content?: string; // Base64 for binary, raw for text
+  }>;
+}
+```
+
+---
+
 ## Implementation Order
 
 1. **Schema updates** (`/lib/schemas/skill.ts`)
