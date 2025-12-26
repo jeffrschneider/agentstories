@@ -264,6 +264,55 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
 
     // Process skills
     if (response.skills?.length) {
+      // If we have skills but no agent property, we need to update agent.md with new skill links
+      if (!response.agent) {
+        const existingAgentFile = files.find(f => f.path === 'agent.md');
+        if (existingAgentFile) {
+          // Build new skill links
+          const newSkillLinks = response.skills.map(s => {
+            const slug = generateSlug(s.name);
+            return `- [${s.name}](skills/${slug}/SKILL.md) - ${s.description || 'No description'}`;
+          });
+
+          // Also preserve existing skills not being updated
+          const existingSkillFiles = files.filter(f => f.path.endsWith('SKILL.md'));
+          for (const skillFile of existingSkillFiles) {
+            const pathMatch = skillFile.path.match(/skills\/([^/]+)\/SKILL\.md/);
+            if (pathMatch) {
+              const slug = pathMatch[1];
+              // Don't duplicate if this skill is being updated
+              const isBeingUpdated = response.skills.some(s => generateSlug(s.name) === slug);
+              if (!isBeingUpdated) {
+                const titleMatch = skillFile.content.match(/^#\s+(.+)$/m);
+                const name = titleMatch?.[1] || slug;
+                const descMatch = skillFile.content.match(/description:\s*(.+)/);
+                const desc = descMatch?.[1] || 'No description';
+                newSkillLinks.push(`- [${name}](skills/${slug}/SKILL.md) - ${desc}`);
+              }
+            }
+          }
+
+          // Update agent.md with new skills section
+          let updatedContent = existingAgentFile.content;
+          const skillsSectionRegex = /## Skills\n([\s\S]*?)(?=\n## |\n*$)/;
+          const newSkillsSection = `## Skills\n${newSkillLinks.join('\n')}\n`;
+
+          if (skillsSectionRegex.test(updatedContent)) {
+            // Replace existing Skills section
+            updatedContent = updatedContent.replace(skillsSectionRegex, newSkillsSection);
+          } else {
+            // Add Skills section at the end
+            updatedContent = updatedContent.trimEnd() + '\n\n' + newSkillsSection;
+          }
+
+          actions.push({
+            type: 'update_file',
+            path: 'agent.md',
+            content: updatedContent,
+          });
+        }
+      }
+
       for (const skill of response.skills) {
         const slug = generateSlug(skill.name);
         const skillPath = `skills/${slug}/SKILL.md`;
