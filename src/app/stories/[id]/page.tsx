@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Link from "next/link";
@@ -11,8 +11,8 @@ import { StoryPreview } from "@/components/story-preview";
 import { TryItChat } from "@/components/story-editor/try-it-chat";
 import { GeneratePanel } from "@/components/story-editor/generate-panel";
 import { AgentWorkspace } from "@/components/agent-workspace";
-import { storyEditorActions, useStoryEditor } from "@/stores";
-import { useStory, useUpdateStory, useDeleteStory, useDuplicateStory } from "@/hooks";
+import { storyEditorActions, useStoryEditor, uiActions } from "@/stores";
+import { useStory, useUpdateStory, useDeleteStory, useDuplicateStory, useCreateStory, useAutoSave } from "@/hooks";
 import {
   Dialog,
   DialogContent,
@@ -45,6 +45,22 @@ export default function AgentWorkspacePage() {
   const updateStory = useUpdateStory();
   const deleteStory = useDeleteStory();
   const duplicateStory = useDuplicateStory();
+  const createStory = useCreateStory();
+
+  // Auto-save hook
+  const autoSave = useAutoSave({
+    debounceMs: 1500,
+    onSaveSuccess: () => {
+      // Silent success - just update status indicator
+    },
+    onSaveError: (error) => {
+      uiActions.addToast({
+        type: 'error',
+        title: 'Auto-save failed',
+        message: error.message,
+      });
+    },
+  });
 
   // Load story into editor when fetched
   useEffect(() => {
@@ -56,7 +72,7 @@ export default function AgentWorkspacePage() {
     };
   }, [story]);
 
-  const handleSave = async (updatedStory: AgentStory) => {
+  const handleSave = useCallback(async (updatedStory: AgentStory) => {
     try {
       storyEditorActions.setSaving(true);
       await updateStory.mutateAsync({ id, data: updatedStory });
@@ -66,7 +82,7 @@ export default function AgentWorkspacePage() {
     } finally {
       storyEditorActions.setSaving(false);
     }
-  };
+  }, [id, updateStory]);
 
   const handleDelete = async () => {
     await deleteStory.mutateAsync({ id, name: story?.name || 'Untitled' });
@@ -80,8 +96,42 @@ export default function AgentWorkspacePage() {
     }
   };
 
+  // Create a new agent and navigate to it
+  const handleCreateNewAgent = useCallback(async () => {
+    try {
+      const newStory = await createStory.mutateAsync({
+        name: 'New Agent',
+        purpose: '',
+        version: '1.0',
+      });
+
+      if (newStory) {
+        uiActions.addToast({
+          type: 'success',
+          title: 'New agent created',
+          message: `Switched to "${newStory.name}"`,
+        });
+        router.push(`/stories/${newStory.id}`);
+      }
+    } catch (error) {
+      uiActions.addToast({
+        type: 'error',
+        title: 'Failed to create agent',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      });
+    }
+  }, [createStory, router]);
+
   // Get current story data
   const currentStoryData = editor.draft.data as AgentStory;
+
+  // Auto-save status for AgentWorkspace
+  const autoSaveStatus = useMemo(() => ({
+    isSaving: autoSave.isSaving,
+    isDirty: autoSave.isDirty,
+    lastSavedAt: autoSave.lastSavedAt,
+    error: autoSave.saveError,
+  }), [autoSave.isSaving, autoSave.isDirty, autoSave.lastSavedAt, autoSave.saveError]);
 
   if (isLoading) {
     return (
@@ -129,7 +179,9 @@ export default function AgentWorkspacePage() {
             onPreview={() => setIsPreviewOpen(true)}
             onDuplicate={handleDuplicate}
             onDelete={() => setIsDeleteOpen(true)}
+            onCreateNewAgent={handleCreateNewAgent}
             isSaving={editor.isSaving}
+            autoSaveStatus={autoSaveStatus}
           />
         </div>
       </div>

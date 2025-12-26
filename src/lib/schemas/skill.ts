@@ -172,8 +172,8 @@ export const SkillExampleSchema = z.object({
     message: 'Example name must be lowercase alphanumeric with hyphens/underscores'
   }),
   description: z.string().min(1),
-  input: z.record(z.unknown()).optional().describe('Example input data'),
-  expectedOutput: z.record(z.unknown()).optional().describe('Expected output'),
+  input: z.record(z.string(), z.unknown()).optional().describe('Example input data'),
+  expectedOutput: z.record(z.string(), z.unknown()).optional().describe('Expected output'),
   content: z.string().min(1).describe('Full example markdown content')
 });
 

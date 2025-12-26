@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Play, Wrench, Save, Loader2, MoreHorizontal, PanelRightClose, PanelRight, Eye, Copy, Trash2, FolderTree } from 'lucide-react';
+import { Play, Wrench, Save, Loader2, MoreHorizontal, PanelRightClose, PanelRight, Eye, Copy, Trash2, FolderTree, Check, AlertCircle, Cloud } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -10,6 +10,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { AgentExportDialog } from '@/components/story-editor/agent-export-dialog';
 import { FileTree } from './file-tree';
 import { MultiFileEditor } from './file-editor';
@@ -25,6 +31,13 @@ import {
 } from '@/lib/agent-files';
 import type { AgentStory } from '@/lib/schemas';
 
+interface AutoSaveStatus {
+  isSaving: boolean;
+  isDirty: boolean;
+  lastSavedAt: string | null;
+  error: Error | null;
+}
+
 interface AgentWorkspaceProps {
   story: AgentStory;
   onSave: (story: AgentStory) => Promise<void>;
@@ -33,7 +46,9 @@ interface AgentWorkspaceProps {
   onPreview?: () => void;
   onDuplicate?: () => void;
   onDelete?: () => void;
+  onCreateNewAgent?: () => void;
   isSaving?: boolean;
+  autoSaveStatus?: AutoSaveStatus;
 }
 
 export function AgentWorkspace({
@@ -44,7 +59,9 @@ export function AgentWorkspace({
   onPreview,
   onDuplicate,
   onDelete,
+  onCreateNewAgent,
   isSaving = false,
+  autoSaveStatus,
 }: AgentWorkspaceProps) {
   // Convert story to file system on load
   const [fileSystem, setFileSystem] = React.useState<AgentFileSystem>(() =>
@@ -255,11 +272,51 @@ export function AgentWorkspace({
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b px-4 py-3 flex items-center justify-between shrink-0">
-        <div>
+        <div className="flex items-center gap-3">
           <h1 className="text-lg font-semibold">{fileSystem.name || 'Untitled Agent'}</h1>
-          {hasUnsavedChanges && (
-            <span className="text-xs text-muted-foreground">Unsaved changes</span>
-          )}
+          {/* Auto-save status indicator */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex items-center gap-1.5 text-xs">
+                  {autoSaveStatus?.error ? (
+                    <>
+                      <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                      <span className="text-destructive">Save failed</span>
+                    </>
+                  ) : autoSaveStatus?.isSaving || isSaving ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                      <span className="text-muted-foreground">Saving...</span>
+                    </>
+                  ) : autoSaveStatus?.isDirty || hasUnsavedChanges ? (
+                    <>
+                      <Cloud className="h-3.5 w-3.5 text-amber-500" />
+                      <span className="text-muted-foreground">Unsaved</span>
+                    </>
+                  ) : autoSaveStatus?.lastSavedAt ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-green-500" />
+                      <span className="text-muted-foreground">Saved</span>
+                    </>
+                  ) : null}
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                {autoSaveStatus?.error ? (
+                  <p>Failed to save: {autoSaveStatus.error.message}</p>
+                ) : autoSaveStatus?.isSaving || isSaving ? (
+                  <p>Auto-saving changes...</p>
+                ) : autoSaveStatus?.isDirty || hasUnsavedChanges ? (
+                  <p>Changes will be saved automatically</p>
+                ) : autoSaveStatus?.lastSavedAt ? (
+                  <p>Last saved: {new Date(autoSaveStatus.lastSavedAt).toLocaleTimeString()}</p>
+                ) : (
+                  <p>Auto-save enabled</p>
+                )}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <div className="flex items-center gap-2">
           {onTest && (
@@ -332,19 +389,22 @@ export function AgentWorkspace({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          <Button size="sm" onClick={handleSave} disabled={isSaving || !hasUnsavedChanges}>
-            {isSaving ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-1" />
-                Save
-              </>
-            )}
-          </Button>
+          {/* Manual save button - appears when there are unsaved changes or errors */}
+          {(hasUnsavedChanges || autoSaveStatus?.isDirty || autoSaveStatus?.error) && (
+            <Button size="sm" onClick={handleSave} disabled={isSaving || autoSaveStatus?.isSaving}>
+              {isSaving || autoSaveStatus?.isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-1" />
+                  Save Now
+                </>
+              )}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -387,6 +447,7 @@ export function AgentWorkspace({
               activeFile={activeFile}
               agentName={fileSystem.name || 'Agent'}
               onAction={handleChatAction}
+              onCreateNewAgent={onCreateNewAgent}
               isExpanded={isChatExpanded}
               onToggleExpand={handleToggleChatExpand}
             />
