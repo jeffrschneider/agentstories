@@ -1,5 +1,7 @@
 # UI Components Specification
 
+> **DEPRECATED**: This specification describes the old form-based component architecture. The current UI uses the file-tree based editor in `/components/agent-workspace`. See `12-file-tree-editor.md` for the current specification.
+
 ## Overview
 
 This specification defines the component architecture for Agent Story Builder, built on shadcn/ui with Tailwind CSS. Components follow atomic design principles and prioritize accessibility.

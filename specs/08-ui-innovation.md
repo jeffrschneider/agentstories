@@ -1,5 +1,7 @@
 # UI Innovation Specification
 
+> **DEPRECATED**: This specification describes the old form-based UI which has been replaced by the file-tree based editor. See `12-file-tree-editor.md` for the current UI specification.
+
 ## Problem Statement
 
 The current form is 8 flat tabs with long, scrolling forms. This creates:

@@ -111,9 +111,16 @@ When helping create or modify an agent, follow this question flow:
 ### For New Agents:
 1. Ask Q1.1 (name, purpose) - extract and confirm
 2. Ask Q1.2 (role, autonomy) - present options clearly
-3. Suggest skills based on context
+3. **CRITICAL: Always create at least one skill** - infer from purpose
 4. For each skill, ask Q6.1-Q6.3 (identity, triggers)
 5. Offer to go deeper or add more skills
+
+**IMPORTANT**: An agent without skills is incomplete and useless. When creating an agent, ALWAYS create at least one skill that implements its core purpose. Examples:
+- "Joke Agent" → Create a "joke-telling" skill
+- "Email Assistant" → Create skills like "compose-email", "summarize-inbox"
+- "Data Analyst" → Create skills like "analyze-dataset", "generate-report"
+
+The skill should include triggers, behavior steps, and acceptance criteria.
 
 ### For Modifications:
 - Read current file content first
