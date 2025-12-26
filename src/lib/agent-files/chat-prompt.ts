@@ -62,6 +62,11 @@ export const JSON_OUTPUT_SCHEMA = `{
   }]
 }`;
 
+export interface FileContent {
+  path: string;
+  content: string;
+}
+
 export function buildStructuredSystemPrompt(
   agentName: string,
   fileList: string,
@@ -71,8 +76,24 @@ export function buildStructuredSystemPrompt(
     role?: string;
     autonomyLevel?: string;
     skills?: { name: string; description?: string }[];
-  }
+  },
+  fileContents?: FileContent[]
 ): string {
+  // Build current file contents section for context
+  const relevantFiles = fileContents?.filter(f =>
+    f.path === 'agent.md' ||
+    f.path.endsWith('SKILL.md') ||
+    f.path === 'config.yaml'
+  ) || [];
+
+  const fileContentsSection = relevantFiles.length > 0 ? `
+## Current File Contents
+${relevantFiles.map(f => `### ${f.path}
+\`\`\`
+${f.content}
+\`\`\``).join('\n\n')}
+` : '';
+
   const currentAgentInfo = currentAgent ? `
 ## Current Agent State
 Name: ${currentAgent.name || 'Untitled'}
@@ -96,6 +117,7 @@ ${AGENT_FILE_STRUCTURE}
 ## Current Files
 ${fileList}
 ${currentAgentInfo}
+${fileContentsSection}
 
 ## Your Task
 Help the user create or modify their agent. Return your response as JSON that matches this schema:
@@ -233,7 +255,24 @@ assets/
 - Always include the "action" and "message" fields
 - Use kebab-case for skill names (joke-telling, not JokeTelling or Joke Telling)
 - Skill descriptions should explain WHAT the skill does AND WHEN to use it
-- For arbitrary files, use the "files" array with full relative paths`;
+- For arbitrary files, use the "files" array with full relative paths
+
+## CRITICAL: Preserving Existing Content
+When updating an existing agent or skill:
+- **READ the current file contents above** before making changes
+- **PRESERVE all existing fields** that the user didn't ask to change
+- If user says "add a guardrail", include ALL existing guardrails plus the new one
+- If user says "add a step", include ALL existing steps plus the new one
+- Never drop existing content unless explicitly asked to remove it
+
+## Agent Skills Linking
+When creating skills, the agent.md file should include a Skills section that links to skill files:
+\`\`\`markdown
+## Skills
+- [joke-telling](skills/joke-telling/SKILL.md) - Tell jokes to users
+- [story-telling](skills/story-telling/SKILL.md) - Tell stories to users
+\`\`\`
+This enables progressive disclosure - the agent harness loads skill details on demand.`;
 }
 
 /**
