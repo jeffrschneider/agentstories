@@ -164,8 +164,8 @@ export function ContentBlock({
 
       {/* Diff Preview Dialog */}
       <Dialog open={showDiff} onOpenChange={setShowDiff}>
-        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2">
               {isNewFile ? 'Create New File' : 'Review Changes'}
               <Badge variant="outline" className="font-mono text-xs">
@@ -185,30 +185,32 @@ export function ContentBlock({
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 min-h-0 border rounded-md">
-            <div className="font-mono text-xs">
-              {diffLines.map((line, i) => (
-                <div
-                  key={i}
-                  className={`px-3 py-0.5 flex ${
-                    line.type === 'add'
-                      ? 'bg-green-500/10 text-green-700 dark:text-green-400'
-                      : line.type === 'remove'
-                      ? 'bg-red-500/10 text-red-700 dark:text-red-400'
-                      : ''
-                  }`}
-                >
-                  <span className="w-8 text-muted-foreground shrink-0 select-none">
-                    {line.type === 'remove' ? '-' : line.type === 'add' ? '+' : ' '}
-                    {line.lineNumber}
-                  </span>
-                  <span className="whitespace-pre-wrap break-all">{line.content || ' '}</span>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="flex-1 min-h-0 overflow-hidden border rounded-md">
+            <ScrollArea className="h-full max-h-[50vh]">
+              <div className="font-mono text-xs">
+                {diffLines.map((line, i) => (
+                  <div
+                    key={i}
+                    className={`px-3 py-0.5 flex ${
+                      line.type === 'add'
+                        ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                        : line.type === 'remove'
+                        ? 'bg-red-500/10 text-red-700 dark:text-red-400'
+                        : ''
+                    }`}
+                  >
+                    <span className="w-8 text-muted-foreground shrink-0 select-none">
+                      {line.type === 'remove' ? '-' : line.type === 'add' ? '+' : ' '}
+                      {line.lineNumber}
+                    </span>
+                    <span className="whitespace-pre-wrap break-all">{line.content || ' '}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
 
-          <DialogFooter>
+          <DialogFooter className="shrink-0">
             <Button variant="outline" onClick={() => setShowDiff(false)}>
               <X className="h-4 w-4 mr-1" />
               Cancel
@@ -289,8 +291,8 @@ export function ReviewAllDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
           <DialogTitle>Review All Changes</DialogTitle>
           <DialogDescription>
             {allApplied
@@ -299,8 +301,9 @@ export function ReviewAllDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="space-y-4 pr-4">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full max-h-[60vh]">
+            <div className="space-y-4 pr-4">
             {blocks.map((block) => {
               const isApplied = appliedBlocks.has(block.id);
               const diffLines = computeDiff(block.currentContent, block.content);
@@ -381,10 +384,11 @@ export function ReviewAllDialog({
                 </div>
               );
             })}
-          </div>
-        </ScrollArea>
+            </div>
+          </ScrollArea>
+        </div>
 
-        <DialogFooter>
+        <DialogFooter className="shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Close
           </Button>
