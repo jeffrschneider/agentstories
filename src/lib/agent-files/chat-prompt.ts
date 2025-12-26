@@ -308,6 +308,15 @@ assets/
 - Skill descriptions should explain WHAT the skill does AND WHEN to use it
 - For arbitrary files, use the "files" array with full relative paths
 
+## CRITICAL: Skills Are Mandatory
+
+When creating a new agent (action: "create_agent"), you MUST ALWAYS include at least one skill in the "skills" array.
+- An agent without skills is useless - skills define what the agent can DO
+- Infer skills from the agent's purpose (e.g., "Joke Agent" → "joke-telling" skill)
+- Include complete skill definitions with triggers, behavior, and acceptance criteria
+- For complex agents, create multiple skills covering the main use cases
+- NEVER return create_agent without at least one skill
+
 ## CRITICAL: Preserving Existing Content
 When updating an existing agent or skill:
 - **READ the current file contents above** before making changes
