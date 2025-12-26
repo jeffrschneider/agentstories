@@ -67,6 +67,7 @@ This separation means:
 - **Server State**: @tanstack/react-query
 - **Local State**: Valtio
 - **Validation**: Zod
+- **Testing**: Vitest + @testing-library/react
 - **Database**: PostgreSQL (structured data) + Document store (story content)
 - **Auth**: NextAuth.js with SSO support
 
@@ -82,6 +83,9 @@ This separation means:
 | [06-api-specification](./06-api-specification.md) | REST API endpoints |
 | [07-ui-components](./07-ui-components.md) | Component architecture and specs |
 | [08-ui-innovation](./08-ui-innovation.md) | Grouped navigation and progressive disclosure |
+| [13-agentskills-standard](./13-agentskills-standard.md) | Agent Skills portable skill format |
+| [14-agent-filesystem-export](./14-agent-filesystem-export.md) | File-based agent export |
+| [15-testing-requirements](./15-testing-requirements.md) | **Testing requirements and TDD workflow** |
 
 ## Architecture Principles
 
