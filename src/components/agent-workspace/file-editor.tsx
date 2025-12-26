@@ -202,6 +202,11 @@ function FileEditorContent({
 }) {
   const [content, setContent] = React.useState(file.content);
 
+  // Sync content when file changes externally (e.g., from Apply button)
+  React.useEffect(() => {
+    setContent(file.content);
+  }, [file.content]);
+
   // Debounced save
   React.useEffect(() => {
     const timer = setTimeout(() => {
