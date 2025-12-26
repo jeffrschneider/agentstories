@@ -119,20 +119,39 @@ export function buildFileTree(files: AgentFile[]): FileTreeNode[] {
     }
   }
 
-  // Sort: folders first, then files, alphabetically
-  const sortNodes = (nodes: FileTreeNode[]): FileTreeNode[] => {
+  // Custom sort order for root-level items
+  const rootSortOrder: Record<string, number> = {
+    'agent.md': 1,
+    'config.yaml': 2,
+    'skills': 3,
+    'tools': 4,
+    'memory': 5,
+    'logs': 6,
+  };
+
+  // Sort with custom order at root, then folders first, then alphabetically
+  const sortNodes = (nodes: FileTreeNode[], isRoot = true): FileTreeNode[] => {
     return nodes.sort((a, b) => {
+      // At root level, use custom order
+      if (isRoot) {
+        const orderA = rootSortOrder[a.name] ?? 100;
+        const orderB = rootSortOrder[b.name] ?? 100;
+        if (orderA !== orderB) {
+          return orderA - orderB;
+        }
+      }
+      // Within folders: folders first, then files, alphabetically
       if (a.type !== b.type) {
         return a.type === 'folder' ? -1 : 1;
       }
       return a.name.localeCompare(b.name);
     }).map(node => ({
       ...node,
-      children: node.children ? sortNodes(node.children) : undefined,
+      children: node.children ? sortNodes(node.children, false) : undefined,
     }));
   };
 
-  return sortNodes(root);
+  return sortNodes(root, true);
 }
 
 /**

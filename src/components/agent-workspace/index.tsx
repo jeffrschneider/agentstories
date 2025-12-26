@@ -67,8 +67,8 @@ export function AgentWorkspace({
   const [fileSystem, setFileSystem] = React.useState<AgentFileSystem>(() =>
     storyToFileSystem(story)
   );
-  const [selectedPath, setSelectedPath] = React.useState<string | null>('AGENTS.md');
-  const [openPaths, setOpenPaths] = React.useState<string[]>(['AGENTS.md']);
+  const [selectedPath, setSelectedPath] = React.useState<string | null>('agent.md');
+  const [openPaths, setOpenPaths] = React.useState<string[]>(['agent.md']);
   const [isChatOpen, setIsChatOpen] = React.useState(true);
   const [isChatExpanded, setIsChatExpanded] = React.useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
@@ -279,9 +279,10 @@ export function AgentWorkspace({
 
   // Handle chat action
   const handleChatAction = (action: {
-    type: 'create_file' | 'update_file' | 'delete_file';
+    type: 'create_file' | 'update_file' | 'delete_file' | 'update_name';
     path: string;
     content?: string;
+    name?: string;
   }) => {
     switch (action.type) {
       case 'create_file':
@@ -308,6 +309,15 @@ export function AgentWorkspace({
 
       case 'delete_file':
         handleDeleteFile(action.path);
+        break;
+
+      case 'update_name':
+        if (action.name) {
+          setFileSystem((prev) => ({
+            ...prev,
+            name: action.name!,
+          }));
+        }
         break;
     }
     setHasUnsavedChanges(true);
