@@ -402,6 +402,32 @@ export function ReviewAllDialog({
   );
 }
 
+// Regex patterns for detecting file paths before code blocks
+const FILE_PATH_PATTERNS = [
+  // Backtick-wrapped path with colon: `skills/joke-telling/SKILL.md:`
+  /`([a-zA-Z0-9_\-./]+\.(md|yaml|yml|json|ts|js|py))`:\s*$/,
+  // Plain path with colon: skills/joke-telling/SKILL.md:
+  /^([a-zA-Z0-9_\-./]+\.(md|yaml|yml|json|ts|js|py)):\s*$/,
+  // Path in bold: **skills/joke-telling/SKILL.md:**
+  /\*\*([a-zA-Z0-9_\-./]+\.(md|yaml|yml|json|ts|js|py))\*\*:\s*$/,
+];
+
+// Extract file path from the text immediately before a code block
+function extractFilePathHint(textBefore: string): string | null {
+  // Get the last few lines before the code block
+  const lines = textBefore.trim().split('\n');
+  const lastLine = lines[lines.length - 1]?.trim() || '';
+
+  for (const pattern of FILE_PATH_PATTERNS) {
+    const match = lastLine.match(pattern);
+    if (match) {
+      return match[1];
+    }
+  }
+
+  return null;
+}
+
 // Parse content to extract code blocks and text sections
 export function parseContentBlocks(
   content: string,
@@ -416,9 +442,21 @@ export function parseContentBlocks(
   let match;
 
   while ((match = codeBlockRegex.exec(content)) !== null) {
-    // Add text before this code block
-    if (match.index > lastIndex) {
-      const textContent = content.slice(lastIndex, match.index).trim();
+    // Get text before this code block
+    const textBefore = content.slice(lastIndex, match.index);
+
+    // Check for file path hint in the text before the code block
+    const filePathHint = extractFilePathHint(textBefore);
+
+    // Add text before this code block (removing the file path line if found)
+    if (textBefore.trim()) {
+      let textContent = textBefore.trim();
+      if (filePathHint) {
+        // Remove the file path line from the text block
+        const lines = textContent.split('\n');
+        lines.pop(); // Remove last line (the file path hint)
+        textContent = lines.join('\n').trim();
+      }
       if (textContent) {
         blocks.push({ type: 'text', content: textContent });
       }
@@ -427,16 +465,20 @@ export function parseContentBlocks(
     const language = match[1] || undefined;
     const codeContent = match[2].trim();
 
-    // Try to detect target file from language or content
-    let targetFile = activeFile;
-    if (language === 'markdown' || language === 'md') {
-      targetFile = activeFile?.endsWith('.md') ? activeFile : 'AGENTS.md';
-    } else if (language === 'yaml') {
-      if (activeFile?.includes('SKILL.md')) {
-        targetFile = activeFile;
+    // Determine target file: use hint if found, otherwise infer from language/context
+    let targetFile = filePathHint || activeFile;
+
+    if (!filePathHint) {
+      // Fall back to language-based inference
+      if (language === 'markdown' || language === 'md') {
+        targetFile = activeFile?.endsWith('.md') ? activeFile : 'AGENTS.md';
+      } else if (language === 'yaml') {
+        if (activeFile?.includes('SKILL.md')) {
+          targetFile = activeFile;
+        }
+      } else if (language === 'json') {
+        targetFile = activeFile?.endsWith('.json') ? activeFile : 'tools/mcp-servers.json';
       }
-    } else if (language === 'json') {
-      targetFile = activeFile?.endsWith('.json') ? activeFile : 'tools/mcp-servers.json';
     }
 
     blocks.push({

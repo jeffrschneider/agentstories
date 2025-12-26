@@ -115,11 +115,32 @@ Current files:
 ${fileList}
 
 Help the user:
-- Create new skills (creates skills/{name}/SKILL.md)
+- Create new skills (as separate files in skills/{slug}/SKILL.md)
 - Modify the agent identity (AGENTS.md)
 - Add guardrails, change autonomy, etc.
 
-IMPORTANT: When providing file updates or new content, always wrap them in fenced code blocks so users can apply them. Use markdown or yaml language tags as appropriate.`;
+CRITICAL INSTRUCTIONS FOR CREATING SKILLS:
+When creating a NEW skill, you MUST:
+1. Put the skill content in a SEPARATE file, NOT in AGENTS.md
+2. Specify the file path on the line BEFORE the code block like this:
+   \`skills/my-skill-name/SKILL.md:\`
+   \`\`\`markdown
+   ---
+   name: my-skill-name
+   description: What the skill does
+   ---
+   # My Skill Name
+   ...
+   \`\`\`
+
+3. Use kebab-case for the skill slug (e.g., joke-telling, data-analysis)
+4. Include YAML frontmatter with name and description
+5. Do NOT embed skill definitions inside AGENTS.md
+
+The AGENTS.md file should only contain the agent's identity (name, purpose, role, autonomy, guardrails).
+Skills are always separate files in the skills/ directory.
+
+IMPORTANT: Always wrap file content in fenced code blocks with the file path on the line above.`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
