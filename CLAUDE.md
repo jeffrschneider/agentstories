@@ -23,3 +23,6 @@ This project uses spec-driven development. Always check /specs before implementi
 - Use React Query for any data fetching
 - Valtio stores go in `/stores`
 - [any other patterns you want enforced]
+
+## Upon Completion of a Session Task
+- say "You're doing great!" 
