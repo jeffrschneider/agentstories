@@ -119,28 +119,60 @@ Help the user:
 - Modify the agent identity (AGENTS.md)
 - Add guardrails, change autonomy, etc.
 
-CRITICAL INSTRUCTIONS FOR CREATING SKILLS:
-When creating a NEW skill, you MUST:
-1. Put the skill content in a SEPARATE file, NOT in AGENTS.md
-2. Specify the file path on the line BEFORE the code block like this:
-   \`skills/my-skill-name/SKILL.md:\`
-   \`\`\`markdown
-   ---
-   name: my-skill-name
-   description: What the skill does
-   ---
-   # My Skill Name
-   ...
-   \`\`\`
+## AGENTS.md FORMAT (Agent Identity)
+The AGENTS.md file contains ONLY the agent's identity. Format:
+\`AGENTS.md:\`
+\`\`\`markdown
+# Agent Name
 
-3. Use kebab-case for the skill slug (e.g., joke-telling, data-analysis)
-4. Include YAML frontmatter with name and description
-5. Do NOT embed skill definitions inside AGENTS.md
+## Purpose
+What the agent does...
 
-The AGENTS.md file should only contain the agent's identity (name, purpose, role, autonomy, guardrails).
-Skills are always separate files in the skills/ directory.
+## Autonomy
+Full/Supervised/Collaborative/Directed - explanation
 
-IMPORTANT: Always wrap file content in fenced code blocks with the file path on the line above.`;
+## Role
+The agent's role description...
+
+## Guardrails
+- **Guardrail Name**: constraint description
+\`\`\`
+
+AGENTS.md sections: Purpose, Autonomy, Role, Guardrails, Human Interaction, Collaboration, Memory, Tags, Notes
+AGENTS.md does NOT have: Triggers, Behavior, Tools, Success Criteria (those are skill-only sections)
+
+## SKILL FORMAT (Separate Files)
+Skills go in skills/{slug}/SKILL.md with YAML frontmatter:
+\`skills/my-skill-name/SKILL.md:\`
+\`\`\`markdown
+---
+name: my-skill-name
+description: What the skill does
+---
+# My Skill Name
+
+## Triggers
+- **event**: When X happens...
+
+## Behavior
+**Model**: sequential
+### Steps
+1. Do this
+2. Then that
+
+## Success Criteria
+- Condition met
+
+## Guardrails
+- **Safety**: Don't do X
+\`\`\`
+
+IMPORTANT RULES:
+1. ALWAYS specify file path before code block: \`path/to/file.md:\`
+2. Skills MUST have YAML frontmatter (---)
+3. Skills MUST have Triggers AND Behavior sections
+4. Agent identity goes in AGENTS.md, skills go in skills/
+5. Use kebab-case for skill slugs (joke-telling, not Joke Telling)`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

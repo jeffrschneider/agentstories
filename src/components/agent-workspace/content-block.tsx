@@ -439,8 +439,10 @@ function toSlug(name: string): string {
 }
 
 // Detect if content is a skill definition and extract skill name
+// IMPORTANT: Must be very specific to avoid matching agent content as skills
 function detectSkillContent(content: string): string | null {
-  // Check for YAML frontmatter with name field
+  // Check for YAML frontmatter with name and description fields
+  // This is the most reliable indicator of skill content
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (frontmatterMatch) {
     const yaml = frontmatterMatch[1];
@@ -448,17 +450,21 @@ function detectSkillContent(content: string): string | null {
     const descMatch = yaml.match(/^description:\s*.+$/m);
 
     if (nameMatch && descMatch) {
-      // This looks like a skill file
+      // YAML frontmatter with name+description = skill file
       return nameMatch[1].trim();
     }
   }
 
-  // Also check for markdown title with skill-like structure
-  // (e.g., "# Joke Telling" followed by "## Triggers" or "## Behavior")
+  // For markdown content WITHOUT frontmatter, be VERY strict:
+  // Require BOTH "Triggers" AND "Behavior" sections (unique to skills)
+  // Agent content has Purpose, Autonomy, Role, Guardrails but NOT Triggers/Behavior
   const titleMatch = content.match(/^#\s+(.+)$/m);
   if (titleMatch) {
-    const hasSkillSections = /^##\s+(Triggers|Behavior|Tools|Success Criteria|Guardrails)/m.test(content);
-    if (hasSkillSections) {
+    const hasTriggersSection = /^##\s+Triggers\b/m.test(content);
+    const hasBehaviorSection = /^##\s+Behavior\b/m.test(content);
+
+    // Must have BOTH Triggers AND Behavior to be considered a skill
+    if (hasTriggersSection && hasBehaviorSection) {
       return titleMatch[1].trim();
     }
   }
