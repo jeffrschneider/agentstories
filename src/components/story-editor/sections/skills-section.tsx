@@ -16,6 +16,7 @@ import {
   SkillBehaviorEditor,
   SkillAcceptanceEditor,
 } from "./skill-editors";
+import { SkillSuggestions, InlineSkillSuggestions } from "../skill-suggestions";
 
 export function SkillsSection() {
   const editor = useSnapshot(storyEditorStore);
@@ -34,6 +35,15 @@ export function SkillsSection() {
     setExpandedSkill(skills.length);
     setActiveTab("identity");
   };
+
+  const addSkillFromTemplate = (skill: Omit<Skill, "id">) => {
+    const newSkill = { ...skill, id: crypto.randomUUID() };
+    updateSkills([...skills, newSkill as Skill]);
+    setExpandedSkill(skills.length);
+    setActiveTab("identity");
+  };
+
+  const existingSkillNames = skills.map((s) => s.name).filter(Boolean);
 
   const updateSkill = (index: number, updates: Partial<Skill>) => {
     const newSkills = [...skills];
@@ -68,10 +78,16 @@ export function SkillsSection() {
               {skills.length} skill{skills.length !== 1 ? "s" : ""} defined
             </p>
           </div>
-          <Button variant="outline" size="sm" onClick={addSkill}>
-            <Plus className="mr-1 h-3 w-3" />
-            Add Skill
-          </Button>
+          <div className="flex items-center gap-2">
+            <SkillSuggestions
+              onAddSkill={addSkillFromTemplate}
+              existingSkillNames={existingSkillNames}
+            />
+            <Button variant="outline" size="sm" onClick={addSkill}>
+              <Plus className="mr-1 h-3 w-3" />
+              Add Skill
+            </Button>
+          </div>
         </div>
 
         {skills.map((skill, index) => (
@@ -89,15 +105,20 @@ export function SkillsSection() {
         ))}
 
         {skills.length === 0 && (
-          <div className="text-center py-8 border-2 border-dashed rounded-lg">
-            <Zap className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground mb-2">
-              No skills defined. At least one skill is required.
-            </p>
-            <Button variant="outline" size="sm" onClick={addSkill}>
-              <Plus className="mr-1 h-3 w-3" />
-              Add First Skill
-            </Button>
+          <div className="space-y-4">
+            {/* Inline suggestions when no skills */}
+            <InlineSkillSuggestions onAddSkill={addSkillFromTemplate} />
+
+            <div className="text-center py-8 border-2 border-dashed rounded-lg">
+              <Zap className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-2">
+                No skills defined. At least one skill is required.
+              </p>
+              <Button variant="outline" size="sm" onClick={addSkill}>
+                <Plus className="mr-1 h-3 w-3" />
+                Add First Skill
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

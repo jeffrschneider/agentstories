@@ -7,4 +7,5 @@ export { TryItChat } from "./try-it-chat";
 export { GitHubPublish } from "./github-publish";
 export { StoryChatInterface } from "./story-chat-interface";
 export { GeneratePanel } from "./generate-panel";
+export { SkillSuggestions, InlineSkillSuggestions } from "./skill-suggestions";
 export * from "./sections";
