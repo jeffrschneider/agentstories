@@ -76,7 +76,7 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
     const slug = generateSlug(skill.name);
     const skillDir = `skills/${slug}`;
 
-    // SKILL.md - Skill documentation and usage
+    // SKILL.md - Skill documentation and usage (required per Agent Skills spec)
     files.push({
       path: `${skillDir}/SKILL.md`,
       content: generateSkillMd(skill),
@@ -84,7 +84,7 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
       lastModified: now,
     });
 
-    // config.yaml - Skill-specific settings
+    // config.yaml - Skill-specific settings (our extension)
     files.push({
       path: `${skillDir}/config.yaml`,
       content: generateSkillConfig(skill),
@@ -92,73 +92,64 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
       lastModified: now,
     });
 
-    // prompts/ folder - always create even if empty
-    if (skill.prompts?.length) {
-      for (const prompt of skill.prompts) {
+    // scripts/ folder - executable code (Agent Skills spec)
+    const scripts = skill.portability?.scripts || [];
+    if (scripts.length) {
+      for (const script of scripts) {
         files.push({
-          path: `${skillDir}/prompts/${prompt.name}.md`,
-          content: generatePromptFile(prompt),
-          type: 'prompt',
+          path: `${skillDir}/scripts/${script.filename}`,
+          content: script.content || '',
+          type: 'script',
           lastModified: now,
         });
       }
     } else {
       files.push({
-        path: `${skillDir}/prompts/.gitkeep`,
+        path: `${skillDir}/scripts/.gitkeep`,
         content: '',
         type: 'unknown',
         lastModified: now,
       });
     }
 
-    // tools/ folder - always create even if empty
-    if (skill.toolImplementations?.length) {
-      for (const impl of skill.toolImplementations) {
+    // references/ folder - additional documentation (Agent Skills spec)
+    const references = skill.portability?.references || [];
+    if (references.length) {
+      for (const ref of references) {
         files.push({
-          path: `${skillDir}/tools/${impl.filename}`,
-          content: impl.content,
-          type: 'tool-impl',
+          path: `${skillDir}/references/${ref.filename}`,
+          content: ref.content || '',
+          type: 'reference',
           lastModified: now,
         });
       }
     } else {
       files.push({
-        path: `${skillDir}/tools/.gitkeep`,
+        path: `${skillDir}/references/.gitkeep`,
         content: '',
         type: 'unknown',
         lastModified: now,
       });
     }
 
-    // examples/ folder - always create even if empty
-    if (skill.examples?.length) {
-      for (const example of skill.examples) {
+    // assets/ folder - static resources (Agent Skills spec)
+    const assets = skill.portability?.assets || [];
+    if (assets.length) {
+      for (const asset of assets) {
         files.push({
-          path: `${skillDir}/examples/${example.name}.md`,
-          content: example.content,
-          type: 'example',
+          path: `${skillDir}/assets/${asset.filename}`,
+          content: asset.content || '',
+          type: 'asset',
           lastModified: now,
         });
       }
     } else {
       files.push({
-        path: `${skillDir}/examples/.gitkeep`,
+        path: `${skillDir}/assets/.gitkeep`,
         content: '',
         type: 'unknown',
         lastModified: now,
       });
-    }
-
-    // templates/ folder - only create if has content
-    if (skill.templates?.length) {
-      for (const template of skill.templates) {
-        files.push({
-          path: `${skillDir}/templates/${template.filename}`,
-          content: template.content,
-          type: 'template',
-          lastModified: now,
-        });
-      }
     }
   }
 

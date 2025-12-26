@@ -169,6 +169,28 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
           description: skill.description || '',
           domain: skill.domain || 'General',
           acquired: 'built_in',
+          portability: {
+            slug,
+            license: skill.license,
+            compatibility: skill.compatibility,
+            scripts: skill.scripts?.map(s => ({
+              filename: s.filename,
+              language: s.language as 'python' | 'bash' | 'javascript' | 'typescript',
+              purpose: s.purpose,
+              content: s.content,
+            })),
+            references: skill.references?.map(r => ({
+              filename: r.filename,
+              title: r.title,
+              content: r.content,
+            })),
+            assets: skill.assets?.map(a => ({
+              filename: a.filename,
+              type: (a.type || 'other') as 'json' | 'yaml' | 'csv' | 'txt' | 'png' | 'svg' | 'other',
+              description: a.description,
+              content: a.content,
+            })),
+          },
           triggers: skill.triggers?.map(t => ({
             type: t.type as 'message' | 'schedule' | 'manual' | 'condition',
             description: t.description,
@@ -203,6 +225,60 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
           path: skillPath,
           content: skillContent,
         });
+
+        // Create script files
+        if (skill.scripts?.length) {
+          for (const script of skill.scripts) {
+            const scriptPath = `skills/${slug}/scripts/${script.filename}`;
+            actions.push({
+              type: files.some(f => f.path === scriptPath) ? 'update_file' : 'create_file',
+              path: scriptPath,
+              content: script.content || '',
+            });
+          }
+        }
+
+        // Create reference files
+        if (skill.references?.length) {
+          for (const ref of skill.references) {
+            const refPath = `skills/${slug}/references/${ref.filename}`;
+            actions.push({
+              type: files.some(f => f.path === refPath) ? 'update_file' : 'create_file',
+              path: refPath,
+              content: ref.content || '',
+            });
+          }
+        }
+
+        // Create asset files
+        if (skill.assets?.length) {
+          for (const asset of skill.assets) {
+            const assetPath = `skills/${slug}/assets/${asset.filename}`;
+            actions.push({
+              type: files.some(f => f.path === assetPath) ? 'update_file' : 'create_file',
+              path: assetPath,
+              content: asset.content || '',
+            });
+          }
+        }
+      }
+    }
+
+    // Process arbitrary file actions
+    if (response.files?.length) {
+      for (const file of response.files) {
+        if (file.action === 'delete') {
+          actions.push({
+            type: 'delete_file',
+            path: file.path,
+          });
+        } else {
+          actions.push({
+            type: files.some(f => f.path === file.path) ? 'update_file' : 'create_file',
+            path: file.path,
+            content: file.content,
+          });
+        }
       }
     }
 

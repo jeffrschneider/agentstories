@@ -34,6 +34,16 @@ export const SkillReferenceSchema = z.object({
 
 export type SkillReference = z.infer<typeof SkillReferenceSchema>;
 
+// Asset for agentskills.io compatibility (static resources)
+export const SkillAssetSchema = z.object({
+  filename: z.string().min(1).describe('Asset filename (e.g., "template.json", "schema.yaml")'),
+  type: z.enum(['json', 'yaml', 'csv', 'txt', 'png', 'svg', 'other']).default('other'),
+  description: z.string().optional().describe('What this asset is for'),
+  content: z.string().optional().describe('Inline asset content, if text-based')
+});
+
+export type SkillAsset = z.infer<typeof SkillAssetSchema>;
+
 // AgentSkills.io portability configuration
 export const AgentSkillsPortabilitySchema = z.object({
   // Required by agentskills.io
@@ -56,12 +66,15 @@ export const AgentSkillsPortabilitySchema = z.object({
     .optional()
     .describe('Environment requirements (e.g., "Python 3.10+, Node 18+")'),
 
-  // References to additional files
+  // References to additional files (Agent Skills spec directories)
   scripts: z.array(SkillScriptSchema).optional()
-    .describe('Executable scripts for this skill'),
+    .describe('Executable scripts for this skill (scripts/ directory)'),
 
   references: z.array(SkillReferenceSchema).optional()
-    .describe('Additional documentation files')
+    .describe('Additional documentation files (references/ directory)'),
+
+  assets: z.array(SkillAssetSchema).optional()
+    .describe('Static resources like templates, schemas, data files (assets/ directory)')
 });
 
 export type AgentSkillsPortability = z.infer<typeof AgentSkillsPortabilitySchema>;
