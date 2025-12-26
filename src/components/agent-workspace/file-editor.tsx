@@ -1,7 +1,9 @@
 'use client';
 
 import * as React from 'react';
-import { X, FileText, Bot, Braces } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { X, FileText, Bot, Braces, Pencil, Eye } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -201,6 +203,7 @@ function FileEditorContent({
   onChange: (content: string) => void;
 }) {
   const [content, setContent] = React.useState(file.content);
+  const [viewMode, setViewMode] = React.useState<'edit' | 'view'>('edit');
 
   // Sync content when file changes externally (e.g., from Apply button)
   React.useEffect(() => {
@@ -218,19 +221,59 @@ function FileEditorContent({
   }, [content, file.content, onChange]);
 
   const isJson = file.path.endsWith('.json');
+  const isYaml = file.path.endsWith('.yaml') || file.path.endsWith('.yml');
+  const isMarkdown = file.path.endsWith('.md');
+  const canPreview = isMarkdown;
 
   return (
     <div className="flex flex-col h-full">
-      <Textarea
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
-        className={cn(
-          'flex-1 resize-none rounded-none border-0 focus-visible:ring-0 font-mono text-sm',
-          isJson && 'bg-muted/20'
-        )}
-        placeholder={isJson ? '{\n  \n}' : '# Start writing...'}
-        spellCheck={false}
-      />
+      {/* View mode toggle - only show for markdown files */}
+      {canPreview && (
+        <div className="flex items-center gap-1 px-2 py-1 border-b bg-muted/20 shrink-0">
+          <Button
+            variant={viewMode === 'edit' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('edit')}
+            className="h-7 px-2"
+          >
+            <Pencil className="h-3.5 w-3.5 mr-1" />
+            <span className="text-xs">Edit</span>
+          </Button>
+          <Button
+            variant={viewMode === 'view' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setViewMode('view')}
+            className="h-7 px-2"
+          >
+            <Eye className="h-3.5 w-3.5 mr-1" />
+            <span className="text-xs">Preview</span>
+          </Button>
+        </div>
+      )}
+
+      {/* Editor or Preview */}
+      {viewMode === 'edit' || !canPreview ? (
+        <Textarea
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+          className={cn(
+            'flex-1 resize-none rounded-none border-0 focus-visible:ring-0 font-mono text-sm',
+            (isJson || isYaml) && 'bg-muted/20'
+          )}
+          placeholder={isJson ? '{\n  \n}' : '# Start writing...'}
+          spellCheck={false}
+        />
+      ) : (
+        <div className="flex-1 overflow-auto p-4 bg-background">
+          <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:mt-4 prose-headings:mb-2 prose-p:my-2 prose-ul:my-2 prose-li:my-0.5 prose-pre:bg-muted prose-pre:text-foreground">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              {content}
+            </ReactMarkdown>
+          </div>
+        </div>
+      )}
+
+      {/* Status bar */}
       <div className="flex items-center justify-between px-3 py-1 border-t text-xs text-muted-foreground shrink-0">
         <span>{file.path}</span>
         <span>{content !== file.content ? 'Modified' : 'Saved'}</span>

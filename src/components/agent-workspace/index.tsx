@@ -69,6 +69,9 @@ export function AgentWorkspace({
   );
   const [selectedPath, setSelectedPath] = React.useState<string | null>('agent.md');
   const [openPaths, setOpenPaths] = React.useState<string[]>(['agent.md']);
+  const [expandedPaths, setExpandedPaths] = React.useState<Set<string>>(() =>
+    new Set(['skills', 'memory', 'tools', 'logs'])
+  );
   const [isChatOpen, setIsChatOpen] = React.useState(true);
   const [isChatExpanded, setIsChatExpanded] = React.useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
@@ -158,6 +161,35 @@ export function AgentWorkspace({
     setSelectedPath(path);
     if (!openPaths.includes(path)) {
       setOpenPaths((prev) => [...prev, path]);
+    }
+  };
+
+  // Handle folder expand/collapse toggle
+  const handleToggleExpand = (path: string) => {
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  };
+
+  // Expand all parent folders for a given path
+  const expandParentFolders = (filePath: string) => {
+    const parts = filePath.split('/');
+    const parentPaths: string[] = [];
+    for (let i = 1; i < parts.length; i++) {
+      parentPaths.push(parts.slice(0, i).join('/'));
+    }
+    if (parentPaths.length > 0) {
+      setExpandedPaths((prev) => {
+        const next = new Set(prev);
+        parentPaths.forEach((p) => next.add(p));
+        return next;
+      });
     }
   };
 
@@ -260,6 +292,8 @@ export function AgentWorkspace({
       ...prev,
       files: [...prev.files, newFile],
     }));
+    // Expand parent folders so the new file is visible
+    expandParentFolders(newFile.path);
     handleSelectFile(newFile.path);
     setHasUnsavedChanges(true);
   };
@@ -297,6 +331,8 @@ export function AgentWorkspace({
             ...prev,
             files: [...prev.files, newFile],
           }));
+          // Expand parent folders so the new file is visible
+          expandParentFolders(action.path);
           handleSelectFile(action.path);
         }
         break;
@@ -482,7 +518,9 @@ export function AgentWorkspace({
           <FileTree
             nodes={treeNodes}
             selectedPath={selectedPath}
+            expandedPaths={expandedPaths}
             onSelectFile={handleSelectFile}
+            onToggleExpand={handleToggleExpand}
             onCreateFile={handleCreateFile}
             onDeleteFile={handleDeleteFile}
           />

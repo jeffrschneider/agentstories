@@ -37,7 +37,9 @@ export type CreateFileType = 'skill' | 'script' | 'reference' | 'asset' | 'confi
 interface FileTreeProps {
   nodes: FileTreeNode[];
   selectedPath: string | null;
+  expandedPaths: Set<string>;
   onSelectFile: (path: string) => void;
+  onToggleExpand: (path: string) => void;
   onCreateFile: (parentPath: string, type: CreateFileType) => void;
   onDeleteFile: (path: string) => void;
   onRenameFile?: (path: string) => void;
@@ -47,7 +49,9 @@ interface FileTreeProps {
 export function FileTree({
   nodes,
   selectedPath,
+  expandedPaths,
   onSelectFile,
+  onToggleExpand,
   onCreateFile,
   onDeleteFile,
   onRenameFile,
@@ -101,7 +105,9 @@ export function FileTree({
             node={node}
             depth={0}
             selectedPath={selectedPath}
+            expandedPaths={expandedPaths}
             onSelectFile={onSelectFile}
+            onToggleExpand={onToggleExpand}
             onCreateFile={onCreateFile}
             onDeleteFile={onDeleteFile}
             onRenameFile={onRenameFile}
@@ -116,7 +122,9 @@ interface TreeNodeProps {
   node: FileTreeNode;
   depth: number;
   selectedPath: string | null;
+  expandedPaths: Set<string>;
   onSelectFile: (path: string) => void;
+  onToggleExpand: (path: string) => void;
   onCreateFile: (parentPath: string, type: CreateFileType) => void;
   onDeleteFile: (path: string) => void;
   onRenameFile?: (path: string) => void;
@@ -126,18 +134,20 @@ function TreeNode({
   node,
   depth,
   selectedPath,
+  expandedPaths,
   onSelectFile,
+  onToggleExpand,
   onCreateFile,
   onDeleteFile,
   onRenameFile,
 }: TreeNodeProps) {
-  const [isOpen, setIsOpen] = React.useState(depth === 0);
   const isSelected = selectedPath === node.path;
   const isFolder = node.type === 'folder';
+  const isOpen = expandedPaths.has(node.path);
 
   const handleClick = () => {
     if (isFolder) {
-      setIsOpen(!isOpen);
+      onToggleExpand(node.path);
     } else {
       onSelectFile(node.path);
     }
@@ -303,7 +313,9 @@ function TreeNode({
               node={child}
               depth={depth + 1}
               selectedPath={selectedPath}
+              expandedPaths={expandedPaths}
               onSelectFile={onSelectFile}
+              onToggleExpand={onToggleExpand}
               onCreateFile={onCreateFile}
               onDeleteFile={onDeleteFile}
               onRenameFile={onRenameFile}
