@@ -12,6 +12,7 @@ import {
 import { FileTree } from './file-tree';
 import { MultiFileEditor } from './file-editor';
 import { AgentChat } from './agent-chat';
+import { ResizablePanel } from './resizable-panel';
 import {
   type AgentFile,
   type AgentFileSystem,
@@ -50,6 +51,7 @@ export function AgentWorkspace({
   const [selectedPath, setSelectedPath] = React.useState<string | null>('AGENTS.md');
   const [openPaths, setOpenPaths] = React.useState<string[]>(['AGENTS.md']);
   const [isChatOpen, setIsChatOpen] = React.useState(true);
+  const [isChatExpanded, setIsChatExpanded] = React.useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
 
   // Build tree structure
@@ -174,6 +176,11 @@ export function AgentWorkspace({
     setHasUnsavedChanges(false);
   };
 
+  // Toggle chat expand
+  const handleToggleChatExpand = () => {
+    setIsChatExpanded((prev) => !prev);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -200,7 +207,12 @@ export function AgentWorkspace({
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setIsChatOpen(!isChatOpen)}
+            onClick={() => {
+              setIsChatOpen(!isChatOpen);
+              if (!isChatOpen) {
+                setIsChatExpanded(false);
+              }
+            }}
             title={isChatOpen ? 'Hide chat' : 'Show chat'}
           >
             {isChatOpen ? (
@@ -257,7 +269,7 @@ export function AgentWorkspace({
       {/* Main content */}
       <div className="flex-1 flex min-h-0">
         {/* File tree */}
-        <div className="w-48 border-r shrink-0">
+        <div className="w-48 border-r shrink-0 overflow-hidden">
           <FileTree
             nodes={treeNodes}
             selectedPath={selectedPath}
@@ -279,16 +291,24 @@ export function AgentWorkspace({
           />
         </div>
 
-        {/* Chat panel */}
+        {/* Chat panel - resizable */}
         {isChatOpen && (
-          <div className="w-80 border-l shrink-0">
+          <ResizablePanel
+            minWidth={280}
+            maxWidth={800}
+            defaultWidth={360}
+            isExpanded={isChatExpanded}
+            expandedWidth="50%"
+          >
             <AgentChat
               files={fileSystem.files}
               activeFile={activeFile}
               agentName={fileSystem.name || 'Agent'}
               onAction={handleChatAction}
+              isExpanded={isChatExpanded}
+              onToggleExpand={handleToggleChatExpand}
             />
-          </div>
+          </ResizablePanel>
         )}
       </div>
 
@@ -336,3 +356,5 @@ acquired: built_in
 export { FileTree } from './file-tree';
 export { FileEditor, MultiFileEditor } from './file-editor';
 export { AgentChat } from './agent-chat';
+export { ResizablePanel } from './resizable-panel';
+export { ContentBlock, parseContentBlocks } from './content-block';

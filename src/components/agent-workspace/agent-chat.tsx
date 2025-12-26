@@ -3,7 +3,7 @@
 import * as React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, Loader2, RotateCcw, Sparkles, FileText, Bot, ChevronDown } from 'lucide-react';
+import { Send, Loader2, RotateCcw, Sparkles, FileText, Bot, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { ContentBlock, parseContentBlocks } from './content-block';
 import type { AgentFile } from '@/lib/agent-files';
 
 interface ChatMessage {
@@ -34,6 +35,8 @@ interface AgentChatProps {
   activeFile: AgentFile | null;
   agentName: string;
   onAction: (action: ChatAction) => void;
+  isExpanded?: boolean;
+  onToggleExpand?: () => void;
   className?: string;
 }
 
@@ -42,6 +45,8 @@ export function AgentChat({
   activeFile,
   agentName,
   onAction,
+  isExpanded = false,
+  onToggleExpand,
   className,
 }: AgentChatProps) {
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
@@ -79,12 +84,13 @@ Current file content:
 ${contextFile.content}
 \`\`\`
 
-Help the user modify this file. When they describe changes:
+Help the user modify this file. When suggesting changes:
 1. Acknowledge what they want to change
-2. Explain how you'll update the file
-3. Be concise
+2. Provide the updated content in a fenced code block
+3. Use markdown or yaml language tags as appropriate
+4. Be concise but include complete sections
 
-If they want changes outside this file, suggest switching to agent scope.`;
+IMPORTANT: When providing file updates, always wrap them in fenced code blocks so users can apply them.`;
     }
 
     return `You are helping edit the agent "${agentName}".
@@ -97,7 +103,7 @@ Help the user:
 - Modify the agent identity (AGENTS.md)
 - Add guardrails, change autonomy, etc.
 
-When they describe changes, acknowledge and explain what will be updated.`;
+IMPORTANT: When providing file updates or new content, always wrap them in fenced code blocks so users can apply them. Use markdown or yaml language tags as appropriate.`;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -178,12 +184,6 @@ When they describe changes, acknowledge and explain what will be updated.`;
         };
         setMessages((prev) => [...prev, assistantMessage]);
         setStreamingContent('');
-
-        // Extract and execute actions
-        await extractAndExecuteActions(
-          [...messages, userMessage, assistantMessage],
-          contextFile
-        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -193,29 +193,21 @@ When they describe changes, acknowledge and explain what will be updated.`;
     }
   };
 
-  const extractAndExecuteActions = async (
-    allMessages: ChatMessage[],
-    contextFile: AgentFile | null
-  ) => {
-    try {
-      const response = await fetch('/api/agent-files/extract-action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: allMessages.map(m => ({ role: m.role, content: m.content })),
-          currentFile: contextFile,
-          allFiles: files,
-        }),
-      });
+  const handleApplyContent = (content: string, targetFile: string) => {
+    const existingFile = files.find((f) => f.path === targetFile);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.action) {
-          onAction(data.action);
-        }
-      }
-    } catch (err) {
-      console.error('Action extraction error:', err);
+    if (existingFile) {
+      onAction({
+        type: 'update_file',
+        path: targetFile,
+        content,
+      });
+    } else {
+      onAction({
+        type: 'create_file',
+        path: targetFile,
+        content,
+      });
     }
   };
 
@@ -240,41 +232,58 @@ When they describe changes, acknowledge and explain what will be updated.`;
             {effectiveScope === 'file' && contextFile ? (
               <>
                 <FileText className="h-4 w-4 text-green-500" />
-                <span className="text-sm font-medium truncate max-w-[150px]">
+                <span className="text-sm font-medium truncate max-w-[120px]">
                   {contextFile.path.split('/').pop()}
                 </span>
               </>
             ) : (
               <>
                 <Bot className="h-4 w-4 text-blue-500" />
-                <span className="text-sm font-medium">{agentName}</span>
+                <span className="text-sm font-medium truncate max-w-[120px]">{agentName}</span>
               </>
             )}
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 text-xs">
-                {effectiveScope === 'file' ? 'File scope' : 'Agent scope'}
-                <ChevronDown className="h-3 w-3 ml-1" />
+          <div className="flex items-center gap-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-7 text-xs px-2">
+                  {effectiveScope === 'file' ? 'File' : 'Agent'}
+                  <ChevronDown className="h-3 w-3 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => setScope('agent')}
+                  disabled={!activeFile}
+                >
+                  <Bot className="h-4 w-4 mr-2" />
+                  Agent scope
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setScope('file')}
+                  disabled={!activeFile}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  File scope
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {onToggleExpand && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={onToggleExpand}
+                title={isExpanded ? 'Collapse' : 'Expand'}
+              >
+                {isExpanded ? (
+                  <Minimize2 className="h-3.5 w-3.5" />
+                ) : (
+                  <Maximize2 className="h-3.5 w-3.5" />
+                )}
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() => setScope('agent')}
-                disabled={!activeFile}
-              >
-                <Bot className="h-4 w-4 mr-2" />
-                Agent scope
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() => setScope('file')}
-                disabled={!activeFile}
-              >
-                <FileText className="h-4 w-4 mr-2" />
-                File scope
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+          </div>
         </div>
       </div>
 
@@ -293,7 +302,13 @@ When they describe changes, acknowledge and explain what will be updated.`;
           ) : (
             <div className="space-y-3 py-3">
               {messages.map((message) => (
-                <ChatBubble key={message.id} message={message} />
+                <ChatBubble
+                  key={message.id}
+                  message={message}
+                  files={files}
+                  activeFile={activeFile}
+                  onApplyContent={handleApplyContent}
+                />
               ))}
               {streamingContent && (
                 <ChatBubble
@@ -303,6 +318,9 @@ When they describe changes, acknowledge and explain what will be updated.`;
                     content: streamingContent,
                     timestamp: new Date(),
                   }}
+                  files={files}
+                  activeFile={activeFile}
+                  onApplyContent={handleApplyContent}
                   isStreaming
                 />
               )}
@@ -371,33 +389,70 @@ When they describe changes, acknowledge and explain what will be updated.`;
 
 function ChatBubble({
   message,
+  files,
+  activeFile,
+  onApplyContent,
   isStreaming,
 }: {
   message: ChatMessage;
+  files: AgentFile[];
+  activeFile: AgentFile | null;
+  onApplyContent: (content: string, targetFile: string) => void;
   isStreaming?: boolean;
 }) {
   const isUser = message.role === 'user';
 
-  return (
-    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
-      <div
-        className={`max-w-[90%] rounded-lg px-3 py-2 text-sm ${
-          isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-background border shadow-sm'
-        }`}
-      >
-        {isUser ? (
+  if (isUser) {
+    return (
+      <div className="flex justify-end">
+        <div className="max-w-[90%] rounded-lg px-3 py-2 text-sm bg-primary text-primary-foreground">
           <div className="whitespace-pre-wrap">{message.content}</div>
-        ) : (
-          <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-pre:my-1">
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
-            </ReactMarkdown>
-            {isStreaming && (
-              <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-0.5" />
-            )}
-          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Parse content into blocks for assistant messages
+  const contentBlocks = parseContentBlocks(message.content, activeFile?.path);
+  const availableFiles = files.map((f) => f.path);
+
+  return (
+    <div className="flex justify-start">
+      <div className="max-w-[95%] space-y-2">
+        {contentBlocks.map((block, i) => {
+          if (block.type === 'code') {
+            const targetFile = block.targetFile || activeFile?.path || 'AGENTS.md';
+            const currentFile = files.find((f) => f.path === targetFile);
+
+            return (
+              <ContentBlock
+                key={i}
+                content={block.content}
+                language={block.language}
+                targetFile={targetFile}
+                currentContent={currentFile?.content}
+                onApply={onApplyContent}
+                availableFiles={availableFiles}
+              />
+            );
+          }
+
+          // Render text blocks as markdown
+          return (
+            <div
+              key={i}
+              className="rounded-lg px-3 py-2 text-sm bg-background border shadow-sm"
+            >
+              <div className="prose prose-sm max-w-none dark:prose-invert prose-p:my-1 prose-pre:my-1">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {block.content}
+                </ReactMarkdown>
+              </div>
+            </div>
+          );
+        })}
+        {isStreaming && (
+          <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-0.5" />
         )}
       </div>
     </div>
