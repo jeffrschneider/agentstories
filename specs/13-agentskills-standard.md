@@ -26,6 +26,30 @@ skill-name/
     └── schema.yaml
 ```
 
+### IMPORTANT: Skill Creation Requirements
+
+When creating a new skill, the system MUST:
+
+1. **Create the skill directory structure** including all three optional subdirectories:
+   - `skills/{slug}/SKILL.md` - the skill definition
+   - `skills/{slug}/config.yaml` - skill configuration
+   - `skills/{slug}/scripts/.gitkeep` - placeholder for scripts
+   - `skills/{slug}/references/.gitkeep` - placeholder for references
+   - `skills/{slug}/assets/.gitkeep` - placeholder for assets
+
+2. **Add a link to agent.md** in the `## Skills` section:
+   ```markdown
+   ## Skills
+   - [Skill Name](skills/skill-slug/SKILL.md) - Skill description
+   ```
+
+3. **Preserve existing skills** when adding new ones - don't overwrite the Skills section, append to it
+
+The directories should be created even if empty (using `.gitkeep` files) so:
+- Users can see the full structure in the file tree
+- It's clear where to add scripts, references, and assets later
+- The exported agent has a complete, standard-compliant directory structure
+
 ---
 
 ## SKILL.md Format
