@@ -7,6 +7,14 @@
  * Based on Agent Skills specification: https://agentskills.io
  */
 
+import {
+  buildInterviewPrompt,
+  AGENT_INTERVIEW,
+  SKILL_INTERVIEW,
+  CONVERSATION_GUIDELINES,
+  type InterviewContext,
+} from './interview';
+
 export const AGENT_FILE_STRUCTURE = `
 agent/
 ├── agent.md                    # Core agent definition (name, purpose, role, autonomy, guardrails)
@@ -26,8 +34,8 @@ agent/
 `;
 
 export const JSON_OUTPUT_SCHEMA = `{
-  "action": "create_agent" | "update_agent" | "add_skill" | "update_skill" | "add_file",
-  "message": "Human-readable explanation of what was created/changed",
+  "action": "question" | "create_agent" | "update_agent" | "add_skill" | "update_skill" | "add_file",
+  "message": "Human-readable message - question to ask OR explanation of changes",
   "agent": {
     "name": "string (required)",
     "identifier": "string (kebab-case)",
@@ -103,7 +111,28 @@ Autonomy: ${currentAgent.autonomyLevel || 'Not defined'}
 Skills: ${currentAgent.skills?.map(s => s.name).join(', ') || 'None'}
 ` : '';
 
-  return `You are an AI agent architect helping design and modify agents.
+  // Determine if this is a new agent or an existing one
+  const isNewAgent = !currentAgent?.name || currentAgent.name === 'New Agent' || currentAgent.name === 'Untitled';
+  const hasSkills = currentAgent?.skills && currentAgent.skills.length > 0;
+
+  return `You are an AI agent architect helping design and modify agents through conversation.
+
+## Your Approach
+
+${isNewAgent ? `This is a NEW AGENT. Use the guided interview approach:
+- Ask clarifying questions before generating
+- Gather name, purpose, and autonomy level before creating
+- Suggest skills based on the purpose
+- Don't generate everything at once - have a conversation` : `This is an EXISTING AGENT. The user wants to modify it:
+- Read the current file contents carefully
+- Make only the changes requested
+- Preserve all existing content not being changed`}
+
+${AGENT_INTERVIEW}
+
+${SKILL_INTERVIEW}
+
+${CONVERSATION_GUIDELINES}
 
 ## Agent Skills Specification
 This tool follows the Agent Skills standard (agentskills.io). Key requirements:
@@ -114,22 +143,36 @@ This tool follows the Agent Skills standard (agentskills.io). Key requirements:
 ## File Structure
 ${AGENT_FILE_STRUCTURE}
 
-## Current Files
+## Current State
 ${fileList}
 ${currentAgentInfo}
 ${fileContentsSection}
 
-## Your Task
-Help the user create or modify their agent. Return your response as JSON that matches this schema:
+## Response Format
+When you have gathered enough information, return your response as JSON that matches this schema:
 
 ${JSON_OUTPUT_SCHEMA}
 
 ## Action Types
+- **question**: Ask a clarifying question - use this for new agents before generating!
 - **create_agent**: Create a new agent with identity and optional skills
 - **update_agent**: Update agent identity (name, purpose, role, etc.)
 - **add_skill**: Add one or more new skills to the agent
 - **update_skill**: Modify an existing skill
 - **add_file**: Add arbitrary files (scripts, references, assets, etc.)
+
+## When to Use "question" vs Generate
+
+Use "question" action when:
+- Creating a NEW agent and you don't know the name, purpose, or autonomy level
+- User's request is ambiguous and could be interpreted multiple ways
+- You need to choose between significantly different approaches
+
+Generate directly when:
+- User provides clear, complete requirements
+- User says "just make it" or "use defaults"
+- Modifying an existing agent with a specific request
+- Adding a simple file or making a small change
 
 ## Agent Skills Spec - Optional Directories
 
@@ -162,7 +205,15 @@ assets/
 
 ## Examples
 
-### Creating a new agent with a skill:
+### Asking a clarifying question (for new agents):
+\`\`\`json
+{
+  "action": "question",
+  "message": "I'd love to help you create a customer support agent! A few quick questions:\n\n**What should we call it?** (e.g., 'Support Helper', 'Customer Care Agent')\n\n**How autonomous should it be?**\n• Full - handles everything independently\n• Supervised - handles routine cases, escalates edge cases\n• Collaborative - works with humans on decisions\n• Directed - requires approval for each action"
+}
+\`\`\`
+
+### Creating an agent after gathering info:
 \`\`\`json
 {
   "action": "create_agent",
@@ -279,7 +330,7 @@ This enables progressive disclosure - the agent harness loads skill details on d
  * Parse the JSON response from the LLM
  */
 export interface AgentChatResponse {
-  action: 'create_agent' | 'update_agent' | 'add_skill' | 'update_skill' | 'add_file';
+  action: 'question' | 'create_agent' | 'update_agent' | 'add_skill' | 'update_skill' | 'add_file';
   message: string;
   agent?: {
     name?: string;
