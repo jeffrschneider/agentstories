@@ -128,6 +128,67 @@ export const SkillFailureHandlingSchema = z.object({
 
 export type SkillFailureHandling = z.infer<typeof SkillFailureHandlingSchema>;
 
+// ============================================================================
+// Filesystem Export Schemas (Extended Skill Content)
+// ============================================================================
+
+// Prompt variable definition
+export const PromptVariableSchema = z.object({
+  name: z.string().min(1),
+  type: z.string().min(1),
+  required: z.boolean().default(true),
+  description: z.string().optional()
+});
+
+export type PromptVariable = z.infer<typeof PromptVariableSchema>;
+
+// Prompt template for skill
+export const SkillPromptSchema = z.object({
+  name: z.string().min(1).regex(/^[a-z][a-z0-9_]*$/, {
+    message: 'Prompt name must be lowercase alphanumeric with underscores'
+  }),
+  description: z.string().min(1),
+  inputs: z.array(PromptVariableSchema).optional(),
+  outputs: z.array(PromptVariableSchema).optional(),
+  content: z.string().min(1).describe('Prompt template content with {{variables}}')
+});
+
+export type SkillPrompt = z.infer<typeof SkillPromptSchema>;
+
+// Tool implementation (actual code)
+export const ToolImplementationSchema = z.object({
+  toolName: z.string().min(1).describe('References tools[].name'),
+  language: z.enum(['python', 'typescript', 'javascript', 'bash']),
+  filename: z.string().min(1),
+  content: z.string().min(1).describe('Implementation source code'),
+  dependencies: z.array(z.string()).optional().describe('Required packages/modules')
+});
+
+export type ToolImplementation = z.infer<typeof ToolImplementationSchema>;
+
+// Usage example
+export const SkillExampleSchema = z.object({
+  name: z.string().min(1).regex(/^[a-z][a-z0-9_-]*$/, {
+    message: 'Example name must be lowercase alphanumeric with hyphens/underscores'
+  }),
+  description: z.string().min(1),
+  input: z.record(z.unknown()).optional().describe('Example input data'),
+  expectedOutput: z.record(z.unknown()).optional().describe('Expected output'),
+  content: z.string().min(1).describe('Full example markdown content')
+});
+
+export type SkillExample = z.infer<typeof SkillExampleSchema>;
+
+// Output template
+export const OutputTemplateSchema = z.object({
+  name: z.string().min(1),
+  format: z.enum(['markdown', 'json', 'yaml', 'html', 'text', 'docx', 'pdf']),
+  filename: z.string().min(1),
+  content: z.string().min(1).describe('Template content')
+});
+
+export type OutputTemplate = z.infer<typeof OutputTemplateSchema>;
+
 // Complete skill definition - the core unit of capability
 export const SkillSchema = z.object({
   // Identity
@@ -158,7 +219,17 @@ export const SkillSchema = z.object({
   failureHandling: SkillFailureHandlingSchema.optional(),
 
   // Constraints
-  guardrails: z.array(SkillGuardrailSchema).optional()
+  guardrails: z.array(SkillGuardrailSchema).optional(),
+
+  // Filesystem export content (extended skill data)
+  prompts: z.array(SkillPromptSchema).optional()
+    .describe('Prompt templates used by this skill'),
+  toolImplementations: z.array(ToolImplementationSchema).optional()
+    .describe('Actual code implementations for tools'),
+  examples: z.array(SkillExampleSchema).optional()
+    .describe('Usage examples for this skill'),
+  templates: z.array(OutputTemplateSchema).optional()
+    .describe('Output templates for formatted responses')
 });
 
 export type Skill = z.infer<typeof SkillSchema>;

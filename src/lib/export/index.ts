@@ -8,6 +8,16 @@ export {
   type ExportedFile,
 } from './agentskills';
 
+// Agent filesystem export
+export {
+  exportAgentToFilesystem,
+  downloadAgentZip,
+  getFilesystemPreview,
+  type AgentExportOptions,
+  type AgentExportResult,
+  type ExportedFile as AgentExportedFile,
+} from './agent-filesystem';
+
 // Harness adapters
 export {
   // Types

@@ -1,14 +1,16 @@
 'use client';
 
 import * as React from 'react';
-import { Play, Wrench, Save, Loader2, MoreHorizontal, PanelRightClose, PanelRight, Eye, Copy, Trash2 } from 'lucide-react';
+import { Play, Wrench, Save, Loader2, MoreHorizontal, PanelRightClose, PanelRight, Eye, Copy, Trash2, FolderTree } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { AgentExportDialog } from '@/components/story-editor/agent-export-dialog';
 import { FileTree } from './file-tree';
 import { MultiFileEditor } from './file-editor';
 import { AgentChat } from './agent-chat';
@@ -241,11 +243,23 @@ export function AgentWorkspace({
                     Duplicate
                   </DropdownMenuItem>
                 )}
+                <AgentExportDialog
+                  story={filesToStory(fileSystem)}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <FolderTree className="h-4 w-4 mr-2" />
+                      Export Agent
+                    </DropdownMenuItem>
+                  }
+                />
                 {onDelete && (
-                  <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onDelete} className="text-destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>

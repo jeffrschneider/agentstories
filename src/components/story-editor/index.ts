@@ -8,4 +8,5 @@ export { GitHubPublish } from "./github-publish";
 export { StoryChatInterface } from "./story-chat-interface";
 export { GeneratePanel } from "./generate-panel";
 export { SkillSuggestions, InlineSkillSuggestions } from "./skill-suggestions";
+export { AgentExportDialog } from "./agent-export-dialog";
 export * from "./sections";
