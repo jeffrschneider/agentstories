@@ -2,7 +2,17 @@
  * Agent Files - Virtual file system representation for agents
  */
 
-export type AgentFileType = 'agents' | 'skill' | 'mcp-config' | 'config' | 'unknown';
+export type AgentFileType =
+  | 'agents'
+  | 'skill'
+  | 'skill-config'
+  | 'prompt'
+  | 'tool-impl'
+  | 'example'
+  | 'template'
+  | 'mcp-config'
+  | 'config'
+  | 'unknown';
 
 export interface AgentFile {
   path: string;           // e.g., "AGENTS.md", "skills/refunds/SKILL.md"
@@ -40,6 +50,21 @@ export function inferFileType(path: string): AgentFileType {
   }
   if (path.startsWith('skills/') && path.endsWith('/SKILL.md')) {
     return 'skill';
+  }
+  if (path.startsWith('skills/') && path.endsWith('/config.yaml')) {
+    return 'skill-config';
+  }
+  if (path.startsWith('skills/') && path.includes('/prompts/')) {
+    return 'prompt';
+  }
+  if (path.startsWith('skills/') && path.includes('/tools/')) {
+    return 'tool-impl';
+  }
+  if (path.startsWith('skills/') && path.includes('/examples/')) {
+    return 'example';
+  }
+  if (path.startsWith('skills/') && path.includes('/templates/')) {
+    return 'template';
   }
   if (path.startsWith('skills/') && path.endsWith('.md')) {
     return 'skill';

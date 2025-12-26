@@ -56,6 +56,74 @@ export function AgentWorkspace({
   const [isChatExpanded, setIsChatExpanded] = React.useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
 
+  // Track story version to detect external changes
+  const lastStoryRef = React.useRef<string>(JSON.stringify({
+    skills: story.skills?.map(s => ({ name: s.name, id: s.id })),
+    name: story.name,
+    updatedAt: story.updatedAt,
+  }));
+
+  // Sync fileSystem when story changes externally (e.g., skill added via UI)
+  React.useEffect(() => {
+    const storySignature = JSON.stringify({
+      skills: story.skills?.map(s => ({ name: s.name, id: s.id })),
+      name: story.name,
+      updatedAt: story.updatedAt,
+    });
+
+    // Only sync if story actually changed
+    if (storySignature !== lastStoryRef.current) {
+      lastStoryRef.current = storySignature;
+
+      // Regenerate file system from story
+      const newFileSystem = storyToFileSystem(story);
+
+      setFileSystem(prev => {
+        // Merge: keep local modifications to existing files,
+        // but add/remove files based on story changes
+        const existingPaths = new Set(prev.files.map(f => f.path));
+        const newPaths = new Set(newFileSystem.files.map(f => f.path));
+
+        // Files to keep (existed before and still exist)
+        const keptFiles = prev.files.filter(f => newPaths.has(f.path));
+
+        // New files (didn't exist before)
+        const addedFiles = newFileSystem.files.filter(f => !existingPaths.has(f.path));
+
+        // For kept files, update content only if file wasn't locally modified
+        // (we use the new content since skills may have been updated via UI)
+        const mergedFiles = keptFiles.map(existingFile => {
+          const newFile = newFileSystem.files.find(f => f.path === existingFile.path);
+          if (newFile) {
+            // Use new content from story (reflects UI changes)
+            return { ...existingFile, content: newFile.content };
+          }
+          return existingFile;
+        });
+
+        return {
+          ...prev,
+          name: story.name,
+          files: [...mergedFiles, ...addedFiles],
+          metadata: {
+            ...prev.metadata,
+            updatedAt: story.updatedAt,
+          },
+        };
+      });
+
+      // Open newly created skill files
+      const newSkillFiles = newFileSystem.files.filter(
+        f => f.type === 'skill' && !openPaths.includes(f.path)
+      );
+      if (newSkillFiles.length > 0) {
+        const lastNewSkill = newSkillFiles[newSkillFiles.length - 1];
+        setOpenPaths(prev => [...prev, lastNewSkill.path]);
+        setSelectedPath(lastNewSkill.path);
+      }
+    }
+  }, [story, openPaths]);
+
   // Build tree structure
   const treeNodes = React.useMemo(
     () => buildFileTree(fileSystem.files),
