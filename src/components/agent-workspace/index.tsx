@@ -351,7 +351,8 @@ export function AgentWorkspace({
   }) => {
     switch (action.type) {
       case 'create_file':
-        if (action.content) {
+        // Allow empty content (e.g., .gitkeep files) - check for undefined, not falsy
+        if (action.content !== undefined) {
           const newFile: AgentFile = {
             path: action.path,
             content: action.content,
@@ -362,14 +363,17 @@ export function AgentWorkspace({
             ...prev,
             files: [...prev.files, newFile],
           }));
-          // Expand parent folders so the new file is visible
-          expandParentFolders(action.path);
-          handleSelectFile(action.path);
+          // For actual files (not .gitkeep), expand and select
+          if (!action.path.endsWith('.gitkeep')) {
+            expandParentFolders(action.path);
+            handleSelectFile(action.path);
+          }
         }
         break;
 
       case 'update_file':
-        if (action.content) {
+        // Allow empty content updates too
+        if (action.content !== undefined) {
           handleFileChange(action.path, action.content);
         }
         break;
