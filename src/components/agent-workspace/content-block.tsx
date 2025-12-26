@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Check, X, FileEdit, Plus, Eye } from 'lucide-react';
+import { Check, X, FileEdit, Plus, Eye, CheckCheck, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,13 +14,59 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
+export interface CodeBlock {
+  id: string;
+  content: string;
+  language?: string;
+  targetFile: string;
+  currentContent?: string;
+}
+
 interface ContentBlockProps {
   content: string;
   language?: string;
-  targetFile?: string;
+  targetFile: string;
   currentContent?: string;
   onApply: (content: string, targetFile: string) => void;
   availableFiles: string[];
+  isApplied?: boolean;
+}
+
+// Compute diff between old and new content
+function computeDiff(oldContent: string | undefined, newContent: string) {
+  if (!oldContent) {
+    // New content - all additions
+    return newContent.split('\n').map((line, i) => ({
+      type: 'add' as const,
+      lineNumber: i + 1,
+      content: line,
+    }));
+  }
+
+  const oldLines = oldContent.split('\n');
+  const newLines = newContent.split('\n');
+  const result: { type: 'same' | 'add' | 'remove'; lineNumber: number; content: string }[] = [];
+
+  const maxLen = Math.max(oldLines.length, newLines.length);
+  let lineNum = 1;
+
+  for (let i = 0; i < maxLen; i++) {
+    const oldLine = oldLines[i];
+    const newLine = newLines[i];
+
+    if (oldLine === newLine) {
+      result.push({ type: 'same', lineNumber: lineNum++, content: oldLine || '' });
+    } else {
+      if (oldLine !== undefined) {
+        result.push({ type: 'remove', lineNumber: lineNum, content: oldLine });
+      }
+      if (newLine !== undefined) {
+        result.push({ type: 'add', lineNumber: lineNum++, content: newLine });
+      }
+    }
+  }
+
+  return result;
 }
 
 export function ContentBlock({
@@ -30,64 +76,39 @@ export function ContentBlock({
   currentContent,
   onApply,
   availableFiles,
+  isApplied = false,
 }: ContentBlockProps) {
   const [showDiff, setShowDiff] = React.useState(false);
-  const [selectedFile, setSelectedFile] = React.useState(targetFile || availableFiles[0] || '');
+  const [applied, setApplied] = React.useState(isApplied);
 
-  const isNewFile = !currentContent && targetFile;
-  const hasChanges = currentContent !== content;
+  const isNewFile = !currentContent;
 
-  // Simple diff computation
-  const diffLines = React.useMemo(() => {
-    if (!currentContent) {
-      // New content - all additions
-      return content.split('\n').map((line, i) => ({
-        type: 'add' as const,
-        lineNumber: i + 1,
-        content: line,
-      }));
-    }
-
-    const oldLines = currentContent.split('\n');
-    const newLines = content.split('\n');
-    const result: { type: 'same' | 'add' | 'remove'; lineNumber: number; content: string }[] = [];
-
-    // Simple line-by-line diff (not optimal but works for preview)
-    const maxLen = Math.max(oldLines.length, newLines.length);
-    let lineNum = 1;
-
-    for (let i = 0; i < maxLen; i++) {
-      const oldLine = oldLines[i];
-      const newLine = newLines[i];
-
-      if (oldLine === newLine) {
-        result.push({ type: 'same', lineNumber: lineNum++, content: oldLine || '' });
-      } else {
-        if (oldLine !== undefined) {
-          result.push({ type: 'remove', lineNumber: lineNum, content: oldLine });
-        }
-        if (newLine !== undefined) {
-          result.push({ type: 'add', lineNumber: lineNum++, content: newLine });
-        }
-      }
-    }
-
-    return result;
-  }, [currentContent, content]);
+  const diffLines = React.useMemo(
+    () => computeDiff(currentContent, content),
+    [currentContent, content]
+  );
 
   const addedLines = diffLines.filter((l) => l.type === 'add').length;
   const removedLines = diffLines.filter((l) => l.type === 'remove').length;
 
-  const handleApply = () => {
-    onApply(content, selectedFile);
+  // Direct apply without dialog
+  const handleDirectApply = () => {
+    onApply(content, targetFile);
+    setApplied(true);
+  };
+
+  // Apply from dialog
+  const handleApplyFromDialog = () => {
+    onApply(content, targetFile);
+    setApplied(true);
     setShowDiff(false);
   };
 
   return (
     <>
-      <div className="relative group rounded-md border bg-muted/50 overflow-hidden">
+      <div className={`relative group rounded-md border overflow-hidden ${applied ? 'bg-green-500/5 border-green-500/30' : 'bg-muted/50'}`}>
         {/* Code content */}
-        <div className="p-3 font-mono text-xs overflow-x-auto">
+        <div className="p-3 font-mono text-xs overflow-x-auto max-h-[200px]">
           <pre className="whitespace-pre-wrap">{content}</pre>
         </div>
 
@@ -99,10 +120,13 @@ export function ContentBlock({
                 {language}
               </Badge>
             )}
-            {targetFile && (
-              <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
-                → {targetFile}
-              </span>
+            <span className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+              → {targetFile}
+            </span>
+            {applied && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 text-green-600 border-green-500/50">
+                Applied
+              </Badge>
             )}
           </div>
           <div className="flex items-center gap-1">
@@ -113,23 +137,24 @@ export function ContentBlock({
               onClick={() => setShowDiff(true)}
             >
               <Eye className="h-3 w-3 mr-1" />
-              Preview
+              Review
             </Button>
             <Button
-              variant="default"
+              variant={applied ? 'outline' : 'default'}
               size="sm"
               className="h-6 text-xs px-2"
-              onClick={() => setShowDiff(true)}
+              onClick={handleDirectApply}
+              disabled={applied}
             >
               {isNewFile ? (
                 <>
                   <Plus className="h-3 w-3 mr-1" />
-                  Create
+                  {applied ? 'Created' : 'Create'}
                 </>
               ) : (
                 <>
                   <FileEdit className="h-3 w-3 mr-1" />
-                  Apply
+                  {applied ? 'Applied' : 'Apply'}
                 </>
               )}
             </Button>
@@ -142,12 +167,10 @@ export function ContentBlock({
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {isNewFile ? 'Create New File' : 'Preview Changes'}
-              {targetFile && (
-                <Badge variant="outline" className="font-mono text-xs">
-                  {targetFile}
-                </Badge>
-              )}
+              {isNewFile ? 'Create New File' : 'Review Changes'}
+              <Badge variant="outline" className="font-mono text-xs">
+                {targetFile}
+              </Badge>
             </DialogTitle>
             <DialogDescription>
               {isNewFile ? (
@@ -190,14 +213,188 @@ export function ContentBlock({
               <X className="h-4 w-4 mr-1" />
               Cancel
             </Button>
-            <Button onClick={handleApply}>
+            <Button onClick={handleApplyFromDialog} disabled={applied}>
               <Check className="h-4 w-4 mr-1" />
-              {isNewFile ? 'Create File' : 'Apply Changes'}
+              {applied ? 'Already Applied' : isNewFile ? 'Create File' : 'Apply Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// Batch actions component for multiple code blocks
+interface BatchActionsProps {
+  blocks: CodeBlock[];
+  onApplyAll: () => void;
+  onReviewAll: () => void;
+  appliedCount: number;
+}
+
+export function BatchActions({ blocks, onApplyAll, onReviewAll, appliedCount }: BatchActionsProps) {
+  const totalBlocks = blocks.length;
+  const allApplied = appliedCount === totalBlocks;
+
+  if (totalBlocks <= 1) return null;
+
+  return (
+    <div className="flex items-center justify-end gap-2 pt-2 border-t mt-2">
+      <span className="text-xs text-muted-foreground">
+        {appliedCount}/{totalBlocks} applied
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 text-xs"
+        onClick={onReviewAll}
+      >
+        <ListChecks className="h-3 w-3 mr-1" />
+        Review All
+      </Button>
+      <Button
+        variant="default"
+        size="sm"
+        className="h-7 text-xs"
+        onClick={onApplyAll}
+        disabled={allApplied}
+      >
+        <CheckCheck className="h-3 w-3 mr-1" />
+        {allApplied ? 'All Applied' : 'Apply All'}
+      </Button>
+    </div>
+  );
+}
+
+// Review All Dialog - shows all diffs in one scrollable view
+interface ReviewAllDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  blocks: CodeBlock[];
+  appliedBlocks: Set<string>;
+  onApply: (blockId: string) => void;
+  onApplyAll: () => void;
+}
+
+export function ReviewAllDialog({
+  open,
+  onOpenChange,
+  blocks,
+  appliedBlocks,
+  onApply,
+  onApplyAll,
+}: ReviewAllDialogProps) {
+  const pendingBlocks = blocks.filter((b) => !appliedBlocks.has(b.id));
+  const allApplied = pendingBlocks.length === 0;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Review All Changes</DialogTitle>
+          <DialogDescription>
+            {allApplied
+              ? 'All changes have been applied.'
+              : `${pendingBlocks.length} of ${blocks.length} changes pending review.`}
+          </DialogDescription>
+        </DialogHeader>
+
+        <ScrollArea className="flex-1 min-h-0">
+          <div className="space-y-4 pr-4">
+            {blocks.map((block) => {
+              const isApplied = appliedBlocks.has(block.id);
+              const diffLines = computeDiff(block.currentContent, block.content);
+              const addedLines = diffLines.filter((l) => l.type === 'add').length;
+              const removedLines = diffLines.filter((l) => l.type === 'remove').length;
+              const isNewFile = !block.currentContent;
+
+              return (
+                <div
+                  key={block.id}
+                  className={`rounded-md border overflow-hidden ${
+                    isApplied ? 'opacity-60' : ''
+                  }`}
+                >
+                  {/* Header */}
+                  <div className="bg-muted/50 px-3 py-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {block.targetFile}
+                      </Badge>
+                      {!isNewFile && (
+                        <span className="text-xs text-muted-foreground">
+                          <span className="text-green-600">+{addedLines}</span>{' '}
+                          <span className="text-red-600">-{removedLines}</span>
+                        </span>
+                      )}
+                      {isNewFile && (
+                        <Badge variant="secondary" className="text-xs">New file</Badge>
+                      )}
+                    </div>
+                    <Button
+                      variant={isApplied ? 'outline' : 'default'}
+                      size="sm"
+                      className="h-6 text-xs"
+                      onClick={() => onApply(block.id)}
+                      disabled={isApplied}
+                    >
+                      {isApplied ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Applied
+                        </>
+                      ) : (
+                        <>
+                          <FileEdit className="h-3 w-3 mr-1" />
+                          Apply
+                        </>
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* Diff */}
+                  <div className="font-mono text-xs max-h-[200px] overflow-y-auto">
+                    {diffLines.slice(0, 50).map((line, i) => (
+                      <div
+                        key={i}
+                        className={`px-3 py-0.5 flex ${
+                          line.type === 'add'
+                            ? 'bg-green-500/10 text-green-700 dark:text-green-400'
+                            : line.type === 'remove'
+                            ? 'bg-red-500/10 text-red-700 dark:text-red-400'
+                            : ''
+                        }`}
+                      >
+                        <span className="w-8 text-muted-foreground shrink-0 select-none">
+                          {line.type === 'remove' ? '-' : line.type === 'add' ? '+' : ' '}
+                          {line.lineNumber}
+                        </span>
+                        <span className="whitespace-pre-wrap break-all">{line.content || ' '}</span>
+                      </div>
+                    ))}
+                    {diffLines.length > 50 && (
+                      <div className="px-3 py-1 text-muted-foreground bg-muted/30">
+                        ... {diffLines.length - 50} more lines
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </ScrollArea>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+          <Button onClick={onApplyAll} disabled={allApplied}>
+            <CheckCheck className="h-4 w-4 mr-1" />
+            {allApplied ? 'All Applied' : `Apply All (${pendingBlocks.length})`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -231,7 +428,6 @@ export function parseContentBlocks(
     if (language === 'markdown' || language === 'md') {
       targetFile = activeFile?.endsWith('.md') ? activeFile : 'AGENTS.md';
     } else if (language === 'yaml') {
-      // Could be frontmatter for skill file
       if (activeFile?.includes('SKILL.md')) {
         targetFile = activeFile;
       }

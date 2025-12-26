@@ -7,14 +7,13 @@ import { Send, Loader2, RotateCcw, Sparkles, FileText, Bot, ChevronDown, Maximiz
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ContentBlock, parseContentBlocks } from './content-block';
+import { ContentBlock, BatchActions, ReviewAllDialog, parseContentBlocks, type CodeBlock } from './content-block';
 import type { AgentFile } from '@/lib/agent-files';
 
 interface ChatMessage {
@@ -55,6 +54,7 @@ export function AgentChat({
   const [error, setError] = React.useState<string | null>(null);
   const [streamingContent, setStreamingContent] = React.useState('');
   const [scope, setScope] = React.useState<'file' | 'agent'>('file');
+  const [appliedBlocks, setAppliedBlocks] = React.useState<Set<string>>(new Set());
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
 
   const scrollToBottom = React.useCallback(() => {
@@ -193,7 +193,7 @@ IMPORTANT: When providing file updates or new content, always wrap them in fence
     }
   };
 
-  const handleApplyContent = (content: string, targetFile: string) => {
+  const handleApplyContent = (content: string, targetFile: string, blockId?: string) => {
     const existingFile = files.find((f) => f.path === targetFile);
 
     if (existingFile) {
@@ -209,6 +209,11 @@ IMPORTANT: When providing file updates or new content, always wrap them in fence
         content,
       });
     }
+
+    // Track applied block
+    if (blockId) {
+      setAppliedBlocks((prev) => new Set([...prev, blockId]));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -221,6 +226,7 @@ IMPORTANT: When providing file updates or new content, always wrap them in fence
   const handleClearChat = () => {
     setMessages([]);
     setError(null);
+    setAppliedBlocks(new Set());
   };
 
   return (
@@ -308,6 +314,7 @@ IMPORTANT: When providing file updates or new content, always wrap them in fence
                   files={files}
                   activeFile={activeFile}
                   onApplyContent={handleApplyContent}
+                  appliedBlocks={appliedBlocks}
                 />
               ))}
               {streamingContent && (
@@ -321,6 +328,7 @@ IMPORTANT: When providing file updates or new content, always wrap them in fence
                   files={files}
                   activeFile={activeFile}
                   onApplyContent={handleApplyContent}
+                  appliedBlocks={appliedBlocks}
                   isStreaming
                 />
               )}
@@ -392,15 +400,18 @@ function ChatBubble({
   files,
   activeFile,
   onApplyContent,
+  appliedBlocks,
   isStreaming,
 }: {
   message: ChatMessage;
   files: AgentFile[];
   activeFile: AgentFile | null;
-  onApplyContent: (content: string, targetFile: string) => void;
+  onApplyContent: (content: string, targetFile: string, blockId?: string) => void;
+  appliedBlocks: Set<string>;
   isStreaming?: boolean;
 }) {
   const isUser = message.role === 'user';
+  const [showReviewAll, setShowReviewAll] = React.useState(false);
 
   if (isUser) {
     return (
@@ -416,6 +427,38 @@ function ChatBubble({
   const contentBlocks = parseContentBlocks(message.content, activeFile?.path);
   const availableFiles = files.map((f) => f.path);
 
+  // Extract code blocks with IDs for batch operations
+  const codeBlocks: CodeBlock[] = contentBlocks
+    .filter((b) => b.type === 'code')
+    .map((block, i) => {
+      const targetFile = block.targetFile || activeFile?.path || 'AGENTS.md';
+      const currentFile = files.find((f) => f.path === targetFile);
+      return {
+        id: `${message.id}-block-${i}`,
+        content: block.content,
+        language: block.language,
+        targetFile,
+        currentContent: currentFile?.content,
+      };
+    });
+
+  const appliedCount = codeBlocks.filter((b) => appliedBlocks.has(b.id)).length;
+
+  const handleApplyAll = () => {
+    codeBlocks.forEach((block) => {
+      if (!appliedBlocks.has(block.id)) {
+        onApplyContent(block.content, block.targetFile, block.id);
+      }
+    });
+  };
+
+  const handleApplySingle = (blockId: string) => {
+    const block = codeBlocks.find((b) => b.id === blockId);
+    if (block) {
+      onApplyContent(block.content, block.targetFile, block.id);
+    }
+  };
+
   return (
     <div className="flex justify-start">
       <div className="max-w-[95%] space-y-2">
@@ -423,6 +466,9 @@ function ChatBubble({
           if (block.type === 'code') {
             const targetFile = block.targetFile || activeFile?.path || 'AGENTS.md';
             const currentFile = files.find((f) => f.path === targetFile);
+            const blockId = `${message.id}-block-${codeBlocks.findIndex(
+              (cb) => cb.content === block.content && cb.targetFile === targetFile
+            )}`;
 
             return (
               <ContentBlock
@@ -431,8 +477,9 @@ function ChatBubble({
                 language={block.language}
                 targetFile={targetFile}
                 currentContent={currentFile?.content}
-                onApply={onApplyContent}
+                onApply={(content, file) => onApplyContent(content, file, blockId)}
                 availableFiles={availableFiles}
+                isApplied={appliedBlocks.has(blockId)}
               />
             );
           }
@@ -451,9 +498,30 @@ function ChatBubble({
             </div>
           );
         })}
+
+        {/* Batch actions for multiple code blocks */}
+        {!isStreaming && codeBlocks.length > 1 && (
+          <BatchActions
+            blocks={codeBlocks}
+            onApplyAll={handleApplyAll}
+            onReviewAll={() => setShowReviewAll(true)}
+            appliedCount={appliedCount}
+          />
+        )}
+
         {isStreaming && (
           <span className="inline-block h-4 w-1 animate-pulse bg-primary ml-0.5" />
         )}
+
+        {/* Review All Dialog */}
+        <ReviewAllDialog
+          open={showReviewAll}
+          onOpenChange={setShowReviewAll}
+          blocks={codeBlocks}
+          appliedBlocks={appliedBlocks}
+          onApply={handleApplySingle}
+          onApplyAll={handleApplyAll}
+        />
       </div>
     </div>
   );
