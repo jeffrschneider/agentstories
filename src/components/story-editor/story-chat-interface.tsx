@@ -3,7 +3,7 @@
 import * as React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, Loader2, RotateCcw, Sparkles, RefreshCw } from 'lucide-react';
+import { Send, Loader2, RotateCcw, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,7 +28,7 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
   const [isLoading, setIsLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [streamingContent, setStreamingContent] = React.useState('');
-  const [lastExtraction, setLastExtraction] = React.useState<Partial<AgentStory> | null>(null);
+  const [lastUpdate, setLastUpdate] = React.useState<string | null>(null);
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
@@ -40,17 +40,6 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
     scrollToBottom();
   }, [messages, streamingContent, scrollToBottom]);
 
-  const addMessage = (role: 'user' | 'assistant', content: string) => {
-    const message: ChatMessage = {
-      id: crypto.randomUUID(),
-      role,
-      content,
-      timestamp: new Date(),
-    };
-    setMessages((prev) => [...prev, message]);
-    return message;
-  };
-
   const extractAndUpdate = React.useCallback(async (allMessages: ChatMessage[]) => {
     if (allMessages.length < 2) return;
 
@@ -60,26 +49,23 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
         content: m.content,
       }));
 
-      // Add context about the current story
-      const contextMessage = {
-        role: 'system' as const,
-        content: `Current agent story context:\n${JSON.stringify(story, null, 2)}`,
-      };
-
-      const response = await fetch('/api/ideation/extract', {
+      const response = await fetch('/api/story/update-from-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [contextMessage, ...messagesForExtraction],
+          messages: messagesForExtraction,
+          currentStory: story,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.agent) {
-          setLastExtraction(data.agent);
-          // Auto-apply extraction to story
-          onStoryUpdate(data.agent);
+        if (data.updates && Object.keys(data.updates).length > 0) {
+          onStoryUpdate(data.updates);
+          // Show what was updated
+          const updatedFields = Object.keys(data.updates).join(', ');
+          setLastUpdate(updatedFields);
+          setTimeout(() => setLastUpdate(null), 3000);
         }
       }
     } catch (err) {
@@ -93,21 +79,33 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
     if (!trimmedInput || isLoading) return;
 
     // Add user message
-    addMessage('user', trimmedInput);
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: trimmedInput,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setStreamingContent('');
     setIsLoading(true);
     setError(null);
 
     try {
-      // Build messages with story context
-      const contextMessage = {
-        role: 'system' as const,
-        content: `You are helping the user refine their AI agent specification. Here is the current agent story:\n\n${JSON.stringify(story, null, 2)}\n\nHelp the user modify and improve this agent. When they describe changes, acknowledge them and explain how the agent will be updated. Be conversational but focused on the agent design.`,
-      };
+      // Build system context with current story
+      const systemContext = `You are helping the user edit their AI agent specification. Here is the current agent:
+
+Name: ${story.name || '(not set)'}
+Purpose: ${story.purpose || '(not set)'}
+Role: ${story.role || '(not set)'}
+Autonomy Level: ${story.autonomyLevel || '(not set)'}
+Skills: ${story.skills?.map(s => s.name).join(', ') || '(none)'}
+
+When the user describes changes, acknowledge them and explain how the agent will be updated. Be concise.`;
 
       const chatMessages = [
-        contextMessage,
+        { role: 'user' as const, content: systemContext },
+        { role: 'assistant' as const, content: 'I understand. I\'ll help you edit this agent. What would you like to change?' },
         ...messages.map((m) => ({
           role: m.role as 'user' | 'assistant',
           content: m.content,
@@ -161,7 +159,13 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
 
       // Add the complete message
       if (accumulatedContent) {
-        const newMessages = [...messages, { id: crypto.randomUUID(), role: 'user' as const, content: trimmedInput, timestamp: new Date() }, { id: crypto.randomUUID(), role: 'assistant' as const, content: accumulatedContent, timestamp: new Date() }];
+        const assistantMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: accumulatedContent,
+          timestamp: new Date(),
+        };
+        const newMessages = [...messages, userMessage, assistantMessage];
         setMessages(newMessages);
         setStreamingContent('');
 
@@ -186,12 +190,8 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
   const handleClearChat = () => {
     setMessages([]);
     setError(null);
-    setLastExtraction(null);
+    setLastUpdate(null);
     textareaRef.current?.focus();
-  };
-
-  const handleReExtract = async () => {
-    await extractAndUpdate(messages);
   };
 
   return (
@@ -204,23 +204,23 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
               <div className="mb-4 rounded-full bg-primary/10 p-4">
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="mb-2 text-lg font-semibold">Chat to Edit</h3>
+              <h3 className="mb-2 text-lg font-semibold">Edit with Chat</h3>
               <p className="max-w-md text-sm text-muted-foreground">
-                Describe changes you want to make to <strong>{story.name || 'this agent'}</strong>.
-                Your changes will be automatically applied to the story.
+                Describe changes to <strong>{story.name || 'this agent'}</strong> in natural language.
+                Changes are automatically applied.
               </p>
               <div className="mt-6 grid gap-2 text-left text-sm text-muted-foreground">
                 <p className="flex items-start gap-2">
                   <span className="text-primary">&bull;</span>
-                  <span>&quot;Add a skill for processing customer emails&quot;</span>
+                  <span>&quot;Change the name to Customer Support Bot&quot;</span>
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="text-primary">&bull;</span>
-                  <span>&quot;Change the autonomy level to supervised&quot;</span>
+                  <span>&quot;Set autonomy to supervised&quot;</span>
                 </p>
                 <p className="flex items-start gap-2">
                   <span className="text-primary">&bull;</span>
-                  <span>&quot;Add a guardrail to prevent PII disclosure&quot;</span>
+                  <span>&quot;Add a skill for handling refund requests&quot;</span>
                 </p>
               </div>
             </div>
@@ -252,20 +252,12 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
         </div>
       </ScrollArea>
 
-      {/* Last Extraction Indicator */}
-      {lastExtraction && messages.length > 0 && (
+      {/* Update Notification */}
+      {lastUpdate && (
         <div className="border-t bg-green-50 dark:bg-green-950/30 px-4 py-2 shrink-0">
-          <div className="mx-auto w-full max-w-3xl flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
-              <Badge variant="outline" className="bg-green-100 dark:bg-green-900 border-green-300 dark:border-green-700">
-                Story Updated
-              </Badge>
-              <span>Changes applied from conversation</span>
-            </div>
-            <Button variant="ghost" size="sm" onClick={handleReExtract} className="text-green-700 dark:text-green-400">
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Re-extract
-            </Button>
+          <div className="mx-auto w-full max-w-3xl flex items-center gap-2 text-sm text-green-700 dark:text-green-400">
+            <CheckCircle2 className="h-4 w-4" />
+            <span>Updated: {lastUpdate}</span>
           </div>
         </div>
       )}
@@ -320,7 +312,7 @@ export function StoryChatInterface({ story, onStoryUpdate }: StoryChatInterfaceP
             </div>
           </form>
           <p className="mt-2 text-xs text-muted-foreground">
-            Press Enter to send, Shift+Enter for new line. Changes auto-apply to the Story.
+            Press Enter to send. Changes auto-save to Story tab.
           </p>
         </div>
       </div>
