@@ -20,6 +20,8 @@ import {
   parseAgentChatResponse,
   generateAgentMd,
   generateSkillMd,
+  generateAgentConfig,
+  generateSkillConfig,
   generateSlug,
   type AgentChatResponse,
 } from '@/lib/agent-files';
@@ -129,8 +131,12 @@ Help the user modify this file. When suggesting changes:
 IMPORTANT: When providing file updates, always wrap them in fenced code blocks so users can apply them.`;
     }
 
-    // Agent scope - use structured JSON prompt
-    return buildStructuredSystemPrompt(agentName, fileList, currentAgent);
+    // Agent scope - pass file contents for context
+    const fileContents = files
+      .filter(f => !f.path.includes('.gitkeep'))
+      .map(f => ({ path: f.path, content: f.content }));
+
+    return buildStructuredSystemPrompt(agentName, fileList, currentAgent, fileContents);
   };
 
   // Convert a JSON response to file actions
@@ -139,7 +145,36 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
 
     // Process agent identity
     if (response.agent) {
-      const agentContent = generateAgentMd({
+      // Build skill links for agent.md
+      const skillLinks = response.skills?.map(s => {
+        const slug = generateSlug(s.name);
+        return `- [${s.name}](skills/${slug}/SKILL.md) - ${s.description || 'No description'}`;
+      }) || [];
+
+      // Also include existing skills that aren't being updated
+      const existingSkillFiles = files.filter(f => f.path.endsWith('SKILL.md'));
+      for (const skillFile of existingSkillFiles) {
+        const pathMatch = skillFile.path.match(/skills\/([^/]+)\/SKILL\.md/);
+        if (pathMatch) {
+          const slug = pathMatch[1];
+          // Don't duplicate if this skill is being updated
+          const isBeingUpdated = response.skills?.some(s => generateSlug(s.name) === slug);
+          if (!isBeingUpdated) {
+            // Extract name from file content (look for # Title)
+            const titleMatch = skillFile.content.match(/^#\s+(.+)$/m);
+            const name = titleMatch?.[1] || slug;
+            const descMatch = skillFile.content.match(/description:\s*(.+)/);
+            const desc = descMatch?.[1] || 'No description';
+            skillLinks.push(`- [${name}](skills/${slug}/SKILL.md) - ${desc}`);
+          }
+        }
+      }
+
+      const skillsSection = skillLinks.length > 0
+        ? `\n## Skills\n${skillLinks.join('\n')}\n`
+        : '';
+
+      const agentStory = {
         name: response.agent.name || agentName,
         purpose: response.agent.purpose,
         role: response.agent.role,
@@ -149,13 +184,51 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
           enforcement: 'hard' as const,
         })),
         tags: response.agent.tags,
-      } as import('@/lib/schemas/story').AgentStory);
+      } as import('@/lib/schemas/story').AgentStory;
+
+      // Generate agent.md with skills section appended
+      const agentContent = generateAgentMd(agentStory) + skillsSection;
 
       actions.push({
         type: files.some(f => f.path === 'agent.md') ? 'update_file' : 'create_file',
         path: 'agent.md',
         content: agentContent,
       });
+
+      // Generate config.yaml for the agent
+      const isNewAgent = !files.some(f => f.path === 'config.yaml');
+      actions.push({
+        type: isNewAgent ? 'create_file' : 'update_file',
+        path: 'config.yaml',
+        content: generateAgentConfig(agentStory),
+      });
+
+      // Create directory structure for new agents
+      if (isNewAgent) {
+        // Create memory directories
+        actions.push({
+          type: 'create_file',
+          path: 'memory/short_term/.gitkeep',
+          content: '',
+        });
+        actions.push({
+          type: 'create_file',
+          path: 'memory/long_term/.gitkeep',
+          content: '',
+        });
+        // Create tools directory
+        actions.push({
+          type: 'create_file',
+          path: 'tools/.gitkeep',
+          content: '',
+        });
+        // Create logs directory
+        actions.push({
+          type: 'create_file',
+          path: 'logs/.gitkeep',
+          content: '',
+        });
+      }
 
       // Update the agent name in the UI header
       if (response.agent.name) {
@@ -235,6 +308,71 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
           path: skillPath,
           content: skillContent,
         });
+
+        // Create skill config.yaml
+        const skillConfigPath = `skills/${slug}/config.yaml`;
+        const skillObj = {
+          id: crypto.randomUUID(),
+          name: skill.name,
+          description: skill.description || '',
+          domain: skill.domain || 'General',
+          acquired: 'built_in' as const,
+          triggers: skill.triggers?.map(t => ({
+            type: t.type as 'message' | 'schedule' | 'manual' | 'condition',
+            description: t.description,
+          })) || [{ type: 'manual' as const, description: 'Manually triggered' }],
+          behavior: skill.behavior?.model === 'sequential' && skill.behavior.steps ? {
+            model: 'sequential' as const,
+            steps: skill.behavior.steps,
+          } : { model: 'sequential' as const, steps: ['Execute task'] },
+          tools: skill.tools?.map(t => ({
+            name: t.name,
+            purpose: t.purpose,
+            permissions: t.permissions as ('read' | 'write' | 'execute')[],
+            required: true,
+          })),
+          acceptance: skill.acceptance ? {
+            successConditions: skill.acceptance.successConditions,
+          } : { successConditions: ['Task completed successfully'] },
+          guardrails: skill.guardrails?.map(g => ({
+            ...g,
+            enforcement: 'hard' as const,
+          })),
+        };
+        actions.push({
+          type: files.some(f => f.path === skillConfigPath) ? 'update_file' : 'create_file',
+          path: skillConfigPath,
+          content: generateSkillConfig(skillObj),
+        });
+
+        // Create skill subdirectories if they don't exist
+        const isNewSkill = !files.some(f => f.path === skillPath);
+        if (isNewSkill) {
+          // scripts/ directory
+          if (!skill.scripts?.length) {
+            actions.push({
+              type: 'create_file',
+              path: `skills/${slug}/scripts/.gitkeep`,
+              content: '',
+            });
+          }
+          // references/ directory
+          if (!skill.references?.length) {
+            actions.push({
+              type: 'create_file',
+              path: `skills/${slug}/references/.gitkeep`,
+              content: '',
+            });
+          }
+          // assets/ directory
+          if (!skill.assets?.length) {
+            actions.push({
+              type: 'create_file',
+              path: `skills/${slug}/assets/.gitkeep`,
+              content: '',
+            });
+          }
+        }
 
         // Create script files
         if (skill.scripts?.length) {

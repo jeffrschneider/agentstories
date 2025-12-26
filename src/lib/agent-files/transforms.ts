@@ -321,7 +321,7 @@ function formatAutonomy(level: string): string {
 // config.yaml Generation (Agent-level)
 // ============================================================================
 
-function generateAgentConfig(story: AgentStory): string {
+export function generateAgentConfig(story: AgentStory): string {
   const lines: string[] = [];
 
   lines.push('# Agent Configuration');
@@ -744,7 +744,7 @@ function generateMcpConfig(tools: Tool[]): string {
 // Skill Config Generation
 // ============================================================================
 
-function generateSkillConfig(skill: Skill): string {
+export function generateSkillConfig(skill: Skill): string {
   const lines: string[] = [];
 
   lines.push('# Skill Configuration');
