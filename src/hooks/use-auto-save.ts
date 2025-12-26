@@ -38,28 +38,73 @@ export function useAutoSave(options: UseAutoSaveOptions = {}): UseAutoSaveReturn
   const updateStory = useUpdateStory();
 
   const [saveError, setSaveError] = React.useState<Error | null>(null);
+  const [localIsSaving, setLocalIsSaving] = React.useState(false);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const lastSavedDataRef = React.useRef<string | null>(null);
+  const isSavingRef = React.useRef(false);
 
-  // Track dirty state by comparing current data to last saved
-  const currentDataString = JSON.stringify(editor.draft.data);
+  // Extract only the content-related data (exclude metadata that changes during save)
+  const contentSignature = React.useMemo(() => {
+    const data = editor.draft.data as AgentStory;
+    if (!data) return '';
+    // Only track fields that represent actual content changes
+    return JSON.stringify({
+      name: data.name,
+      identifier: data.identifier,
+      purpose: data.purpose,
+      role: data.role,
+      autonomyLevel: data.autonomyLevel,
+      skills: data.skills,
+      guardrails: data.guardrails,
+      humanInteraction: data.humanInteraction,
+      collaboration: data.collaboration,
+      memory: data.memory,
+      tags: data.tags,
+      notes: data.notes,
+    });
+  }, [editor.draft.data]);
+
+  // Track dirty state by comparing current content to last saved
   const isDirty = React.useMemo(() => {
     if (!editor.draft.id) return false; // New unsaved story
     if (!lastSavedDataRef.current) {
-      lastSavedDataRef.current = JSON.stringify(editor.draft.originalData);
+      // Initialize with original data
+      const originalData = editor.draft.originalData as AgentStory;
+      if (originalData) {
+        lastSavedDataRef.current = JSON.stringify({
+          name: originalData.name,
+          identifier: originalData.identifier,
+          purpose: originalData.purpose,
+          role: originalData.role,
+          autonomyLevel: originalData.autonomyLevel,
+          skills: originalData.skills,
+          guardrails: originalData.guardrails,
+          humanInteraction: originalData.humanInteraction,
+          collaboration: originalData.collaboration,
+          memory: originalData.memory,
+          tags: originalData.tags,
+          notes: originalData.notes,
+        });
+      }
     }
-    return currentDataString !== lastSavedDataRef.current;
-  }, [currentDataString, editor.draft.id, editor.draft.originalData]);
+    return contentSignature !== lastSavedDataRef.current;
+  }, [contentSignature, editor.draft.id, editor.draft.originalData]);
 
-  // Save function
+  // Save function - use refs to avoid stale closures
   const saveNow = React.useCallback(async () => {
-    if (!editor.draft.id || editor.isSaving) return;
+    // Prevent concurrent saves
+    if (isSavingRef.current) return;
 
-    const storyData = editor.draft.data as AgentStory;
-    if (!storyData.id) return;
+    // Access store directly to get current data (not stale snapshot)
+    const currentStore = storyEditorStore;
+    if (!currentStore.draft.id) return;
+
+    const storyData = currentStore.draft.data as AgentStory;
+    if (!storyData?.id) return;
 
     try {
-      storyEditorActions.setSaving(true);
+      isSavingRef.current = true;
+      setLocalIsSaving(true);
       setSaveError(null);
 
       await updateStory.mutateAsync({
@@ -67,9 +112,24 @@ export function useAutoSave(options: UseAutoSaveOptions = {}): UseAutoSaveReturn
         data: storyData
       });
 
+      // Update last saved reference
+      lastSavedDataRef.current = JSON.stringify({
+        name: storyData.name,
+        identifier: storyData.identifier,
+        purpose: storyData.purpose,
+        role: storyData.role,
+        autonomyLevel: storyData.autonomyLevel,
+        skills: storyData.skills,
+        guardrails: storyData.guardrails,
+        humanInteraction: storyData.humanInteraction,
+        collaboration: storyData.collaboration,
+        memory: storyData.memory,
+        tags: storyData.tags,
+        notes: storyData.notes,
+      });
+
       const now = new Date().toISOString();
       storyEditorActions.setLastSaved(now);
-      lastSavedDataRef.current = JSON.stringify(storyData);
 
       onSaveSuccess?.();
     } catch (err) {
@@ -77,13 +137,16 @@ export function useAutoSave(options: UseAutoSaveOptions = {}): UseAutoSaveReturn
       setSaveError(error);
       onSaveError?.(error);
     } finally {
-      storyEditorActions.setSaving(false);
+      isSavingRef.current = false;
+      setLocalIsSaving(false);
     }
-  }, [editor.draft.id, editor.draft.data, editor.isSaving, updateStory, onSaveSuccess, onSaveError]);
+  }, [updateStory, onSaveSuccess, onSaveError]);
 
-  // Debounced auto-save effect
+  // Debounced auto-save effect - only trigger on content changes
   React.useEffect(() => {
-    if (!editor.autoSaveEnabled || !isDirty || !editor.draft.id) return;
+    if (!editor.autoSaveEnabled || !isDirty || !editor.draft.id || isSavingRef.current) {
+      return;
+    }
 
     // Clear existing timeout
     if (timeoutRef.current) {
@@ -100,7 +163,7 @@ export function useAutoSave(options: UseAutoSaveOptions = {}): UseAutoSaveReturn
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [currentDataString, editor.autoSaveEnabled, isDirty, editor.draft.id, debounceMs, saveNow]);
+  }, [contentSignature, editor.autoSaveEnabled, isDirty, editor.draft.id, debounceMs, saveNow]);
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -112,7 +175,7 @@ export function useAutoSave(options: UseAutoSaveOptions = {}): UseAutoSaveReturn
   }, []);
 
   return {
-    isSaving: editor.isSaving,
+    isSaving: localIsSaving,
     isDirty,
     lastSavedAt: editor.draft.lastSavedAt,
     saveError,
