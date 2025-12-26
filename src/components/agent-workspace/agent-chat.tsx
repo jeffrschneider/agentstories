@@ -3,7 +3,7 @@
 import * as React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, Loader2, RotateCcw, Sparkles, FileText, Bot, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
+import { Send, Loader2, RotateCcw, Sparkles, FileText, Bot, ChevronDown, Maximize2, Minimize2, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -15,6 +15,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ContentBlock, BatchActions, ReviewAllDialog, parseContentBlocks, type CodeBlock } from './content-block';
 import type { AgentFile } from '@/lib/agent-files';
+import {
+  buildStructuredSystemPrompt,
+  parseAgentChatResponse,
+  generateAgentMd,
+  generateSkillMd,
+  generateSlug,
+  type AgentChatResponse,
+} from '@/lib/agent-files';
 
 interface ChatMessage {
   id: string;
@@ -29,10 +37,19 @@ interface ChatAction {
   content?: string;
 }
 
+interface CurrentAgentState {
+  name?: string;
+  purpose?: string;
+  role?: string;
+  autonomyLevel?: string;
+  skills?: { name: string; description?: string }[];
+}
+
 interface AgentChatProps {
   files: AgentFile[];
   activeFile: AgentFile | null;
   agentName: string;
+  currentAgent?: CurrentAgentState;
   onAction: (action: ChatAction) => void;
   onCreateNewAgent?: () => void;
   isExpanded?: boolean;
@@ -58,6 +75,7 @@ export function AgentChat({
   files,
   activeFile,
   agentName,
+  currentAgent,
   onAction,
   onCreateNewAgent,
   isExpanded = false,
@@ -93,6 +111,7 @@ export function AgentChat({
     const fileList = files.map(f => `- ${f.path}`).join('\n');
 
     if (contextFile) {
+      // File-specific editing - keep the simple markdown format
       return `You are helping edit the file "${contextFile.path}" for the agent "${agentName}".
 
 Current file content:
@@ -109,71 +128,86 @@ Help the user modify this file. When suggesting changes:
 IMPORTANT: When providing file updates, always wrap them in fenced code blocks so users can apply them.`;
     }
 
-    return `You are helping edit the agent "${agentName}".
-
-Current files:
-${fileList}
-
-Help the user:
-- Create new skills (as separate files in skills/{slug}/SKILL.md)
-- Modify the agent identity (AGENTS.md)
-- Add guardrails, change autonomy, etc.
-
-## AGENTS.md FORMAT (Agent Identity)
-The AGENTS.md file contains ONLY the agent's identity. Format:
-\`AGENTS.md:\`
-\`\`\`markdown
-# Agent Name
-
-## Purpose
-What the agent does...
-
-## Autonomy
-Full/Supervised/Collaborative/Directed - explanation
-
-## Role
-The agent's role description...
-
-## Guardrails
-- **Guardrail Name**: constraint description
-\`\`\`
-
-AGENTS.md sections: Purpose, Autonomy, Role, Guardrails, Human Interaction, Collaboration, Memory, Tags, Notes
-AGENTS.md does NOT have: Triggers, Behavior, Tools, Success Criteria (those are skill-only sections)
-
-## SKILL FORMAT (Separate Files)
-Skills go in skills/{slug}/SKILL.md with YAML frontmatter:
-\`skills/my-skill-name/SKILL.md:\`
-\`\`\`markdown
----
-name: my-skill-name
-description: What the skill does
----
-# My Skill Name
-
-## Triggers
-- **event**: When X happens...
-
-## Behavior
-**Model**: sequential
-### Steps
-1. Do this
-2. Then that
-
-## Success Criteria
-- Condition met
-
-## Guardrails
-- **Safety**: Don't do X
-\`\`\`
-
-IMPORTANT RULES:
-1. ALWAYS specify file path before code block: \`path/to/file.md:\`
-2. Skills MUST have YAML frontmatter (---)
-3. Skills MUST have Triggers AND Behavior sections
-4. Agent identity goes in AGENTS.md, skills go in skills/
-5. Use kebab-case for skill slugs (joke-telling, not Joke Telling)`;
+    // Agent scope - use structured JSON prompt
+    return buildStructuredSystemPrompt(agentName, fileList, currentAgent);
   };
+
+  // Convert a JSON response to file actions
+  const processStructuredResponse = React.useCallback((response: AgentChatResponse): ChatAction[] => {
+    const actions: ChatAction[] = [];
+
+    // Process agent identity
+    if (response.agent) {
+      const agentContent = generateAgentMd({
+        name: response.agent.name || agentName,
+        purpose: response.agent.purpose,
+        role: response.agent.role,
+        autonomyLevel: response.agent.autonomyLevel,
+        guardrails: response.agent.guardrails?.map(g => ({
+          ...g,
+          enforcement: 'hard' as const,
+        })),
+        tags: response.agent.tags,
+      } as import('@/lib/schemas/story').AgentStory);
+
+      actions.push({
+        type: files.some(f => f.path === 'agent.md') ? 'update_file' : 'create_file',
+        path: 'agent.md',
+        content: agentContent,
+      });
+    }
+
+    // Process skills
+    if (response.skills?.length) {
+      for (const skill of response.skills) {
+        const slug = generateSlug(skill.name);
+        const skillPath = `skills/${slug}/SKILL.md`;
+
+        const skillContent = generateSkillMd({
+          id: crypto.randomUUID(),
+          name: skill.name,
+          description: skill.description || '',
+          domain: skill.domain || 'General',
+          acquired: 'built_in',
+          triggers: skill.triggers?.map(t => ({
+            type: t.type as 'message' | 'schedule' | 'manual' | 'condition',
+            description: t.description,
+          })) || [{ type: 'manual' as const, description: 'Manually triggered' }],
+          behavior: skill.behavior?.model === 'sequential' && skill.behavior.steps ? {
+            model: 'sequential' as const,
+            steps: skill.behavior.steps,
+          } : skill.behavior?.model === 'workflow' ? {
+            model: 'workflow' as const,
+            stages: [],
+          } : skill.behavior?.model === 'adaptive' ? {
+            model: 'adaptive' as const,
+            capabilities: [],
+          } : undefined,
+          tools: skill.tools?.map(t => ({
+            name: t.name,
+            purpose: t.purpose,
+            permissions: t.permissions as ('read' | 'write' | 'execute')[],
+            required: true,
+          })),
+          acceptance: skill.acceptance ? {
+            successConditions: skill.acceptance.successConditions,
+          } : { successConditions: ['Task completed successfully'] },
+          guardrails: skill.guardrails?.map(g => ({
+            ...g,
+            enforcement: 'hard' as const,
+          })),
+        });
+
+        actions.push({
+          type: files.some(f => f.path === skillPath) ? 'update_file' : 'create_file',
+          path: skillPath,
+          content: skillContent,
+        });
+      }
+    }
+
+    return actions;
+  }, [files, agentName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -252,13 +286,39 @@ IMPORTANT RULES:
       }
 
       if (accumulatedContent) {
-        const assistantMessage: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: accumulatedContent,
-          timestamp: new Date(),
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
+        // Try to parse as structured JSON response (for agent scope)
+        const structuredResponse = effectiveScope === 'agent'
+          ? parseAgentChatResponse(accumulatedContent)
+          : null;
+
+        if (structuredResponse) {
+          // Apply the structured changes automatically
+          const actions = processStructuredResponse(structuredResponse);
+          for (const action of actions) {
+            onAction(action);
+          }
+
+          // Create a user-friendly message showing what was done
+          const appliedFiles = actions.map(a => a.path).join(', ');
+          const displayMessage = `${structuredResponse.message}\n\n✓ Applied changes to: ${appliedFiles}`;
+
+          const assistantMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: displayMessage,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        } else {
+          // Fallback to regular markdown/code block handling
+          const assistantMessage: ChatMessage = {
+            id: crypto.randomUUID(),
+            role: 'assistant',
+            content: accumulatedContent,
+            timestamp: new Date(),
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        }
         setStreamingContent('');
       }
     } catch (err) {
@@ -507,7 +567,7 @@ function ChatBubble({
   const codeBlocks: CodeBlock[] = contentBlocks
     .filter((b) => b.type === 'code')
     .map((block, i) => {
-      const targetFile = block.targetFile || activeFile?.path || 'AGENTS.md';
+      const targetFile = block.targetFile || activeFile?.path || 'agent.md';
       const currentFile = files.find((f) => f.path === targetFile);
       return {
         id: `${message.id}-block-${i}`,
@@ -540,7 +600,7 @@ function ChatBubble({
       <div className="max-w-[95%] space-y-2">
         {contentBlocks.map((block, i) => {
           if (block.type === 'code') {
-            const targetFile = block.targetFile || activeFile?.path || 'AGENTS.md';
+            const targetFile = block.targetFile || activeFile?.path || 'agent.md';
             const currentFile = files.find((f) => f.path === targetFile);
             const blockId = `${message.id}-block-${codeBlocks.findIndex(
               (cb) => cb.content === block.content && cb.targetFile === targetFile
