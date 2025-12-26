@@ -23,15 +23,74 @@ export function storyToFiles(story: AgentStory): AgentFile[] {
     lastModified: now,
   });
 
-  // SKILL.md for each skill
+  // Skill files for each skill
   for (const skill of story.skills || []) {
     const slug = generateSlug(skill.name);
+    const skillDir = `skills/${slug}`;
+
+    // SKILL.md
     files.push({
-      path: `skills/${slug}/SKILL.md`,
+      path: `${skillDir}/SKILL.md`,
       content: generateSkillMd(skill),
       type: 'skill',
       lastModified: now,
     });
+
+    // config.yaml for skill
+    files.push({
+      path: `${skillDir}/config.yaml`,
+      content: generateSkillConfig(skill),
+      type: 'skill-config',
+      lastModified: now,
+    });
+
+    // Prompt files
+    if (skill.prompts?.length) {
+      for (const prompt of skill.prompts) {
+        files.push({
+          path: `${skillDir}/prompts/${prompt.name}.md`,
+          content: generatePromptFile(prompt),
+          type: 'prompt',
+          lastModified: now,
+        });
+      }
+    }
+
+    // Tool implementation files
+    if (skill.toolImplementations?.length) {
+      for (const impl of skill.toolImplementations) {
+        files.push({
+          path: `${skillDir}/tools/${impl.filename}`,
+          content: impl.content,
+          type: 'tool-impl',
+          lastModified: now,
+        });
+      }
+    }
+
+    // Example files
+    if (skill.examples?.length) {
+      for (const example of skill.examples) {
+        files.push({
+          path: `${skillDir}/examples/${example.name}.md`,
+          content: example.content,
+          type: 'example',
+          lastModified: now,
+        });
+      }
+    }
+
+    // Template files
+    if (skill.templates?.length) {
+      for (const template of skill.templates) {
+        files.push({
+          path: `${skillDir}/templates/${template.filename}`,
+          content: template.content,
+          type: 'template',
+          lastModified: now,
+        });
+      }
+    }
   }
 
   // MCP config if any skills have tools
@@ -551,4 +610,140 @@ function generateMcpConfig(tools: Tool[]): string {
     }, {} as Record<string, { purpose: string; permissions: string[] }>),
   };
   return JSON.stringify(config, null, 2);
+}
+
+// ============================================================================
+// Skill Config Generation
+// ============================================================================
+
+function generateSkillConfig(skill: Skill): string {
+  const lines: string[] = [];
+
+  lines.push('# Skill Configuration');
+  lines.push(`name: ${generateSlug(skill.name)}`);
+  lines.push(`domain: ${skill.domain || 'General'}`);
+  lines.push(`acquired: ${skill.acquired || 'built_in'}`);
+  lines.push('');
+
+  // Triggers
+  if (skill.triggers?.length) {
+    lines.push('triggers:');
+    for (const trigger of skill.triggers) {
+      lines.push(`  - type: ${trigger.type}`);
+      lines.push(`    description: "${trigger.description || ''}"`);
+      if (trigger.conditions?.length) {
+        lines.push('    conditions:');
+        for (const c of trigger.conditions) {
+          lines.push(`      - "${c}"`);
+        }
+      }
+    }
+    lines.push('');
+  }
+
+  // Behavior
+  if (skill.behavior) {
+    lines.push('behavior:');
+    lines.push(`  model: ${skill.behavior.model}`);
+    if (skill.behavior.model === 'sequential' && skill.behavior.steps?.length) {
+      lines.push('  steps:');
+      for (const step of skill.behavior.steps) {
+        lines.push(`    - "${step}"`);
+      }
+    }
+    lines.push('');
+  }
+
+  // Tools
+  if (skill.tools?.length) {
+    lines.push('tools:');
+    for (const tool of skill.tools) {
+      lines.push(`  - name: ${tool.name}`);
+      lines.push(`    purpose: "${tool.purpose}"`);
+      lines.push(`    required: ${tool.required}`);
+      lines.push(`    permissions: [${tool.permissions.join(', ')}]`);
+    }
+    lines.push('');
+  }
+
+  // Acceptance
+  if (skill.acceptance?.successConditions?.length) {
+    lines.push('acceptance:');
+    lines.push('  success_conditions:');
+    for (const c of skill.acceptance.successConditions) {
+      lines.push(`    - "${c}"`);
+    }
+    if (skill.acceptance.qualityMetrics?.length) {
+      lines.push('  quality_metrics:');
+      for (const m of skill.acceptance.qualityMetrics) {
+        lines.push(`    - name: ${m.name}`);
+        lines.push(`      target: "${m.target}"`);
+      }
+    }
+    lines.push('');
+  }
+
+  // Guardrails
+  if (skill.guardrails?.length) {
+    lines.push('guardrails:');
+    for (const g of skill.guardrails) {
+      lines.push(`  - name: ${g.name}`);
+      lines.push(`    constraint: "${g.constraint}"`);
+      lines.push(`    enforcement: ${g.enforcement}`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n');
+}
+
+// ============================================================================
+// Prompt File Generation
+// ============================================================================
+
+function generatePromptFile(prompt: NonNullable<Skill['prompts']>[0]): string {
+  const lines: string[] = [];
+
+  // Frontmatter
+  lines.push('---');
+  lines.push(`name: ${prompt.name}`);
+  if (prompt.inputs?.length) {
+    lines.push('inputs:');
+    for (const input of prompt.inputs) {
+      lines.push(`  - name: ${input.name}`);
+      lines.push(`    type: ${input.type}`);
+      lines.push(`    required: ${input.required ?? true}`);
+      if (input.description) {
+        lines.push(`    description: "${input.description}"`);
+      }
+    }
+  }
+  if (prompt.outputs?.length) {
+    lines.push('outputs:');
+    for (const output of prompt.outputs) {
+      lines.push(`  - name: ${output.name}`);
+      lines.push(`    type: ${output.type}`);
+      if (output.description) {
+        lines.push(`    description: "${output.description}"`);
+      }
+    }
+  }
+  lines.push('---');
+  lines.push('');
+
+  // Title
+  const title = prompt.name
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase());
+  lines.push(`# ${title}`);
+  lines.push('');
+
+  // Description
+  lines.push(prompt.description);
+  lines.push('');
+
+  // Content
+  lines.push(prompt.content);
+
+  return lines.join('\n');
 }
