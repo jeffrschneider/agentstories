@@ -94,6 +94,12 @@ export function buildFileTree(files: AgentFile[]): FileTreeNode[] {
       currentPath = currentPath ? `${currentPath}/${part}` : part;
       const isLast = i === parts.length - 1;
 
+      // Skip .gitkeep files from display (they're just folder placeholders)
+      if (isLast && part === '.gitkeep') {
+        // Still create the parent folder if it doesn't exist
+        continue;
+      }
+
       let existing = currentLevel.find(n => n.name === part);
 
       if (!existing) {
