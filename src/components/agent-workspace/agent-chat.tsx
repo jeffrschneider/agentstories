@@ -34,9 +34,24 @@ interface AgentChatProps {
   activeFile: AgentFile | null;
   agentName: string;
   onAction: (action: ChatAction) => void;
+  onCreateNewAgent?: () => void;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
   className?: string;
+}
+
+// Intent detection patterns for creating a new agent
+const NEW_AGENT_PATTERNS = [
+  /\b(create|make|start|build)\s+(a\s+)?(new|fresh|another|different)\s+agent\b/i,
+  /\bnew\s+agent\b/i,
+  /\bstart\s+(over|fresh)\b/i,
+  /\bfrom\s+scratch\b/i,
+  /\bdifferent\s+agent\b/i,
+  /\banother\s+agent\b/i,
+];
+
+function detectNewAgentIntent(input: string): boolean {
+  return NEW_AGENT_PATTERNS.some(pattern => pattern.test(input));
 }
 
 export function AgentChat({
@@ -44,6 +59,7 @@ export function AgentChat({
   activeFile,
   agentName,
   onAction,
+  onCreateNewAgent,
   isExpanded = false,
   onToggleExpand,
   className,
@@ -110,6 +126,13 @@ IMPORTANT: When providing file updates or new content, always wrap them in fence
     e.preventDefault();
     const trimmedInput = input.trim();
     if (!trimmedInput || isLoading) return;
+
+    // Check for "new agent" intent
+    if (onCreateNewAgent && detectNewAgentIntent(trimmedInput)) {
+      setInput('');
+      onCreateNewAgent();
+      return;
+    }
 
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),

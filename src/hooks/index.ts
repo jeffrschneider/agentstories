@@ -30,6 +30,9 @@ export {
   useSaveShortcut,
 } from './use-keyboard-shortcuts';
 
+// Auto-save
+export { useAutoSave } from './use-auto-save';
+
 // Form validation
 export {
   useFormValidation,
