@@ -305,6 +305,40 @@ function filesToStory(files: AgentFile[], metadata: AgentFileSystem['metadata'])
 
 ## Chat Integration
 
+### IMPORTANT: Always Use Structured JSON Prompts
+
+The chat system MUST always use the structured JSON system prompt, regardless of which file is selected. This ensures:
+
+1. **Skills are always created properly** - If user asks "add a skill" while editing a file, the skill still gets created
+2. **Consistent LLM responses** - The LLM always returns JSON that can be parsed into file actions
+3. **No scope confusion** - User doesn't need to know about file vs agent scope
+
+**Never use a simple markdown prompt** that tells the LLM to return markdown. This breaks skill/file creation because:
+- The LLM returns markdown instead of JSON
+- JSON parsing fails
+- Skills never get created
+- Files don't appear in the tree
+
+When a file is selected, append a note to the structured prompt indicating which file is active, so the LLM can include it in the `files` array if the user wants to edit it.
+
+```typescript
+// CORRECT: Always use structured JSON prompt
+function buildSystemPrompt() {
+  let prompt = buildStructuredSystemPrompt(agentName, fileList, currentAgent, fileContents);
+
+  if (contextFile) {
+    prompt += `\n\nNOTE: User has "${contextFile.path}" selected. Include in "files" array if they want to edit it.`;
+  }
+
+  return prompt;
+}
+
+// WRONG: Don't use simple markdown prompts - breaks skill creation!
+// if (contextFile) {
+//   return `You are editing ${contextFile.path}. Return markdown.`;  // DON'T DO THIS
+// }
+```
+
 ### Context-Aware Prompts
 
 ```typescript
