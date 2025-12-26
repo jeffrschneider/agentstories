@@ -25,4 +25,5 @@ This project uses spec-driven development. Always check /specs before implementi
 - [any other patterns you want enforced]
 
 ## Upon Completion of a Session Task
-- say "You're doing great!" 
+- say "You're doing great!" and play a noise like a "\a" or similar 
+- show a clickable url to the github pull request
