@@ -3,7 +3,7 @@
 import * as React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Send, Loader2, RotateCcw, Sparkles, FileText, Bot, ChevronDown, Maximize2, Minimize2, CheckCircle2 } from 'lucide-react';
+import { Send, Loader2, RotateCcw, Sparkles, FileText, Bot, ChevronDown, Maximize2, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,11 +18,7 @@ import type { AgentFile } from '@/lib/agent-files';
 import {
   buildStructuredSystemPrompt,
   parseAgentChatResponse,
-  generateAgentMd,
-  generateSkillMd,
-  generateAgentConfig,
-  generateSkillConfig,
-  generateSlug,
+  processStructuredResponse,
   type AgentChatResponse,
 } from '@/lib/agent-files';
 
@@ -156,354 +152,6 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
     return buildStructuredSystemPrompt(agentName, fileList, currentAgent, fileContents);
   };
 
-  // Convert a JSON response to file actions
-  const processStructuredResponse = React.useCallback((response: AgentChatResponse): ChatAction[] => {
-    const actions: ChatAction[] = [];
-
-    // Handle question action - no file changes, just display the message
-    if (response.action === 'question') {
-      return actions; // Empty - the message is already shown in the chat
-    }
-
-    // Process agent identity
-    if (response.agent) {
-      // Build skill links for agent.md
-      const skillLinks = response.skills?.map(s => {
-        const slug = generateSlug(s.name);
-        return `- [${s.name}](skills/${slug}/SKILL.md) - ${s.description || 'No description'}`;
-      }) || [];
-
-      // Also include existing skills that aren't being updated
-      const existingSkillFiles = files.filter(f => f.path.endsWith('SKILL.md'));
-      for (const skillFile of existingSkillFiles) {
-        const pathMatch = skillFile.path.match(/skills\/([^/]+)\/SKILL\.md/);
-        if (pathMatch) {
-          const slug = pathMatch[1];
-          // Don't duplicate if this skill is being updated
-          const isBeingUpdated = response.skills?.some(s => generateSlug(s.name) === slug);
-          if (!isBeingUpdated) {
-            // Extract name from file content (look for # Title)
-            const titleMatch = skillFile.content.match(/^#\s+(.+)$/m);
-            const name = titleMatch?.[1] || slug;
-            const descMatch = skillFile.content.match(/description:\s*(.+)/);
-            const desc = descMatch?.[1] || 'No description';
-            skillLinks.push(`- [${name}](skills/${slug}/SKILL.md) - ${desc}`);
-          }
-        }
-      }
-
-      const skillsSection = skillLinks.length > 0
-        ? `\n## Skills\n${skillLinks.join('\n')}\n`
-        : '';
-
-      const agentStory = {
-        name: response.agent.name || agentName,
-        purpose: response.agent.purpose,
-        role: response.agent.role,
-        autonomyLevel: response.agent.autonomyLevel,
-        guardrails: response.agent.guardrails?.map(g => ({
-          ...g,
-          enforcement: 'hard' as const,
-        })),
-        tags: response.agent.tags,
-      } as import('@/lib/schemas/story').AgentStory;
-
-      // Generate agent.md with skills section appended
-      const agentContent = generateAgentMd(agentStory) + skillsSection;
-
-      actions.push({
-        type: files.some(f => f.path === 'agent.md') ? 'update_file' : 'create_file',
-        path: 'agent.md',
-        content: agentContent,
-      });
-
-      // Generate config.yaml for the agent
-      const isNewAgent = !files.some(f => f.path === 'config.yaml');
-      actions.push({
-        type: isNewAgent ? 'create_file' : 'update_file',
-        path: 'config.yaml',
-        content: generateAgentConfig(agentStory),
-      });
-
-      // Create directory structure for new agents
-      if (isNewAgent) {
-        // Create memory directories
-        actions.push({
-          type: 'create_file',
-          path: 'memory/short_term/.gitkeep',
-          content: '',
-        });
-        actions.push({
-          type: 'create_file',
-          path: 'memory/long_term/.gitkeep',
-          content: '',
-        });
-        // Create tools directory
-        actions.push({
-          type: 'create_file',
-          path: 'tools/.gitkeep',
-          content: '',
-        });
-        // Create logs directory
-        actions.push({
-          type: 'create_file',
-          path: 'logs/.gitkeep',
-          content: '',
-        });
-      }
-
-      // Update the agent name in the UI header
-      if (response.agent.name) {
-        actions.push({
-          type: 'update_name',
-          path: '',
-          name: response.agent.name,
-        });
-      }
-    }
-
-    // Process skills
-    if (response.skills?.length) {
-      // If we have skills but no agent property, we need to update agent.md with new skill links
-      if (!response.agent) {
-        const existingAgentFile = files.find(f => f.path === 'agent.md');
-        if (existingAgentFile) {
-          // Build new skill links
-          const newSkillLinks = response.skills.map(s => {
-            const slug = generateSlug(s.name);
-            return `- [${s.name}](skills/${slug}/SKILL.md) - ${s.description || 'No description'}`;
-          });
-
-          // Also preserve existing skills not being updated
-          const existingSkillFiles = files.filter(f => f.path.endsWith('SKILL.md'));
-          for (const skillFile of existingSkillFiles) {
-            const pathMatch = skillFile.path.match(/skills\/([^/]+)\/SKILL\.md/);
-            if (pathMatch) {
-              const slug = pathMatch[1];
-              // Don't duplicate if this skill is being updated
-              const isBeingUpdated = response.skills.some(s => generateSlug(s.name) === slug);
-              if (!isBeingUpdated) {
-                const titleMatch = skillFile.content.match(/^#\s+(.+)$/m);
-                const name = titleMatch?.[1] || slug;
-                const descMatch = skillFile.content.match(/description:\s*(.+)/);
-                const desc = descMatch?.[1] || 'No description';
-                newSkillLinks.push(`- [${name}](skills/${slug}/SKILL.md) - ${desc}`);
-              }
-            }
-          }
-
-          // Update agent.md with new skills section
-          let updatedContent = existingAgentFile.content;
-          const skillsSectionRegex = /## Skills\n([\s\S]*?)(?=\n## |\n*$)/;
-          const newSkillsSection = `## Skills\n${newSkillLinks.join('\n')}\n`;
-
-          if (skillsSectionRegex.test(updatedContent)) {
-            // Replace existing Skills section
-            updatedContent = updatedContent.replace(skillsSectionRegex, newSkillsSection);
-          } else {
-            // Add Skills section at the end
-            updatedContent = updatedContent.trimEnd() + '\n\n' + newSkillsSection;
-          }
-
-          actions.push({
-            type: 'update_file',
-            path: 'agent.md',
-            content: updatedContent,
-          });
-        }
-      }
-
-      for (const skill of response.skills) {
-        const slug = generateSlug(skill.name);
-        const skillPath = `skills/${slug}/SKILL.md`;
-
-        const skillContent = generateSkillMd({
-          id: crypto.randomUUID(),
-          name: skill.name,
-          description: skill.description || '',
-          domain: skill.domain || 'General',
-          acquired: 'built_in',
-          portability: {
-            slug,
-            license: skill.license,
-            compatibility: skill.compatibility,
-            scripts: skill.scripts?.map(s => ({
-              filename: s.filename,
-              language: s.language as 'python' | 'bash' | 'javascript' | 'typescript',
-              purpose: s.purpose,
-              content: s.content,
-            })),
-            references: skill.references?.map(r => ({
-              filename: r.filename,
-              title: r.title,
-              content: r.content,
-            })),
-            assets: skill.assets?.map(a => ({
-              filename: a.filename,
-              type: (a.type || 'other') as 'json' | 'yaml' | 'csv' | 'txt' | 'png' | 'svg' | 'other',
-              description: a.description,
-              content: a.content,
-            })),
-          },
-          triggers: skill.triggers?.map(t => ({
-            type: t.type as 'message' | 'schedule' | 'manual' | 'condition',
-            description: t.description,
-          })) || [{ type: 'manual' as const, description: 'Manually triggered' }],
-          behavior: skill.behavior?.model === 'sequential' && skill.behavior.steps ? {
-            model: 'sequential' as const,
-            steps: skill.behavior.steps,
-          } : skill.behavior?.model === 'workflow' ? {
-            model: 'workflow' as const,
-            stages: [],
-          } : skill.behavior?.model === 'adaptive' ? {
-            model: 'adaptive' as const,
-            capabilities: [],
-          } : undefined,
-          tools: skill.tools?.map(t => ({
-            name: t.name,
-            purpose: t.purpose,
-            permissions: t.permissions as ('read' | 'write' | 'execute')[],
-            required: true,
-          })),
-          acceptance: skill.acceptance ? {
-            successConditions: skill.acceptance.successConditions,
-          } : { successConditions: ['Task completed successfully'] },
-          guardrails: skill.guardrails?.map(g => ({
-            ...g,
-            enforcement: 'hard' as const,
-          })),
-        });
-
-        actions.push({
-          type: files.some(f => f.path === skillPath) ? 'update_file' : 'create_file',
-          path: skillPath,
-          content: skillContent,
-        });
-
-        // Create skill config.yaml
-        const skillConfigPath = `skills/${slug}/config.yaml`;
-        const skillObj = {
-          id: crypto.randomUUID(),
-          name: skill.name,
-          description: skill.description || '',
-          domain: skill.domain || 'General',
-          acquired: 'built_in' as const,
-          triggers: skill.triggers?.map(t => ({
-            type: t.type as 'message' | 'schedule' | 'manual' | 'condition',
-            description: t.description,
-          })) || [{ type: 'manual' as const, description: 'Manually triggered' }],
-          behavior: skill.behavior?.model === 'sequential' && skill.behavior.steps ? {
-            model: 'sequential' as const,
-            steps: skill.behavior.steps,
-          } : { model: 'sequential' as const, steps: ['Execute task'] },
-          tools: skill.tools?.map(t => ({
-            name: t.name,
-            purpose: t.purpose,
-            permissions: t.permissions as ('read' | 'write' | 'execute')[],
-            required: true,
-          })),
-          acceptance: skill.acceptance ? {
-            successConditions: skill.acceptance.successConditions,
-          } : { successConditions: ['Task completed successfully'] },
-          guardrails: skill.guardrails?.map(g => ({
-            ...g,
-            enforcement: 'hard' as const,
-          })),
-        };
-        actions.push({
-          type: files.some(f => f.path === skillConfigPath) ? 'update_file' : 'create_file',
-          path: skillConfigPath,
-          content: generateSkillConfig(skillObj),
-        });
-
-        // Create skill subdirectories if they don't exist
-        const isNewSkill = !files.some(f => f.path === skillPath);
-        if (isNewSkill) {
-          // scripts/ directory
-          if (!skill.scripts?.length) {
-            actions.push({
-              type: 'create_file',
-              path: `skills/${slug}/scripts/.gitkeep`,
-              content: '',
-            });
-          }
-          // references/ directory
-          if (!skill.references?.length) {
-            actions.push({
-              type: 'create_file',
-              path: `skills/${slug}/references/.gitkeep`,
-              content: '',
-            });
-          }
-          // assets/ directory
-          if (!skill.assets?.length) {
-            actions.push({
-              type: 'create_file',
-              path: `skills/${slug}/assets/.gitkeep`,
-              content: '',
-            });
-          }
-        }
-
-        // Create script files
-        if (skill.scripts?.length) {
-          for (const script of skill.scripts) {
-            const scriptPath = `skills/${slug}/scripts/${script.filename}`;
-            actions.push({
-              type: files.some(f => f.path === scriptPath) ? 'update_file' : 'create_file',
-              path: scriptPath,
-              content: script.content || '',
-            });
-          }
-        }
-
-        // Create reference files
-        if (skill.references?.length) {
-          for (const ref of skill.references) {
-            const refPath = `skills/${slug}/references/${ref.filename}`;
-            actions.push({
-              type: files.some(f => f.path === refPath) ? 'update_file' : 'create_file',
-              path: refPath,
-              content: ref.content || '',
-            });
-          }
-        }
-
-        // Create asset files
-        if (skill.assets?.length) {
-          for (const asset of skill.assets) {
-            const assetPath = `skills/${slug}/assets/${asset.filename}`;
-            actions.push({
-              type: files.some(f => f.path === assetPath) ? 'update_file' : 'create_file',
-              path: assetPath,
-              content: asset.content || '',
-            });
-          }
-        }
-      }
-    }
-
-    // Process arbitrary file actions
-    if (response.files?.length) {
-      for (const file of response.files) {
-        if (file.action === 'delete') {
-          actions.push({
-            type: 'delete_file',
-            path: file.path,
-          });
-        } else {
-          actions.push({
-            type: files.some(f => f.path === file.path) ? 'update_file' : 'create_file',
-            path: file.path,
-            content: file.content,
-          });
-        }
-      }
-    }
-
-    return actions;
-  }, [files, agentName]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedInput = input.trim();
@@ -584,26 +232,68 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
       }
 
       if (accumulatedContent) {
-        // Try to parse as structured JSON response (for agent scope)
-        const structuredResponse = effectiveScope === 'agent'
-          ? parseAgentChatResponse(accumulatedContent)
-          : null;
+        // Always try to parse as structured JSON response regardless of scope
+        // This allows skill/file creation to work even when editing a file
+        const structuredResponse = parseAgentChatResponse(accumulatedContent);
 
         if (structuredResponse) {
-          // Apply the structured changes automatically
-          const actions = processStructuredResponse(structuredResponse);
-          for (const action of actions) {
+          // Process the structured response into actions
+          const actions = processStructuredResponse(structuredResponse, files, agentName);
+
+          // Separate actions into auto-apply (new files) and require-approval (updates)
+          const createActions = actions.filter(a => a.type === 'create_file' || a.type === 'update_name');
+          const updateActions = actions.filter(a => a.type === 'update_file');
+          const deleteActions = actions.filter(a => a.type === 'delete_file');
+
+          // Auto-apply creation actions immediately (new files don't need approval)
+          for (const action of createActions) {
             onAction(action);
           }
 
-          // Create a user-friendly message showing what was done
-          const appliedFiles = actions.map(a => a.path).join(', ');
-          const displayMessage = `${structuredResponse.message}\n\n✓ Applied changes to: ${appliedFiles}`;
+          // Auto-apply delete actions
+          for (const action of deleteActions) {
+            onAction(action);
+          }
+
+          // Build the display message
+          const createdFiles = createActions.filter(a => a.type === 'create_file').map(a => a.path);
+          const updatedFiles = updateActions.map(a => a.path);
+          const deletedFiles = deleteActions.map(a => a.path);
+
+          let statusMessage = structuredResponse.message;
+          if (createdFiles.length > 0) {
+            statusMessage += `\n\n✓ Created: ${createdFiles.join(', ')}`;
+          }
+          if (deletedFiles.length > 0) {
+            statusMessage += `\n\n✓ Deleted: ${deletedFiles.join(', ')}`;
+          }
+
+          // For update actions, generate code blocks that require user approval
+          if (updateActions.length > 0) {
+            statusMessage += `\n\nThe following files need your approval to update:`;
+            for (const action of updateActions) {
+              if (action.content) {
+                // Determine language from file extension
+                const ext = action.path.split('.').pop() || '';
+                const langMap: Record<string, string> = {
+                  'md': 'markdown',
+                  'yaml': 'yaml',
+                  'yml': 'yaml',
+                  'json': 'json',
+                  'py': 'python',
+                  'js': 'javascript',
+                  'ts': 'typescript',
+                };
+                const lang = langMap[ext] || '';
+                statusMessage += `\n\n\`${action.path}\`:\n\`\`\`${lang}\n${action.content}\n\`\`\``;
+              }
+            }
+          }
 
           const assistantMessage: ChatMessage = {
             id: crypto.randomUUID(),
             role: 'assistant',
-            content: displayMessage,
+            content: statusMessage,
             timestamp: new Date(),
           };
           setMessages((prev) => [...prev, assistantMessage]);

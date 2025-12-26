@@ -447,4 +447,173 @@ describe('processStructuredResponse', () => {
       expect(paths.some(p => p.includes('skills/user-s-helper/'))).toBe(true);
     });
   });
+
+  describe('action type separation (create vs update)', () => {
+    it('returns create_file for new files and update_file for existing files', () => {
+      const existingFiles: AgentFile[] = [
+        { path: 'agent.md', content: '# Existing Agent', type: 'agents', lastModified: '2024-01-01' },
+        { path: 'config.yaml', content: 'name: Existing Agent', type: 'config', lastModified: '2024-01-01' },
+      ];
+
+      const response: AgentChatResponse = {
+        action: 'create_agent',
+        message: 'Updated agent with new skill',
+        agent: { name: 'Updated Agent', purpose: 'Test' },
+        skills: [
+          { name: 'new-skill', description: 'A new skill' },
+        ],
+      };
+
+      const actions = processStructuredResponse(response, existingFiles, 'Existing Agent');
+
+      // Existing files should be update_file
+      const agentMdAction = actions.find(a => a.path === 'agent.md');
+      expect(agentMdAction?.type).toBe('update_file');
+
+      const configAction = actions.find(a => a.path === 'config.yaml');
+      expect(configAction?.type).toBe('update_file');
+
+      // New skill files should be create_file
+      const skillMdAction = actions.find(a => a.path === 'skills/new-skill/SKILL.md');
+      expect(skillMdAction?.type).toBe('create_file');
+
+      const skillConfigAction = actions.find(a => a.path === 'skills/new-skill/config.yaml');
+      expect(skillConfigAction?.type).toBe('create_file');
+    });
+
+    it('correctly identifies create vs update when adding skill to existing agent', () => {
+      const existingFiles: AgentFile[] = [
+        { path: 'agent.md', content: '# Agent\n\n## Purpose\nDo things', type: 'agents', lastModified: '2024-01-01' },
+        { path: 'skills/existing-skill/SKILL.md', content: '---\nname: existing-skill\n---', type: 'skill', lastModified: '2024-01-01' },
+      ];
+
+      const response: AgentChatResponse = {
+        action: 'add_skill',
+        message: 'Added new skill',
+        skills: [
+          { name: 'brand-new-skill', description: 'Totally new' },
+        ],
+      };
+
+      const actions = processStructuredResponse(response, existingFiles, 'Agent');
+
+      // agent.md should be update_file (adding skill link)
+      const agentMdAction = actions.find(a => a.path === 'agent.md');
+      expect(agentMdAction?.type).toBe('update_file');
+
+      // New skill should be create_file
+      const newSkillAction = actions.find(a => a.path === 'skills/brand-new-skill/SKILL.md');
+      expect(newSkillAction?.type).toBe('create_file');
+
+      // New skill directories should be create_file
+      const scriptsAction = actions.find(a => a.path === 'skills/brand-new-skill/scripts/.gitkeep');
+      expect(scriptsAction?.type).toBe('create_file');
+    });
+
+    it('mixes create and update for multiple file changes', () => {
+      const existingFiles: AgentFile[] = [
+        { path: 'agent.md', content: '# Agent', type: 'agents', lastModified: '2024-01-01' },
+        { path: 'config.yaml', content: 'name: Agent', type: 'config', lastModified: '2024-01-01' },
+        { path: 'existing-file.json', content: '{}', type: 'unknown', lastModified: '2024-01-01' },
+      ];
+
+      const response: AgentChatResponse = {
+        action: 'add_file',
+        message: 'Mixed file operations',
+        files: [
+          { path: 'existing-file.json', content: '{"updated": true}', action: 'update' },
+          { path: 'new-file.json', content: '{"new": true}', action: 'create' },
+        ],
+      };
+
+      const actions = processStructuredResponse(response, existingFiles, 'Agent');
+
+      const updateAction = actions.find(a => a.path === 'existing-file.json');
+      expect(updateAction?.type).toBe('update_file');
+
+      const createAction = actions.find(a => a.path === 'new-file.json');
+      expect(createAction?.type).toBe('create_file');
+    });
+
+    it('all skill subdirectories are create_file for new skills', () => {
+      const response: AgentChatResponse = {
+        action: 'add_skill',
+        message: 'Added skill',
+        skills: [
+          { name: 'complete-skill', description: 'Has all directories' },
+        ],
+      };
+
+      const actions = processStructuredResponse(response, [], 'Agent');
+
+      // Filter to only create_file actions for this skill
+      const createActions = actions.filter(
+        a => a.type === 'create_file' && a.path.startsWith('skills/complete-skill/')
+      );
+
+      // Should have SKILL.md, config.yaml, and 3 .gitkeep files
+      expect(createActions.length).toBeGreaterThanOrEqual(5);
+
+      const paths = createActions.map(a => a.path);
+      expect(paths).toContain('skills/complete-skill/SKILL.md');
+      expect(paths).toContain('skills/complete-skill/config.yaml');
+      expect(paths).toContain('skills/complete-skill/scripts/.gitkeep');
+      expect(paths).toContain('skills/complete-skill/references/.gitkeep');
+      expect(paths).toContain('skills/complete-skill/assets/.gitkeep');
+    });
+  });
+
+  describe('skill directory structure always created', () => {
+    it('creates scripts/, references/, and assets/ directories for every new skill', () => {
+      const response: AgentChatResponse = {
+        action: 'create_agent',
+        message: 'Created agent with multiple skills',
+        agent: { name: 'Multi-Skill Agent' },
+        skills: [
+          { name: 'skill-one', description: 'First skill' },
+          { name: 'skill-two', description: 'Second skill' },
+          { name: 'skill-three', description: 'Third skill' },
+        ],
+      };
+
+      const actions = processStructuredResponse(response, [], 'Agent');
+      const paths = actions.map(a => a.path);
+
+      // Each skill should have all three directories
+      for (const skillName of ['skill-one', 'skill-two', 'skill-three']) {
+        expect(paths).toContain(`skills/${skillName}/SKILL.md`);
+        expect(paths).toContain(`skills/${skillName}/config.yaml`);
+        expect(paths).toContain(`skills/${skillName}/scripts/.gitkeep`);
+        expect(paths).toContain(`skills/${skillName}/references/.gitkeep`);
+        expect(paths).toContain(`skills/${skillName}/assets/.gitkeep`);
+      }
+    });
+
+    it('does not create duplicate directories for existing skills', () => {
+      const existingFiles: AgentFile[] = [
+        { path: 'skills/existing-skill/SKILL.md', content: '---\nname: existing-skill\n---', type: 'skill', lastModified: '2024-01-01' },
+        { path: 'skills/existing-skill/scripts/.gitkeep', content: '', type: 'unknown', lastModified: '2024-01-01' },
+      ];
+
+      const response: AgentChatResponse = {
+        action: 'add_skill',
+        message: 'Updating existing skill',
+        skills: [
+          { name: 'existing-skill', description: 'Updated description' },
+        ],
+      };
+
+      const actions = processStructuredResponse(response, existingFiles, 'Agent');
+
+      // Should update the existing SKILL.md, not create new directories
+      const skillMdAction = actions.find(a => a.path === 'skills/existing-skill/SKILL.md');
+      expect(skillMdAction?.type).toBe('update_file');
+
+      // Should NOT have gitkeep actions since skill already exists
+      const gitkeepActions = actions.filter(
+        a => a.path.includes('existing-skill') && a.path.endsWith('.gitkeep')
+      );
+      expect(gitkeepActions.length).toBe(0);
+    });
+  });
 });
