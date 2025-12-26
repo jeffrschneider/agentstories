@@ -102,10 +102,27 @@ export function AgentChat({
     scrollToBottom();
   }, [messages, streamingContent, scrollToBottom]);
 
-  // Reset scope when file changes
+  // Track previous file state to detect transitions
+  const prevActiveFileRef = React.useRef<AgentFile | null>(activeFile);
+
+  // Only reset scope when transitioning from no file to having a file (or vice versa)
+  // Don't reset when switching between files - preserve user's choice
   React.useEffect(() => {
-    setScope(activeFile ? 'file' : 'agent');
-  }, [activeFile?.path]);
+    const hadFile = prevActiveFileRef.current !== null;
+    const hasFile = activeFile !== null;
+
+    // Only auto-set scope on null <-> non-null transitions
+    if (!hadFile && hasFile) {
+      // Just selected a file - default to file scope
+      setScope('file');
+    } else if (hadFile && !hasFile) {
+      // File was deselected - switch to agent scope
+      setScope('agent');
+    }
+    // If switching between files, preserve current scope choice
+
+    prevActiveFileRef.current = activeFile;
+  }, [activeFile]);
 
   const effectiveScope = activeFile && scope === 'file' ? 'file' : 'agent';
   const contextFile = effectiveScope === 'file' ? activeFile : null;
@@ -625,7 +642,6 @@ IMPORTANT: When providing file updates, always wrap them in fenced code blocks s
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => setScope('agent')}
-                  disabled={!activeFile}
                 >
                   <Bot className="h-4 w-4 mr-2" />
                   Agent scope

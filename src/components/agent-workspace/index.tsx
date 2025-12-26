@@ -156,6 +156,37 @@ export function AgentWorkspace({
     [fileSystem.files, selectedPath]
   );
 
+  // Derive currentAgent state from fileSystem for chat context
+  const currentAgent = React.useMemo(() => {
+    const agentFile = fileSystem.files.find((f) => f.path === 'agent.md');
+    const skills = fileSystem.files
+      .filter((f) => f.path.endsWith('SKILL.md'))
+      .map((f) => {
+        const nameMatch = f.content.match(/^#\s+(.+)$/m);
+        const descMatch = f.content.match(/description:\s*(.+)/i);
+        return {
+          name: nameMatch?.[1] || f.path.split('/')[1] || 'Unknown',
+          description: descMatch?.[1],
+        };
+      });
+
+    if (!agentFile) {
+      return { skills };
+    }
+
+    const purposeMatch = agentFile.content.match(/## Purpose\s*\n([^\n#]+)/);
+    const roleMatch = agentFile.content.match(/## Role\s*\n([^\n#]+)/);
+    const autonomyMatch = agentFile.content.match(/autonomy[_-]?level:\s*(\w+)/i);
+
+    return {
+      name: fileSystem.name,
+      purpose: purposeMatch?.[1]?.trim(),
+      role: roleMatch?.[1]?.trim(),
+      autonomyLevel: autonomyMatch?.[1],
+      skills,
+    };
+  }, [fileSystem.files, fileSystem.name]);
+
   // Handle file selection
   const handleSelectFile = (path: string) => {
     setSelectedPath(path);
@@ -551,6 +582,7 @@ export function AgentWorkspace({
               files={fileSystem.files}
               activeFile={activeFile}
               agentName={fileSystem.name || 'Agent'}
+              currentAgent={currentAgent}
               onAction={handleChatAction}
               onCreateNewAgent={onCreateNewAgent}
               isExpanded={isChatExpanded}
