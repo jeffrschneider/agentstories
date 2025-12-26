@@ -33,7 +33,17 @@ export function ChatInterface({ onExtract }: ChatInterfaceProps) {
     const trimmedInput = input.trim();
     if (!trimmedInput || ideation.isLoading) return;
 
-    // Add user message
+    // Build API messages array first (before adding to store to avoid duplication)
+    // Include all existing messages plus the new user input
+    const apiMessages = [
+      ...ideation.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
+      { role: 'user' as const, content: trimmedInput },
+    ];
+
+    // Now add user message to store for UI display
     ideationActions.addMessage('user', trimmedInput);
     setInput('');
     setStreamingContent('');
@@ -41,19 +51,11 @@ export function ChatInterface({ onExtract }: ChatInterfaceProps) {
     ideationActions.setError(null);
 
     try {
-      // Get all messages for context
-      const messages = [
-        ...ideation.messages.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
-        { role: 'user' as const, content: trimmedInput },
-      ];
 
       const response = await fetch('/api/ideation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages: apiMessages }),
       });
 
       if (!response.ok) {
